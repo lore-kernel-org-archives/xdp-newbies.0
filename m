@@ -1,60 +1,72 @@
 Return-path: <xdp-newbies-owner@vger.kernel.org>
-Received: from albert.ini-tech.com ([192.99.4.57]:59222 "EHLO
-        smtp.ini-tech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752497AbdDJXtm (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 10 Apr 2017 19:49:42 -0400
-Date: Mon, 10 Apr 2017 19:39:52 -0400
-From: Julien Desfossez <ju@klipix.org>
-Subject: Re: xdp on virtio_net
-Message-ID: <20170410233952.GA4836@microsoft.com>
-References: <8ec1432f-b032-0e2c-5e07-cee4550f97b7@klipix.org>
- <20170408140110.27d0fe80@redhat.com>
- <20170410161833.GK4714@microsoft.com>
- <20170410224319.28a70776@redhat.com>
- <eefb8af4-a09f-93a8-9112-f6c1da41ef98@cumulusnetworks.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42142 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752312AbdDJUin (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 10 Apr 2017 16:38:43 -0400
+Date: Mon, 10 Apr 2017 22:38:35 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: XDP requirements on the NIC
+Message-ID: <20170410223835.20f68f5a@redhat.com>
+In-Reply-To: <20170409.191406.134792229765947007.davem@davemloft.net>
+References: <c892233e-68b4-6277-c42c-b2fbfc1e872d@gmail.com>
+        <20170409.191406.134792229765947007.davem@davemloft.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <eefb8af4-a09f-93a8-9112-f6c1da41ef98@cumulusnetworks.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 Content-Transfer-Encoding: 8bit
-To: David Ahern <dsa@cumulusnetworks.com>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, John Fastabend <john.fastabend@gmail.com>, "Michael S. Tsirkin" <mst@redhat.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+To: David Miller <davem@davemloft.net>
+Cc: f.fainelli@gmail.com, xdp-newbies@vger.kernel.org, brouer@redhat.com, Alexander Duyck <alexander.duyck@gmail.com>
 
-On 10-Apr-2017 02:45:10 PM, David Ahern wrote:
-> On 4/10/17 2:43 PM, Jesper Dangaard Brouer wrote:
-> >> So now, all I need is to make this check pass:
-> >> if (virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_TSO4) ||
-> >>     virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_TSO6) ||
-> >>     virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_ECN) ||
-> >>     virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_UFO)) {
-> >> 	netdev_warn(dev, "can't set XDP while host is implementing LRO, disable LRO first\n");
-> >> 	return -EOPNOTSUPP;
-> >> }
-> >>
-> >> I know running ethtool commands to disable those features does not change the
-> >> result.
-> >>
-> >> If you have an idea on how to solve this problem that would be great.
-> > 
-> > Maybe someone on the xdp-newbies@vger.kernel.org list can help?
-> > 
+On Sun, 09 Apr 2017 19:14:06 -0700 (PDT)
+David Miller <davem@davemloft.net> wrote:
+
+> From: Florian Fainelli <f.fainelli@gmail.com>
+> Date: Sun, 9 Apr 2017 19:05:39 -0700
 > 
-> Pass this on the qemu command line for the device you want to run xdp:
+> > In order for a NIC and its driver to support XDP, it sounds like we need:
+> > 
+> > - page-based RX  
 > 
-> "gso=off,guest_tso4=off,guest_tso6=off,guest_ecn=off,guest_ufo=off"
+> Not exactly.
 
-Awesome, it works !
+The requirement is actually that the packet-page is _writable_.
+These packet-pages come from the NIC DMA engine, and this complicates
+keeping them writable, in the case where a RX-page is used for
+containing two (or more) packets.  Careful use of the DMA API does make
+it possible to page packet sharing to co-exist with XDP (consult Alex
+Duyck to review such driver changes).
 
-If others want to do it with libvirt/virsh instead of the qemu command line,
-here is the right incantation to add to the "interface" section (with 4 vCPUs):
-<driver name='vhost' queues='8'>
-    <host tso4='off' tso6='off' ecn='off' ufo='off'/>
-    <guest tso4='off' tso6='off' ecn='off' ufo='off'/>
-</driver>
+> > - TX multiqueue support  
+> 
+> Also, not really required.
+> 
+> What you need to be able to do is to provide enough space in each
+> RX buffer for:
+> 
+> 1) a full size frame
+> 2) 256 bytes (XDP_PACKET_HEADROOM) of headroom
+> 
+> This is XDP's main set of requirements, a linear buffer and enough
+> room to push XDP_PACKET_HEADROOM's worth of headers.
 
-Thanks !
+True.
+ 
+> Then if you want to be able to easily wrap the RX packet into an SKB
+> for XDP_PASS, you need to have enough tailroom for skb_shared_info()
+> which you basically give to something like build_skb().
 
-Julien
+True this is a stack requirement.
+
+> If you look at __build_skb() it's comment states "Caller provides
+> space holding head and skb_shared_info".
+> 
+> For XDP_TX you just have to be able to queue up a raw skb'less packet
+> into your transmit queue.  TX multiqueue is not required for this to
+> work.
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
