@@ -1,88 +1,84 @@
 Return-path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt0-f182.google.com ([209.85.216.182]:33769 "EHLO
- mail-qt0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with
- ESMTP id S1751854AbdDJT2c (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
- Mon, 10 Apr 2017 15:28:32 -0400
-Received: by mail-qt0-f182.google.com with SMTP id m36so12363653qtb.0 for
- <xdp-newbies@vger.kernel.org>; Mon, 10 Apr 2017 12:28:31 -0700 (PDT)
-Date: Mon, 10 Apr 2017 15:28:26 -0400
-From: Stephen Hemminger <stephen@networkplumber.org>
+Received: from shards.monkeyblade.net ([184.105.139.130]:50556 "EHLO
+        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751656AbdDJTd2 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 10 Apr 2017 15:33:28 -0400
+Date: Mon, 10 Apr 2017 15:33:26 -0400 (EDT)
+Message-Id: <20170410.153326.450347050098977889.davem@davemloft.net>
 Subject: Re: [PATCH v2 net-next RFC] Generic XDP
-Message-ID: <20170410152826.580db268@plumbers-lap.home.lan>
-In-Reply-To: <20170409.133528.660876505013192371.davem@davemloft.net>
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <20170410021807.GA17150@ast-mbp.thefacebook.com>
 References: <20170409.133528.660876505013192371.davem@davemloft.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+        <20170410021807.GA17150@ast-mbp.thefacebook.com>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 Content-Transfer-Encoding: 8bit
-To: David Miller <davem@davemloft.net>
+To: alexei.starovoitov@gmail.com
 Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Sun, 09 Apr 2017 13:35:28 -0700 (PDT)
-David Miller <davem@davemloft.net> wrote:
+From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Date: Sun, 9 Apr 2017 19:18:09 -0700
 
-> This provides a generic non-optimized XDP implementation when the
-> device driver does not provide an optimized one.
+> On Sun, Apr 09, 2017 at 01:35:28PM -0700, David Miller wrote:
+>> +	if (skb_linearize(skb))
+>> +		goto do_drop;
 > 
-> It is arguable that perhaps I should have required something like
-> this as part of the initial XDP feature merge.
-> 
-> I believe this is critical for two reasons:
-> 
-> 1) Accessibility.  More people can play with XDP with less
->    dependencies.  Yes I know we have XDP support in virtio_net, but
->    that just creates another depedency for learning how to use this
->    facility.
-> 
->    I wrote this to make life easier for the XDP newbies.
-> 
-> 2) As a model for what the expected semantics are.  If there is a pure
->    generic core implementation, it serves as a semantic example for
->    driver folks adding XDP support.
-> 
-> This is just a rough draft and is untested.
-> 
-> Signed-off-by: David S. Miller <davem@davemloft.net>
+> do we need to force disable gro ?
 
-Agreed, XDP really needs this
+I think we do.
 
-> v2:
->  - Add some "fall through" comments in switch statements based
->    upon feedback from Andrew Lunn
->  - Use RCU for generic xdp_prog, thanks to Johannes Berg.
+> Otherwise if we linearize skb_is_gso packet it will be huge
+> and not similar to normal xdp packets?
+
+I completely agree.
+
+> gso probably needs to disabled too to avoid veth surprises?
+
+I'm not so sure about that.
+
 > 
-> diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-> index cc07c3b..f8ff49c 100644
-> --- a/include/linux/netdevice.h
-> +++ b/include/linux/netdevice.h
-> @@ -1892,6 +1892,7 @@ struct net_device {
->  	struct lock_class_key	*qdisc_tx_busylock;
->  	struct lock_class_key	*qdisc_running_key;
->  	bool			proto_down;
-> +	struct bpf_prog __rcu	*xdp_prog;
->  };
->  #define to_net_dev(d) container_of(d, struct net_device, dev)
->  
-> diff --git a/net/core/dev.c b/net/core/dev.c
-> index 7efb417..ad6de2d 100644
-> --- a/net/core/dev.c
-> +++ b/net/core/dev.c
+>> +
+>> +	hlen = skb_headlen(skb);
+>> +	xdp.data = skb->data;
+> 
+> it probably should be
+> hlen = skb_headlen(skb) + skb->mac_len;
+> xdp.data = skb->data - skb->mac_len;
+> to make sure xdp program is looking at l2 header.
 
-...
- 
-> +	if (static_key_false(&generic_xdp_needed)) {
-> +		struct bpf_prog *xdp_prog = rcu_dereference(skb->dev->xdp_prog);
-> +
-> +		if (xdp_prog) {
-> +			u32 act = netif_receive_generic_xdp(skb, xdp_prog);
-> +
-> +			if (act != XDP_PASS) {
-> +				rcu_read_unlock();
-> +				if (act == XDP_TX)
-> +					dev_queue_xmit(skb);
-> +				return NET_RX_DROP;
-> +			}
+This is why Andy's tests aren't working properly, good find.
 
-Wouldn't it be cleaner if XDP returned an enumerated type and a
-switch was used? Safer than allowing arbitrary int.
+>> +	xdp.data_end = xdp.data + hlen;
+>> +	xdp.data_hard_start = xdp.data - skb_headroom(skb);
+>> +	orig_data = xdp.data;
+>> +	act = bpf_prog_run_xdp(xdp_prog, &xdp);
+>> +
+>> +	off = xdp.data - orig_data;
+>> +	if (off)
+>> +		__skb_push(skb, off);
+> 
+> and restore l2 back somehow and get new skb->protocol ?
+> if we simply do __skb_pull(skb, skb->mac_len); like
+> we do with cls_bpf, it will not work correctly,
+
+Yep.
+
+I completely overlooked the fact that the MAC header was pulled
+by the time we get here already.
+
+> I suspect there always be drivers that don't support xdp (like e100),
+> so this generic_xdp_install() will stay with us forever.
+> Since it will stay, can we enable it for xdp enabled drivers too?
+
+Yes it will be useful for debugging.
+
+Andy already ran into this, he wanted to test it with a driver
+that supports XDP so he had to comment out the driver's ndo op.
+
+> Another advantage that it will help to flush out the differences
+> between skb- and raw- modes in the drivers that support xdp already.
+
+Indeed, this will be very valuable.
