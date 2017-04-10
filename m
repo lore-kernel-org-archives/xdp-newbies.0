@@ -1,56 +1,26 @@
 Return-path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:50556 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751656AbdDJTd2 (ORCPT
+Received: from www62.your-server.de ([213.133.104.62]:52184 "EHLO
+        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752155AbdDJTvA (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 10 Apr 2017 15:33:28 -0400
-Date: Mon, 10 Apr 2017 15:33:26 -0400 (EDT)
-Message-Id: <20170410.153326.450347050098977889.davem@davemloft.net>
+        Mon, 10 Apr 2017 15:51:00 -0400
+Message-ID: <58EBE21B.5000602@iogearbox.net>
+Date: Mon, 10 Apr 2017 21:50:51 +0200
+From: Daniel Borkmann <daniel@iogearbox.net>
+MIME-Version: 1.0
 Subject: Re: [PATCH v2 net-next RFC] Generic XDP
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20170410021807.GA17150@ast-mbp.thefacebook.com>
 References: <20170409.133528.660876505013192371.davem@davemloft.net>
-        <20170410021807.GA17150@ast-mbp.thefacebook.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+	 <20170410021807.GA17150@ast-mbp.thefacebook.com>
+In-Reply-To: <20170410021807.GA17150@ast-mbp.thefacebook.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 Content-Transfer-Encoding: 8bit
-To: alexei.starovoitov@gmail.com
+To: Alexei Starovoitov <alexei.starovoitov@gmail.com>, David Miller <davem@davemloft.net>
 Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Date: Sun, 9 Apr 2017 19:18:09 -0700
-
-> On Sun, Apr 09, 2017 at 01:35:28PM -0700, David Miller wrote:
->> +	if (skb_linearize(skb))
->> +		goto do_drop;
-> 
-> do we need to force disable gro ?
-
-I think we do.
-
-> Otherwise if we linearize skb_is_gso packet it will be huge
-> and not similar to normal xdp packets?
-
-I completely agree.
-
-> gso probably needs to disabled too to avoid veth surprises?
-
-I'm not so sure about that.
-
-> 
->> +
->> +	hlen = skb_headlen(skb);
->> +	xdp.data = skb->data;
-> 
-> it probably should be
-> hlen = skb_headlen(skb) + skb->mac_len;
-> xdp.data = skb->data - skb->mac_len;
-> to make sure xdp program is looking at l2 header.
-
-This is why Andy's tests aren't working properly, good find.
-
+On 04/10/2017 04:18 AM, Alexei Starovoitov wrote:
+[...]
 >> +	xdp.data_end = xdp.data + hlen;
 >> +	xdp.data_hard_start = xdp.data - skb_headroom(skb);
 >> +	orig_data = xdp.data;
@@ -59,26 +29,74 @@ This is why Andy's tests aren't working properly, good find.
 >> +	off = xdp.data - orig_data;
 >> +	if (off)
 >> +		__skb_push(skb, off);
-> 
+>
 > and restore l2 back somehow and get new skb->protocol ?
 > if we simply do __skb_pull(skb, skb->mac_len); like
 > we do with cls_bpf, it will not work correctly,
+> since if the program did ip->ipip encap (like our balancer
+> does and the test tools/testing/selftests/bpf/test_xdp.c)
+> the skb metadata fields will be wrong.
+> So we need to repeat eth_type_trans() here if (xdp.data != orig_data)
 
-Yep.
+Yeah, agree. Also, when we have gso skb and rewrite/resize parts
+of the packet, we would need to update gso related shinfo meta
+data accordingly (f.e. a rewrite from v4/v6, rewrite of whole pkt
+as icmp reply, etc)?
 
-I completely overlooked the fact that the MAC header was pulled
-by the time we get here already.
+Also, what about encap/decap, should inner skb headers get
+updated as well along with skb->encapsulation, etc? How do we
+handle checksumming on this layer?
 
-> I suspect there always be drivers that don't support xdp (like e100),
-> so this generic_xdp_install() will stay with us forever.
-> Since it will stay, can we enable it for xdp enabled drivers too?
+> In case of cls_bpf when we mess with skb sizes we always
+> adjust skb metafields in helpers, so there it's fine
+> and __skb_pull(skb, skb->mac_len); is enough.
+> Here we need to be a bit more careful.
 
-Yes it will be useful for debugging.
+In cls_bpf I was looking into something generic and fast for
+encap/decap like bpf_xdp_adjust_head() but for skbs. Problem is
+that they can be received from ingress/egress and transmitted
+further from cls_bpf to ingress/egress, so keeping skb meta data
+correct and up to date without exposing skb (implementation)
+details like header pointers to users is crucial, as otherwise
+these can get messed up potentially affecting the rest of the
+system. We restricted helpers in cls_bpf to avoid that. Perhaps
+we could make easier assumptions when this generic callback is
+known to be called out of a physical driver's rx path, but when
+being skb already (as mentioned below by Alexei's thoughts) ...
 
-Andy already ran into this, he wanted to test it with a driver
-that supports XDP so he had to comment out the driver's ndo op.
+>>   static int netif_receive_skb_internal(struct sk_buff *skb)
+>>   {
+>>   	int ret;
+>> @@ -4258,6 +4336,21 @@ static int netif_receive_skb_internal(struct sk_buff *skb)
+>>
+>>   	rcu_read_lock();
+>>
+>> +	if (static_key_false(&generic_xdp_needed)) {
+>> +		struct bpf_prog *xdp_prog = rcu_dereference(skb->dev->xdp_prog);
+>> +
+>> +		if (xdp_prog) {
+>> +			u32 act = netif_receive_generic_xdp(skb, xdp_prog);
+>
+> That's indeed the best attachment point in the stack.
+> I was trying to see whether it can be lowered into something like
+> dev_gro_receive(), but not everyone calls it.
+> Another option to put it into eth_type_trans() itself, then
+> there are no problems with gro, l2 headers, and adjust_head,
+> but changing all drivers is too much.
+>
+>> +
+>> +			if (act != XDP_PASS) {
+>> +				rcu_read_unlock();
+>> +				if (act == XDP_TX)
+>> +					dev_queue_xmit(skb);
+>
+> It should be fine. For cls_bpf we do recursion check __bpf_tx_skb()
+> but I forgot specific details. May be here it's fine as-is.
+> Daniel, do we need recursion check here?
 
-> Another advantage that it will help to flush out the differences
-> between skb- and raw- modes in the drivers that support xdp already.
+Yeah, Willem is correct. That was for sch_handle_egress() to
+sch_handle_egress() as that is otherwise not accounted by the
+main xmit_recursion check we have in __dev_queue_xmit().
 
-Indeed, this will be very valuable.
+Thanks,
+Daniel
