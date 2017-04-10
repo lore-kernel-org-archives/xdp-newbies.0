@@ -1,117 +1,88 @@
 Return-path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:35490 "EHLO
- mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with
- ESMTP id S1752143AbdDJVlq (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
- Mon, 10 Apr 2017 17:41:46 -0400
-Received: by mail-pf0-f193.google.com with SMTP id a188so2443954pfa.2 for
- <xdp-newbies@vger.kernel.org>; Mon, 10 Apr 2017 14:41:46 -0700 (PDT)
-Date: Mon, 10 Apr 2017 17:41:31 -0400
-From: Andy Gospodarek <andy@greyhouse.net>
+Received: from mail-qt0-f182.google.com ([209.85.216.182]:33769 "EHLO
+ mail-qt0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with
+ ESMTP id S1751854AbdDJT2c (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+ Mon, 10 Apr 2017 15:28:32 -0400
+Received: by mail-qt0-f182.google.com with SMTP id m36so12363653qtb.0 for
+ <xdp-newbies@vger.kernel.org>; Mon, 10 Apr 2017 12:28:31 -0700 (PDT)
+Date: Mon, 10 Apr 2017 15:28:26 -0400
+From: Stephen Hemminger <stephen@networkplumber.org>
 Subject: Re: [PATCH v2 net-next RFC] Generic XDP
-Message-ID: <20170410214131.GE4730@C02RW35GFVH8.dhcp.broadcom.net>
+Message-ID: <20170410152826.580db268@plumbers-lap.home.lan>
+In-Reply-To: <20170409.133528.660876505013192371.davem@davemloft.net>
 References: <20170409.133528.660876505013192371.davem@davemloft.net>
- <20170410183935.GB4730@C02RW35GFVH8.dhcp.broadcom.net>
- <58EBE73A.7090202@iogearbox.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <58EBE73A.7090202@iogearbox.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 Content-Transfer-Encoding: 8bit
-To: Daniel Borkmann <daniel@iogearbox.net>
-Cc: David Miller <davem@davemloft.net>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Mon, Apr 10, 2017 at 10:12:42PM +0200, Daniel Borkmann wrote:
-> On 04/10/2017 08:39 PM, Andy Gospodarek wrote:
-> [...]
-> > I ran this on a desktop-class system I have (i7-6700 CPU @ 3.40GHz)
-> > and used pktgen_sample03_burst_single_flow.sh from another system to
-> > throw ~6.5Mpps as a single UDP stream towards the system running XDP.
-> > 
-> > I just commented out the ndo_xdp op in bnxt.c to test this patch.  The
-> > differences were pretty dramatic.
-> > 
-> > Using the ndo_xdp ndo in bnxt_en, my perf report output looked like
-> > this (not sure why X is still running on this system!):
-> > 
-> >      38.08%  swapper          [sysimgblt]                   [k] 0x0000000000005bd0
-> >      11.80%  swapper          [kernel.vmlinux]              [k] intel_idle
-> >      10.49%  swapper          [bnxt_en]                     [k] bnxt_rx_pkt
-> >       6.31%  swapper          [bnxt_en]                     [k] bnxt_rx_xdp
-> >       5.64%  swapper          [bnxt_en]                     [k] bnxt_poll
-> >       4.22%  swapper          [kernel.vmlinux]              [k] poll_idle
-> >       3.46%  swapper          [kernel.vmlinux]              [k] irq_entries_start
-> >       2.95%  swapper          [kernel.vmlinux]              [k] napi_complete_done
-> >       1.79%  swapper          [kernel.vmlinux]              [k] cpuidle_enter_state
-> >       1.53%  swapper          [kernel.vmlinux]              [k] menu_select
-> >       1.19%  swapper          [bnxt_en]                     [k] bnxt_reuse_rx_data
-> >       1.00%  swapper          [sysimgblt]                   [k] 0x0000000000005c6f
-> >       0.92%  swapper          [kernel.vmlinux]              [k] __next_timer_interrupt
-> >       0.71%  swapper          [kernel.vmlinux]              [k] _raw_spin_lock_irqsave
-> >       0.71%  swapper          [kernel.vmlinux]              [k] bpf_map_lookup_elem
-> > 
-> > mpstat reports that the CPU receiving and dropping the traffic is
-> > basically running idle.  Dropping this amount of traffic in the driver
-> > has very little impact on the system.
-> > 
-> > With v2 of this patch I see the following from perf report:
-> > 
-> >      19.69%  ksoftirqd/3      [kernel.vmlinux]              [k] memcpy_erms
-> >      16.30%  ksoftirqd/3      [kernel.vmlinux]              [k] __bpf_prog_run
+On Sun, 09 Apr 2017 13:35:28 -0700 (PDT)
+David Miller <davem@davemloft.net> wrote:
+
+> This provides a generic non-optimized XDP implementation when the
+> device driver does not provide an optimized one.
 > 
-> Forgot echo 1 > /proc/sys/net/core/bpf_jit_enable? Was it disabled in both cases?
+> It is arguable that perhaps I should have required something like
+> this as part of the initial XDP feature merge.
 > 
-
-Good catch.  This must have been a run I did with it off.
-
-Results with bpf_git_enable=1 and gro off, still only 7.5Mpps.
-
-    26.34%  ksoftirqd/5      [kernel.vmlinux]              [k] memcpy_erms
-    14.79%  ksoftirqd/5      [bnxt_en]                     [k] bnxt_rx_pkt
-    10.11%  ksoftirqd/5      [kernel.vmlinux]              [k] __build_skb
-     5.01%  ksoftirqd/5      [kernel.vmlinux]              [k] page_frag_free
-     4.66%  ksoftirqd/5      [kernel.vmlinux]              [k] kmem_cache_alloc
-     4.19%  ksoftirqd/5      [kernel.vmlinux]              [k] kmem_cache_free
-     3.67%  ksoftirqd/5      [bnxt_en]                     [k] bnxt_poll
-     2.97%  ksoftirqd/5      [kernel.vmlinux]              [k] netif_receive_skb_internal
-     2.24%  ksoftirqd/5      [kernel.vmlinux]              [k] __napi_alloc_skb
-     1.92%  ksoftirqd/5      [kernel.vmlinux]              [k] eth_type_trans
-     1.78%  ksoftirqd/5      [bnxt_en]                     [k] bnxt_rx_xdp
-     1.62%  ksoftirqd/5      [kernel.vmlinux]              [k] net_rx_action
-     1.61%  ksoftirqd/5      [kernel.vmlinux]              [k] kfree_skb
-     1.58%  ksoftirqd/5      [kernel.vmlinux]              [k] dev_gro_receive
-     1.51%  ksoftirqd/5      [bnxt_en]                     [k] bnxt_reuse_rx_data
-     1.44%  ksoftirqd/5      [kernel.vmlinux]              [k] skb_release_data
-     1.42%  ksoftirqd/5      [kernel.vmlinux]              [k] page_frag_alloc
-     1.29%  ksoftirqd/5      [kernel.vmlinux]              [k] napi_gro_receive
-     1.21%  ksoftirqd/5      [kernel.vmlinux]              [k] skb_release_head_state
-     0.82%  ksoftirqd/5      [kernel.vmlinux]              [k] skb_free_head
-     0.81%  ksoftirqd/5      [kernel.vmlinux]              [k] swiotlb_sync_single
-     0.77%  ksoftirqd/5      [kernel.vmlinux]              [k] skb_gro_reset_offset
-     0.76%  ksoftirqd/5      [kernel.vmlinux]              [k] skb_release_all
-     0.73%  ksoftirqd/5      [kernel.vmlinux]              [k] kfree_skbmem
-
-
-
-
-> >      10.11%  ksoftirqd/3      [bnxt_en]                     [k] bnxt_rx_pkt
-> >       7.69%  ksoftirqd/3      [kernel.vmlinux]              [k] __build_skb
-> >       4.25%  ksoftirqd/3      [kernel.vmlinux]              [k] inet_gro_receive
-> >       3.74%  ksoftirqd/3      [kernel.vmlinux]              [k] kmem_cache_alloc
-> >       3.53%  ksoftirqd/3      [kernel.vmlinux]              [k] dev_gro_receive
-> >       3.43%  ksoftirqd/3      [kernel.vmlinux]              [k] page_frag_free
-> >       3.12%  ksoftirqd/3      [kernel.vmlinux]              [k] kmem_cache_free
-> >       2.56%  ksoftirqd/3      [bnxt_en]                     [k] bnxt_poll
-> >       2.46%  ksoftirqd/3      [kernel.vmlinux]              [k] netif_receive_skb_internal
-> >       2.13%  ksoftirqd/3      [kernel.vmlinux]              [k] __udp4_lib_lookup
-> >       1.63%  ksoftirqd/3      [kernel.vmlinux]              [k] __napi_alloc_skb
-> >       1.51%  ksoftirqd/3      [kernel.vmlinux]              [k] eth_type_trans
-> >       1.42%  ksoftirqd/3      [kernel.vmlinux]              [k] udp_gro_receive
-> >       1.29%  ksoftirqd/3      [kernel.vmlinux]              [k] napi_gro_receive
-> >       1.25%  ksoftirqd/3      [kernel.vmlinux]              [k] udp4_gro_receive
-> >       1.18%  ksoftirqd/3      [bnxt_en]                     [k] bnxt_rx_xdp
-> >       1.17%  ksoftirqd/3      [kernel.vmlinux]              [k] skb_release_data
-> >       1.11%  ksoftirqd/3      [bnxt_en]                     [k] bnxt_reuse_rx_data
-> >       1.07%  ksoftirqd/3      [kernel.vmlinux]              [k] net_rx_action
+> I believe this is critical for two reasons:
 > 
+> 1) Accessibility.  More people can play with XDP with less
+>    dependencies.  Yes I know we have XDP support in virtio_net, but
+>    that just creates another depedency for learning how to use this
+>    facility.
+> 
+>    I wrote this to make life easier for the XDP newbies.
+> 
+> 2) As a model for what the expected semantics are.  If there is a pure
+>    generic core implementation, it serves as a semantic example for
+>    driver folks adding XDP support.
+> 
+> This is just a rough draft and is untested.
+> 
+> Signed-off-by: David S. Miller <davem@davemloft.net>
+
+Agreed, XDP really needs this
+
+> v2:
+>  - Add some "fall through" comments in switch statements based
+>    upon feedback from Andrew Lunn
+>  - Use RCU for generic xdp_prog, thanks to Johannes Berg.
+> 
+> diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+> index cc07c3b..f8ff49c 100644
+> --- a/include/linux/netdevice.h
+> +++ b/include/linux/netdevice.h
+> @@ -1892,6 +1892,7 @@ struct net_device {
+>  	struct lock_class_key	*qdisc_tx_busylock;
+>  	struct lock_class_key	*qdisc_running_key;
+>  	bool			proto_down;
+> +	struct bpf_prog __rcu	*xdp_prog;
+>  };
+>  #define to_net_dev(d) container_of(d, struct net_device, dev)
+>  
+> diff --git a/net/core/dev.c b/net/core/dev.c
+> index 7efb417..ad6de2d 100644
+> --- a/net/core/dev.c
+> +++ b/net/core/dev.c
+
+...
+ 
+> +	if (static_key_false(&generic_xdp_needed)) {
+> +		struct bpf_prog *xdp_prog = rcu_dereference(skb->dev->xdp_prog);
+> +
+> +		if (xdp_prog) {
+> +			u32 act = netif_receive_generic_xdp(skb, xdp_prog);
+> +
+> +			if (act != XDP_PASS) {
+> +				rcu_read_unlock();
+> +				if (act == XDP_TX)
+> +					dev_queue_xmit(skb);
+> +				return NET_RX_DROP;
+> +			}
+
+Wouldn't it be cleaner if XDP returned an enumerated type and a
+switch was used? Safer than allowing arbitrary int.
