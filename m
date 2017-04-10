@@ -1,147 +1,84 @@
 Return-path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:34892 "EHLO
-        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752151AbdDJVIs (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 10 Apr 2017 17:08:48 -0400
-Message-ID: <58EBF44B.80404@iogearbox.net>
-Date: Mon, 10 Apr 2017 23:08:27 +0200
-From: Daniel Borkmann <daniel@iogearbox.net>
+Received: from mx1.redhat.com ([209.132.183.28]:47322 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751140AbdDJUna (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 10 Apr 2017 16:43:30 -0400
+Date: Mon, 10 Apr 2017 22:43:19 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: xdp on virtio_net
+Message-ID: <20170410224319.28a70776@redhat.com>
+In-Reply-To: <20170410161833.GK4714@microsoft.com>
+References: <8ec1432f-b032-0e2c-5e07-cee4550f97b7@klipix.org>
+        <20170408140110.27d0fe80@redhat.com>
+        <20170410161833.GK4714@microsoft.com>
 MIME-Version: 1.0
-Subject: Re: [PATCH v2 net-next RFC] Generic XDP
-References: <20170409.133528.660876505013192371.davem@davemloft.net>
-In-Reply-To: <20170409.133528.660876505013192371.davem@davemloft.net>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 Content-Transfer-Encoding: 8bit
-To: David Miller <davem@davemloft.net>, netdev@vger.kernel.org
-Cc: xdp-newbies@vger.kernel.org
+To: Julien Desfossez <ju@klipix.org>
+Cc: John Fastabend <john.fastabend@gmail.com>, "Michael S. Tsirkin" <mst@redhat.com>, brouer@redhat.com, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-On 04/09/2017 10:35 PM, David Miller wrote:
-[...]
-> diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-> index cc07c3b..f8ff49c 100644
-> --- a/include/linux/netdevice.h
-> +++ b/include/linux/netdevice.h
-> @@ -1892,6 +1892,7 @@ struct net_device {
->   	struct lock_class_key	*qdisc_tx_busylock;
->   	struct lock_class_key	*qdisc_running_key;
->   	bool			proto_down;
-> +	struct bpf_prog __rcu	*xdp_prog;
+On Mon, 10 Apr 2017 12:18:33 -0400
+Julien Desfossez <ju@klipix.org> wrote:
 
-Should this be moved rather near other rx members for locality?
-My config has last member of rx group in a new cacheline, which
-is really waste ...
+> > > Hi,
+> > > 
+> > > Following the presentation of Jesper on XDP, I have been trying to
+> > > make the example work on KVM with virtio_net (and yes you are right,
+> > > people try stuff when it is on github :-) ).  
+> > 
+> > Great to hear you pulled my github repo :-)
+> >    
+> > > I am testing on an Ubuntu 17.04 VM, I recompiled the 4.10 kernel,
+> > > the code from the example compiles fine, but I get into trouble when
+> > > trying to load the bpf/xdp code.
+> > > 
+> > > The first error I get is: virtio_net virtio0 enp0s3: can't set XDP
+> > > while host is implementing LRO, disable LRO first
+> > > 
+> > > I have tried to disable the various features checked in this code
+> > > with ethtool, but it seems to check if the feature is available, not
+> > > necessarily enabled and I have no idea how to make those features
+> > > not available.
+> > > 
+> > > I tried to comment the check to see if it would go somewhere, but
+> > > then I got into a problem with the number of queues available (4
+> > > vCPUs): virtio_net virtio0 enp0s3: request 5 queues but max is 1 And
+> > > I don't know how to add more queues (I am launching the VM with
+> > > libvirt/virt-manager).
+> > > 
+> > > So my question is: do you have a recipe that works well to test this
+> > > virtio_net + XDP feature ?  Does the physical host need a special
+> > > configuration ? Right now it is just a standard Ubuntu 16.04 (4.4
+> > > kernel and libvirt 1.3.1).  
+> > 
+> > I have not tried to get XDP working on virtio_net ... but I'm hoping
+> > John or Michael can provide some more info on this?  
+> 
+> Ok, I managed to solve the problem with the number of queues. Now with
+> the checks for TSO, ECN and UFO commented in virtio_net.c, the
+> xdp_ddos01_blacklist program works :-)
+> 
+> So now, all I need is to make this check pass:
+> if (virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_TSO4) ||
+>     virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_TSO6) ||
+>     virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_ECN) ||
+>     virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_UFO)) {
+> 	netdev_warn(dev, "can't set XDP while host is implementing LRO, disable LRO first\n");
+> 	return -EOPNOTSUPP;
+> }
+> 
+> I know running ethtool commands to disable those features does not change the
+> result.
+> 
+> If you have an idea on how to solve this problem that would be great.
 
-[...]
-         /* --- cacheline 14 boundary (896 bytes) --- */
-         struct hlist_node          index_hlist;          /*   896    16 */
+Maybe someone on the xdp-newbies@vger.kernel.org list can help?
 
-         /* XXX 48 bytes hole, try to pack */
-[...]
-
-... but given this layout can change significantly for a given
-config, perhaps could be a union with something exotic that is
-currently always built in like ax25_ptr; would then require to
-depend on ax25 not being built, though. :/ Otoh, we potentially
-have to linearize the skb in data path, which is slow anyway,
-so probably okay as is, too.
-
-[...]
-> @@ -4247,6 +4248,83 @@ static int __netif_receive_skb(struct sk_buff *skb)
->   	return ret;
->   }
->
-> +static struct static_key generic_xdp_needed __read_mostly;
-> +
-> +static int generic_xdp_install(struct net_device *dev, struct netdev_xdp *xdp)
-> +{
-> +	struct bpf_prog *new = xdp->prog;
-> +	int ret = 0;
-> +
-> +	switch (xdp->command) {
-> +	case XDP_SETUP_PROG: {
-> +		struct bpf_prog *old = rtnl_dereference(dev->xdp_prog);
-> +
-> +		rcu_assign_pointer(dev->xdp_prog, new);
-> +		if (old)
-> +			bpf_prog_put(old);
-> +
-> +		if (old && !new)
-> +			static_key_slow_dec(&generic_xdp_needed);
-> +		else if (new && !old)
-> +			static_key_slow_inc(&generic_xdp_needed);
-> +		break;
-> +	}
-> +
-> +	case XDP_QUERY_PROG:
-> +		xdp->prog_attached = !!rcu_access_pointer(dev->xdp_prog);
-> +		break;
-
-Would be nice to extend this here, so that in the current 'ip link'
-output we could indicate next to the 'xdp' flag that this does /not/
-run natively in the driver.
-
-Also, when the user loads a prog f.e. via 'ip link set dev em1 xdp obj prog.o',
-we should add a flag where it could be specified that running non-natively
-/is/ okay. Thus that the rtnl bits bail out if there's no ndo_xdp callback.
-I could imagine that this could be overseen quickly and people wonder why
-performance is significantly less than usually expected.
-
-> +
-> +	default:
-> +		ret = -EINVAL;
-> +		break;
-> +	}
-> +
-> +	return ret;
-> +}
-> +
-> +static u32 netif_receive_generic_xdp(struct sk_buff *skb,
-> +				     struct bpf_prog *xdp_prog)
-> +{
-> +	struct xdp_buff xdp;
-> +	u32 act = XDP_DROP;
-> +	void *orig_data;
-> +	int hlen, off;
-> +
-> +	if (skb_linearize(skb))
-> +		goto do_drop;
-> +
-> +	hlen = skb_headlen(skb);
-> +	xdp.data = skb->data;
-> +	xdp.data_end = xdp.data + hlen;
-> +	xdp.data_hard_start = xdp.data - skb_headroom(skb);
-> +	orig_data = xdp.data;
-
-Wondering regarding XDP_PACKET_HEADROOM requirement,
-presumably we would need to guarantee enough headroom
-here as well, so that there's no difference to a native
-driver implementation.
-
-> +	act = bpf_prog_run_xdp(xdp_prog, &xdp);
-> +
-> +	off = xdp.data - orig_data;
-> +	if (off)
-> +		__skb_push(skb, off);
-> +
-> +	switch (act) {
-> +	case XDP_PASS:
-> +	case XDP_TX:
-> +		break;
-> +
-> +	default:
-> +		bpf_warn_invalid_xdp_action(act);
-> +		/* fall through */
-> +	case XDP_ABORTED:
-> +		trace_xdp_exception(skb->dev, xdp_prog, act);
-> +		/* fall through */
-> +	case XDP_DROP:
-> +	do_drop:
-> +		kfree_skb(skb);
-> +		break;
-> +	}
-> +
-> +	return act;
-> +}
+(p.s. I will be flying out of Montreal heading home in approx 30 min)
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
