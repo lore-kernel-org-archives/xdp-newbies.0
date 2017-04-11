@@ -1,47 +1,49 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf0-f176.google.com ([209.85.192.176]:33540 "EHLO
-        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752746AbdDKQMa (ORCPT
+Received: from mail-pg0-f50.google.com ([74.125.83.50]:36476 "EHLO
+        mail-pg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750732AbdDKQ2L (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 11 Apr 2017 12:12:30 -0400
-Message-ID: <1491927148.10587.58.camel@edumazet-glaptop3.roam.corp.google.com>
+        Tue, 11 Apr 2017 12:28:11 -0400
+Message-ID: <1491928088.10587.63.camel@edumazet-glaptop3.roam.corp.google.com>
 Subject: Re: [PATCH v2 net-next RFC] Generic XDP
 From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Tue, 11 Apr 2017 09:12:28 -0700
-In-Reply-To: <1491926733.10587.56.camel@edumazet-glaptop3.roam.corp.google.com>
+Date: Tue, 11 Apr 2017 09:28:08 -0700
+In-Reply-To: <20170409.133528.660876505013192371.davem@davemloft.net>
 References: <20170409.133528.660876505013192371.davem@davemloft.net>
-         <20170410183935.GB4730@C02RW35GFVH8.dhcp.broadcom.net>
-         <58EBE73A.7090202@iogearbox.net>
-         <20170410214131.GE4730@C02RW35GFVH8.dhcp.broadcom.net>
-         <1491926733.10587.56.camel@edumazet-glaptop3.roam.corp.google.com>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Andy Gospodarek <andy@greyhouse.net>
-Cc: Daniel Borkmann <daniel@iogearbox.net>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Tue, 2017-04-11 at 09:05 -0700, Eric Dumazet wrote:
-
-> Some kind of copybreak maybe ?
+On Sun, 2017-04-09 at 13:35 -0700, David Miller wrote:
+> This provides a generic non-optimized XDP implementation when the
+> device driver does not provide an optimized one.
 > 
-> perf record -a -g sleep 5
-> perf report --stdio
+> It is arguable that perhaps I should have required something like
+> this as part of the initial XDP feature merge.
 > 
-> Copybreak is generally not really useful, and can have downsides.
+> I believe this is critical for two reasons:
 > 
-> Much better to let upper stacks deciding this.
+> 1) Accessibility.  More people can play with XDP with less
+>    dependencies.  Yes I know we have XDP support in virtio_net, but
+>    that just creates another depedency for learning how to use this
+>    facility.
 > 
-> For example, there is no point doing copy break for TCP ACK packets that
-> are going to be consumed immediately.
+>    I wrote this to make life easier for the XDP newbies.
 > 
-> There is also no point doing copy break in case the packet will be
-> dropped (say by ... XDP ;) )
+> 2) As a model for what the expected semantics are.  If there is a pure
+>    generic core implementation, it serves as a semantic example for
+>    driver folks adding XDP support.
+> 
 
+Nice !
 
-Yes :
+It seems that this implementation is not vlan aware ?
 
-#define BNXT_RX_COPY_THRESH 256
+It seems that some native XDP implementations are not vlan aware as
+well.
 
-For optimal results, you probably want to remove copybreak.
+Probably need to disable VLAN acceleration when/if XDP is used.
