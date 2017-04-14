@@ -1,101 +1,57 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf0-f176.google.com ([209.85.192.176]:34685 "EHLO
+Received: from mail-pf0-f176.google.com ([209.85.192.176]:33051 "EHLO
         mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752080AbdDNTJp (ORCPT
+        with ESMTP id S1751854AbdDNT2T (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 14 Apr 2017 15:09:45 -0400
-Date: Fri, 14 Apr 2017 12:09:40 -0700
+        Fri, 14 Apr 2017 15:28:19 -0400
+Date: Fri, 14 Apr 2017 12:28:15 -0700
 From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
 Subject: Re: [PATCH v3 net-next RFC] Generic XDP
-Message-ID: <20170414190939.GC41922@ast-mbp.thefacebook.com>
-References: <20170413042036.GA46229@ast-mbp.thefacebook.com>
+Message-ID: <20170414192814.GD41922@ast-mbp.thefacebook.com>
+References: <20170412.145415.1441440342830198148.davem@davemloft.net>
+ <20170413042036.GA46229@ast-mbp.thefacebook.com>
  <20170413.113722.2174945057832588335.davem@davemloft.net>
- <1492111341.29526.5.camel@sipsolutions.net>
- <20170413.160148.1850150011941347398.davem@davemloft.net>
- <1492157260.4735.1.camel@sipsolutions.net>
+ <20170414110525.41317f5a@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <1492157260.4735.1.camel@sipsolutions.net>
+In-Reply-To: <20170414110525.41317f5a@redhat.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Johannes Berg <johannes@sipsolutions.net>
+To: Jesper Dangaard Brouer <brouer@redhat.com>
 Cc: David Miller <davem@davemloft.net>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Fri, Apr 14, 2017 at 10:07:40AM +0200, Johannes Berg wrote:
-> On Thu, 2017-04-13 at 16:01 -0400, David Miller wrote:
-> > From: Johannes Berg <johannes@sipsolutions.net>
-> > Date: Thu, 13 Apr 2017 21:22:21 +0200
+On Fri, Apr 14, 2017 at 11:05:25AM +0200, Jesper Dangaard Brouer wrote:
 > > 
-> > > OTOH, it might depend on the frame data itself, if the program does
-> > > something like
-> > > 
-> > > xdp->data[xdp->data[0] & 0xf]
-> > > 
-> > > (read or write, doesn't really matter) so then the verifier would
-> > have
-> > > to take the maximum possible value there into account.
-> > 
-> > I am not well versed enough with the verifier to understand exactly
-> > how and to what extent SKB accesses are validated by the verifier.
-> > 
-> > My, perhaps mistaken, impression is that access range validation is
-> > still at least partially done at run time.
+> > We are consistently finding that there is this real need to
+> > communicate XDP capabilities, or somehow verify that the needs
+> > of an XDP program can be satisfied by a given implementation.
 > 
-> I think you're right for SKB accesses, but I'm pretty sure that for XDP
-> the verifier checks that the program can't possibly access outside of
-> [xdp->data, xdp->data_end], see compare_ptrs_to_packet().
+> I fully agree that we need some way to express capabilities[1]
 > 
-> This checks that comparisons to data_end are all there, i.e. that the
-> program verifies it may access some bytes before actually doing so.
-> However, the program could start with
-> 
-> if (xdp->data_end < xdp->data + 1024)
-> 	return DROP;
-> [...]
-> 
-> and then the verifier would consider it safe.
-> 
-> Still, it has to track down into the [...] code to actually understand
-> that it now didn't try to access xdp->data+1025, and as such it should
-> be able to determine the maximum desired offset.
-> 
-> However, I'm coming to realize that may not necessarily mean that the
-> program really *needs* to access that data.
-> 
-> For example, a hypothetical wifi program might want to recalculate and
-> compare the CRC checksum (for whatever reason, say a driver/hardware
-> bug). This would require accessing the last 4 bytes of the packet,
-> which may not be present. The program could, however, accept that
-> sometimes this isn't possible, and simply accept frames when it can't
-> see the last 4 bytes (or if the last 4 bytes aren't the CRC because
-> that isn't reported now, but whatever, I'm handwaving anyway.)
-> 
-> So perhaps this isn't really a good idea. The program should probably
-> separately say how much data it really *needs* there, and then perhaps
-> a warning could be emitted if it never accesses the data that it
-> advertises as needing (i.e. if it says "I want 1024 bytes" but then
-> can't possibly read more than 14)
+> > Maximum headroom is just one.
 
-The above descrption is correct. Also note that the offset within the packet
-can be a variable as well, since that's the only way to do variable
-length parsing (like ip options), so the verifier cannot tell how far
-into the packet the program is going to parse. The program author cannot
-tell that either!
-Consider samples/bpf/parse_varlen.c:
-        ihl_len = iph->ihl * 4;
+I don't like the idea of asking program author to explain capabilities
+to the kernel. Right now the verifier already understands more about
+the program than human does. If the verifier cannot deduct from the
+insns what program will be doing, it's pretty much guarantee
+that program author has no idea either.
+If we add 'required_headroom' as an extra flag to BPF_PROG_LOAD,
+the users will just pass something like 64 or 128 whereas the program
+might only be doing IPIP encap and that will cause kernel to
+provide extra headroom for no good reason or reject the program
+whereas it could have run just fine.
 
-        if (iph->protocol == IPPROTO_IPIP) {
-                iph = data + nh_off + ihl_len;
-                if (iph + 1 > data_end)
-                        return 0;
+So I very much agree with this part:
+> ... or somehow verify that the needs
+> of an XDP program can be satisfied by a given implementation.
 
-'ihl' is 4 bit, so 2nd ip hdr may start at sizeof(eth) + 64 bytes,
-but we cannot ask the driver to always provide these many bytes.
-Technically we can add a feature to verifier to calculate the max range
-into the packet that the program may look at, but it will be large.
-Like if the program parses IPIP the range will be 64(first ip) + 64(second ip)
-+ 64 (if it looks at tcp options).
-If the program parses TLVs then the range will be 64k, so I'm not sure what
-would be the value of such verifier feature.
+we already have cb_access, dst_needed, xdp_adjust_head flags
+that verifier discovers in the program.
+For headroom we need one more. The verifier can see
+the constant passed into bpf_xdp_adjust_head().
+It's trickier if it's a variable, but the verifier can estimate min/max
+of the variable already and worst case it can say that it
+will be XDP_PACKET_HEADROOM.
+If the program is doing variable length bpf_xdp_adjust_head(),
+the human has no idea how much they need and cannot tell kernel anyway.
