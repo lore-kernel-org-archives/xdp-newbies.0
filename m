@@ -1,57 +1,58 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf0-f176.google.com ([209.85.192.176]:33051 "EHLO
-        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751854AbdDNT2T (ORCPT
+Received: from mail-pg0-f41.google.com ([74.125.83.41]:36566 "EHLO
+        mail-pg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752122AbdDNTlM (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 14 Apr 2017 15:28:19 -0400
-Date: Fri, 14 Apr 2017 12:28:15 -0700
+        Fri, 14 Apr 2017 15:41:12 -0400
+Date: Fri, 14 Apr 2017 12:41:07 -0700
 From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
 Subject: Re: [PATCH v3 net-next RFC] Generic XDP
-Message-ID: <20170414192814.GD41922@ast-mbp.thefacebook.com>
+Message-ID: <20170414194105.GA51147@ast-mbp.thefacebook.com>
 References: <20170412.145415.1441440342830198148.davem@davemloft.net>
  <20170413042036.GA46229@ast-mbp.thefacebook.com>
- <20170413.113722.2174945057832588335.davem@davemloft.net>
- <20170414110525.41317f5a@redhat.com>
+ <1492063856.19193.4.camel@sipsolutions.net>
+ <20170413.113810.703136630867928001.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20170414110525.41317f5a@redhat.com>
+In-Reply-To: <20170413.113810.703136630867928001.davem@davemloft.net>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: David Miller <davem@davemloft.net>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: johannes@sipsolutions.net, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Fri, Apr 14, 2017 at 11:05:25AM +0200, Jesper Dangaard Brouer wrote:
+On Thu, Apr 13, 2017 at 11:38:10AM -0400, David Miller wrote:
+> From: Johannes Berg <johannes@sipsolutions.net>
+> Date: Thu, 13 Apr 2017 08:10:56 +0200
+> 
+> > On Wed, 2017-04-12 at 21:20 -0700, Alexei Starovoitov wrote:
 > > 
-> > We are consistently finding that there is this real need to
-> > communicate XDP capabilities, or somehow verify that the needs
-> > of an XDP program can be satisfied by a given implementation.
+> >> > +	if (skb_linearize(skb))
+> >> > +		goto do_drop;
+> >> 
+> >> when we discussed supporting jumbo frames in XDP, the idea
+> >> was that the program would need to look at first 3+k bytes only
+> >> and the rest of the packet will be in non-contiguous pages.
+> >> If we do that, it means that XDP program would have to assume
+> >> that the packet is more than [data, data_end] and this range
+> >> only covers linear part.
+> >> If that's the future, we don't need to linearize the skb here
+> >> and can let the program access headlen only.
+> > 
+> > I'm not sure how you think that would work - at least with our (wifi)
+> > driver, the headlen should be maybe ETH_HLEN or so at this point. We'd
+> > let the program know that it can only look at so much, but then the
+> > program can't do anything at all with those frames. At some point then
+> > we go back to bpf_skb_load_bytes() being necessary in one form or
+> > another, no?
 > 
-> I fully agree that we need some way to express capabilities[1]
-> 
-> > Maximum headroom is just one.
+> Agreed, this is completely unusable.  Some wired ethernet drivers do the
+> same exact thing.
 
-I don't like the idea of asking program author to explain capabilities
-to the kernel. Right now the verifier already understands more about
-the program than human does. If the verifier cannot deduct from the
-insns what program will be doing, it's pretty much guarantee
-that program author has no idea either.
-If we add 'required_headroom' as an extra flag to BPF_PROG_LOAD,
-the users will just pass something like 64 or 128 whereas the program
-might only be doing IPIP encap and that will cause kernel to
-provide extra headroom for no good reason or reject the program
-whereas it could have run just fine.
-
-So I very much agree with this part:
-> ... or somehow verify that the needs
-> of an XDP program can be satisfied by a given implementation.
-
-we already have cb_access, dst_needed, xdp_adjust_head flags
-that verifier discovers in the program.
-For headroom we need one more. The verifier can see
-the constant passed into bpf_xdp_adjust_head().
-It's trickier if it's a variable, but the verifier can estimate min/max
-of the variable already and worst case it can say that it
-will be XDP_PACKET_HEADROOM.
-If the program is doing variable length bpf_xdp_adjust_head(),
-the human has no idea how much they need and cannot tell kernel anyway.
+ahh. i thought all drivers do at least copy-break (256) bytes or copy
+get_headlen or build_skb the whole thing.
+Since wireless does eth_hlen, then yeah, skb_linearize() is the only way.
+I guess any driver that would care about XDP performance would either
+implement in-driver XDP or make sure that skb_linearize() doesn't
+happen in generic XDP by doing build_skb() with the whole packet.
+The driver can be smart and avoid doing copy-break if generic XDP is on.
