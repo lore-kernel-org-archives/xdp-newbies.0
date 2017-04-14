@@ -1,63 +1,101 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:32768 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751654AbdDNQdx (ORCPT
+Received: from mail-pf0-f176.google.com ([209.85.192.176]:34685 "EHLO
+        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752080AbdDNTJp (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 14 Apr 2017 12:33:53 -0400
+        Fri, 14 Apr 2017 15:09:45 -0400
+Date: Fri, 14 Apr 2017 12:09:40 -0700
+From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Subject: Re: [PATCH v3 net-next RFC] Generic XDP
+Message-ID: <20170414190939.GC41922@ast-mbp.thefacebook.com>
+References: <20170413042036.GA46229@ast-mbp.thefacebook.com>
+ <20170413.113722.2174945057832588335.davem@davemloft.net>
+ <1492111341.29526.5.camel@sipsolutions.net>
+ <20170413.160148.1850150011941347398.davem@davemloft.net>
+ <1492157260.4735.1.camel@sipsolutions.net>
 MIME-Version: 1.0
-In-Reply-To: <20170413.120925.2082322246776478766.davem@davemloft.net>
-References: <20170413.120925.2082322246776478766.davem@davemloft.net>
-From: William Tu <u9012063@gmail.com>
-Date: Fri, 14 Apr 2017 09:33:12 -0700
-Message-ID: <CALDO+SZwdxCwsARxFKpEXEDKK8+94t-_dVdJNWiCDgx4yWUYqw@mail.gmail.com>
-Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <1492157260.4735.1.camel@sipsolutions.net>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: David Miller <davem@davemloft.net>
-Cc: Linux Kernel Network Developers <netdev@vger.kernel.org>, xdp-newbies@vger.kernel.org
+To: Johannes Berg <johannes@sipsolutions.net>
+Cc: David Miller <davem@davemloft.net>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Thu, Apr 13, 2017 at 9:09 AM, David Miller <davem@davemloft.net> wrote:
->
-[snip]
+On Fri, Apr 14, 2017 at 10:07:40AM +0200, Johannes Berg wrote:
+> On Thu, 2017-04-13 at 16:01 -0400, David Miller wrote:
+> > From: Johannes Berg <johannes@sipsolutions.net>
+> > Date: Thu, 13 Apr 2017 21:22:21 +0200
+> > 
+> > > OTOH, it might depend on the frame data itself, if the program does
+> > > something like
+> > > 
+> > > xdp->data[xdp->data[0] & 0xf]
+> > > 
+> > > (read or write, doesn't really matter) so then the verifier would
+> > have
+> > > to take the maximum possible value there into account.
+> > 
+> > I am not well versed enough with the verifier to understand exactly
+> > how and to what extent SKB accesses are validated by the verifier.
+> > 
+> > My, perhaps mistaken, impression is that access range validation is
+> > still at least partially done at run time.
+> 
+> I think you're right for SKB accesses, but I'm pretty sure that for XDP
+> the verifier checks that the program can't possibly access outside of
+> [xdp->data, xdp->data_end], see compare_ptrs_to_packet().
+> 
+> This checks that comparisons to data_end are all there, i.e. that the
+> program verifies it may access some bytes before actually doing so.
+> However, the program could start with
+> 
+> if (xdp->data_end < xdp->data + 1024)
+> 	return DROP;
+> [...]
+> 
+> and then the verifier would consider it safe.
+> 
+> Still, it has to track down into the [...] code to actually understand
+> that it now didn't try to access xdp->data+1025, and as such it should
+> be able to determine the maximum desired offset.
+> 
+> However, I'm coming to realize that may not necessarily mean that the
+> program really *needs* to access that data.
+> 
+> For example, a hypothetical wifi program might want to recalculate and
+> compare the CRC checksum (for whatever reason, say a driver/hardware
+> bug). This would require accessing the last 4 bytes of the packet,
+> which may not be present. The program could, however, accept that
+> sometimes this isn't possible, and simply accept frames when it can't
+> see the last 4 bytes (or if the last 4 bytes aren't the CRC because
+> that isn't reported now, but whatever, I'm handwaving anyway.)
+> 
+> So perhaps this isn't really a good idea. The program should probably
+> separately say how much data it really *needs* there, and then perhaps
+> a warning could be emitted if it never accesses the data that it
+> advertises as needing (i.e. if it says "I want 1024 bytes" but then
+> can't possibly read more than 14)
 
+The above descrption is correct. Also note that the offset within the packet
+can be a variable as well, since that's the only way to do variable
+length parsing (like ip options), so the verifier cannot tell how far
+into the packet the program is going to parse. The program author cannot
+tell that either!
+Consider samples/bpf/parse_varlen.c:
+        ihl_len = iph->ihl * 4;
 
-> +static u32 netif_receive_generic_xdp(struct sk_buff *skb,
-> +                                    struct bpf_prog *xdp_prog)
-> +{
-> +       struct xdp_buff xdp;
-> +       u32 act = XDP_DROP;
-> +       void *orig_data;
-> +       int hlen, off;
-> +
-> +       if (skb_linearize(skb))
-> +               goto do_drop;
-> +
-> +       /* The XDP program wants to see the packet starting at the MAC
-> +        * header.
-> +        */
-> +       hlen = skb_headlen(skb) + skb->mac_len;
-> +       xdp.data = skb->data - skb->mac_len;
-> +       xdp.data_end = xdp.data + hlen;
-> +       xdp.data_hard_start = xdp.data - skb_headroom(skb);
-> +       orig_data = xdp.data;
-> +
-> +       act = bpf_prog_run_xdp(xdp_prog, &xdp);
-> +
-> +       off = xdp.data - orig_data;
+        if (iph->protocol == IPPROTO_IPIP) {
+                iph = data + nh_off + ihl_len;
+                if (iph + 1 > data_end)
+                        return 0;
 
-should we do "orig_data - xdp.data" instead?
-The 'off' might be < 0, when pushing new header.
-
-> +       if (off)
-> +               __skb_push(skb, off);
-
-When doing encapsulation by calling xdp_adjust_head(skb, offset), the
-offset is < 0 in order to make extra room in the front ; so xdp.data <
-orig_data, off < 0.
-
-But if we are decapsulating protocol, then off > 0, and maybe we
-should call __skb_pull()?
-
-Thanks,
-William
+'ihl' is 4 bit, so 2nd ip hdr may start at sizeof(eth) + 64 bytes,
+but we cannot ask the driver to always provide these many bytes.
+Technically we can add a feature to verifier to calculate the max range
+into the packet that the program may look at, but it will be large.
+Like if the program parses IPIP the range will be 64(first ip) + 64(second ip)
++ 64 (if it looks at tcp options).
+If the program parses TLVs then the range will be 64k, so I'm not sure what
+would be the value of such verifier feature.
