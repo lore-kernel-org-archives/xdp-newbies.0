@@ -1,68 +1,63 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59756 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751693AbdDNJFb (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 14 Apr 2017 05:05:31 -0400
-Date: Fri, 14 Apr 2017 11:05:25 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [PATCH v3 net-next RFC] Generic XDP
-Message-ID: <20170414110525.41317f5a@redhat.com>
-In-Reply-To: <20170413.113722.2174945057832588335.davem@davemloft.net>
-References: <20170412.145415.1441440342830198148.davem@davemloft.net>
-        <20170413042036.GA46229@ast-mbp.thefacebook.com>
-        <20170413.113722.2174945057832588335.davem@davemloft.net>
+Received: from mail-io0-f195.google.com ([209.85.223.195]:32768 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751654AbdDNQdx (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 14 Apr 2017 12:33:53 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <20170413.120925.2082322246776478766.davem@davemloft.net>
+References: <20170413.120925.2082322246776478766.davem@davemloft.net>
+From: William Tu <u9012063@gmail.com>
+Date: Fri, 14 Apr 2017 09:33:12 -0700
+Message-ID: <CALDO+SZwdxCwsARxFKpEXEDKK8+94t-_dVdJNWiCDgx4yWUYqw@mail.gmail.com>
+Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
+Content-Type: text/plain; charset=UTF-8
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: David Miller <davem@davemloft.net>
-Cc: alexei.starovoitov@gmail.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, brouer@redhat.com
+Cc: Linux Kernel Network Developers <netdev@vger.kernel.org>, xdp-newbies@vger.kernel.org
 
-On Thu, 13 Apr 2017 11:37:22 -0400 (EDT)
-David Miller <davem@davemloft.net> wrote:
+On Thu, Apr 13, 2017 at 9:09 AM, David Miller <davem@davemloft.net> wrote:
+>
+[snip]
 
-> From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-> Date: Wed, 12 Apr 2017 21:20:38 -0700
-> 
-> > On Wed, Apr 12, 2017 at 02:54:15PM -0400, David Miller wrote:  
-[...]
-> 
-> If the capability is variable, it must be communicated to the user
-> somehow at program load time.
-> 
-> We are consistently finding that there is this real need to
-> communicate XDP capabilities, or somehow verify that the needs
-> of an XDP program can be satisfied by a given implementation.
 
-I fully agree that we need some way to express capabilities[1]
+> +static u32 netif_receive_generic_xdp(struct sk_buff *skb,
+> +                                    struct bpf_prog *xdp_prog)
+> +{
+> +       struct xdp_buff xdp;
+> +       u32 act = XDP_DROP;
+> +       void *orig_data;
+> +       int hlen, off;
+> +
+> +       if (skb_linearize(skb))
+> +               goto do_drop;
+> +
+> +       /* The XDP program wants to see the packet starting at the MAC
+> +        * header.
+> +        */
+> +       hlen = skb_headlen(skb) + skb->mac_len;
+> +       xdp.data = skb->data - skb->mac_len;
+> +       xdp.data_end = xdp.data + hlen;
+> +       xdp.data_hard_start = xdp.data - skb_headroom(skb);
+> +       orig_data = xdp.data;
+> +
+> +       act = bpf_prog_run_xdp(xdp_prog, &xdp);
+> +
+> +       off = xdp.data - orig_data;
 
-[1] http://prototype-kernel.readthedocs.io/en/latest/networking/XDP/design/design.html#capabilities-negotiation
+should we do "orig_data - xdp.data" instead?
+The 'off' might be < 0, when pushing new header.
 
-> Maximum headroom is just one.
+> +       if (off)
+> +               __skb_push(skb, off);
 
-[...]
-> 
-> We can only optimize this and elide things when we have a facility in
-> the future for the program to express it's needs precisely.  I think
-> we will have to add some control structure to XDP programs that can
-> be filled in for this purpose.
+When doing encapsulation by calling xdp_adjust_head(skb, offset), the
+offset is < 0 in order to make extra room in the front ; so xdp.data <
+orig_data, off < 0.
 
-I fully agree that we need some control structure to XDP programs.  My
-previous attempt was shot-down due to performance concerns of an extra
-pointer dereference. As I explained before, this is not a concern as
-the dereference will happen once per N packets in the NAPI loop.
+But if we are decapsulating protocol, then off > 0, and maybe we
+should call __skb_pull()?
 
-Plus now we see a need to elide things based on facilities the XDP
-program choose to use/enable, for performance reasons.  I would prefer
-keeping these facility settings in control structure to XDP programs,
-instead of pulling in derived bits runtime.   Again remember, adding
-if/branch statements checking for facilities, should have little
-performance impact as the branch predictor should guess correctly given
-we process N packets in the NAPI loop with same facilities.
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+Thanks,
+William
