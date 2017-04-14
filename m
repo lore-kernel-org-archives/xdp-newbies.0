@@ -1,77 +1,68 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from s3.sipsolutions.net ([5.9.151.49]:40500 "EHLO sipsolutions.net"
+Received: from mx1.redhat.com ([209.132.183.28]:59756 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751665AbdDNIHs (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 14 Apr 2017 04:07:48 -0400
-Message-ID: <1492157260.4735.1.camel@sipsolutions.net>
+        id S1751693AbdDNJFb (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 14 Apr 2017 05:05:31 -0400
+Date: Fri, 14 Apr 2017 11:05:25 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
 Subject: Re: [PATCH v3 net-next RFC] Generic XDP
-From: Johannes Berg <johannes@sipsolutions.net>
-Date: Fri, 14 Apr 2017 10:07:40 +0200
-In-Reply-To: <20170413.160148.1850150011941347398.davem@davemloft.net>
-References: <20170413042036.GA46229@ast-mbp.thefacebook.com>
-         <20170413.113722.2174945057832588335.davem@davemloft.net>
-         <1492111341.29526.5.camel@sipsolutions.net>
-         <20170413.160148.1850150011941347398.davem@davemloft.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Message-ID: <20170414110525.41317f5a@redhat.com>
+In-Reply-To: <20170413.113722.2174945057832588335.davem@davemloft.net>
+References: <20170412.145415.1441440342830198148.davem@davemloft.net>
+        <20170413042036.GA46229@ast-mbp.thefacebook.com>
+        <20170413.113722.2174945057832588335.davem@davemloft.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: David Miller <davem@davemloft.net>
-Cc: alexei.starovoitov@gmail.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+Cc: alexei.starovoitov@gmail.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, brouer@redhat.com
 
-On Thu, 2017-04-13 at 16:01 -0400, David Miller wrote:
-> From: Johannes Berg <johannes@sipsolutions.net>
-> Date: Thu, 13 Apr 2017 21:22:21 +0200
+On Thu, 13 Apr 2017 11:37:22 -0400 (EDT)
+David Miller <davem@davemloft.net> wrote:
+
+> From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+> Date: Wed, 12 Apr 2017 21:20:38 -0700
 > 
-> > OTOH, it might depend on the frame data itself, if the program does
-> > something like
-> > 
-> > xdp->data[xdp->data[0] & 0xf]
-> > 
-> > (read or write, doesn't really matter) so then the verifier would
-> have
-> > to take the maximum possible value there into account.
-> 
-> I am not well versed enough with the verifier to understand exactly
-> how and to what extent SKB accesses are validated by the verifier.
-> 
-> My, perhaps mistaken, impression is that access range validation is
-> still at least partially done at run time.
-
-I think you're right for SKB accesses, but I'm pretty sure that for XDP
-the verifier checks that the program can't possibly access outside of
-[xdp->data, xdp->data_end], see compare_ptrs_to_packet().
-
-This checks that comparisons to data_end are all there, i.e. that the
-program verifies it may access some bytes before actually doing so.
-However, the program could start with
-
-if (xdp->data_end < xdp->data + 1024)
-	return DROP;
+> > On Wed, Apr 12, 2017 at 02:54:15PM -0400, David Miller wrote:  
 [...]
+> 
+> If the capability is variable, it must be communicated to the user
+> somehow at program load time.
+> 
+> We are consistently finding that there is this real need to
+> communicate XDP capabilities, or somehow verify that the needs
+> of an XDP program can be satisfied by a given implementation.
 
-and then the verifier would consider it safe.
+I fully agree that we need some way to express capabilities[1]
 
-Still, it has to track down into the [...] code to actually understand
-that it now didn't try to access xdp->data+1025, and as such it should
-be able to determine the maximum desired offset.
+[1] http://prototype-kernel.readthedocs.io/en/latest/networking/XDP/design/design.html#capabilities-negotiation
 
-However, I'm coming to realize that may not necessarily mean that the
-program really *needs* to access that data.
+> Maximum headroom is just one.
 
-For example, a hypothetical wifi program might want to recalculate and
-compare the CRC checksum (for whatever reason, say a driver/hardware
-bug). This would require accessing the last 4 bytes of the packet,
-which may not be present. The program could, however, accept that
-sometimes this isn't possible, and simply accept frames when it can't
-see the last 4 bytes (or if the last 4 bytes aren't the CRC because
-that isn't reported now, but whatever, I'm handwaving anyway.)
+[...]
+> 
+> We can only optimize this and elide things when we have a facility in
+> the future for the program to express it's needs precisely.  I think
+> we will have to add some control structure to XDP programs that can
+> be filled in for this purpose.
 
-So perhaps this isn't really a good idea. The program should probably
-separately say how much data it really *needs* there, and then perhaps
-a warning could be emitted if it never accesses the data that it
-advertises as needing (i.e. if it says "I want 1024 bytes" but then
-can't possibly read more than 14)
+I fully agree that we need some control structure to XDP programs.  My
+previous attempt was shot-down due to performance concerns of an extra
+pointer dereference. As I explained before, this is not a concern as
+the dereference will happen once per N packets in the NAPI loop.
 
-johannes
+Plus now we see a need to elide things based on facilities the XDP
+program choose to use/enable, for performance reasons.  I would prefer
+keeping these facility settings in control structure to XDP programs,
+instead of pulling in derived bits runtime.   Again remember, adding
+if/branch statements checking for facilities, should have little
+performance impact as the branch predictor should guess correctly given
+we process N packets in the NAPI loop with same facilities.
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
