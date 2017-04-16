@@ -1,34 +1,54 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg0-f43.google.com ([74.125.83.43]:36162 "EHLO
-        mail-pg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753705AbdDOPqs (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Sat, 15 Apr 2017 11:46:48 -0400
-Received: by mail-pg0-f43.google.com with SMTP id g2so54318787pge.3
-        for <xdp-newbies@vger.kernel.org>; Sat, 15 Apr 2017 08:46:48 -0700 (PDT)
-Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
-References: <20170413.120925.2082322246776478766.davem@davemloft.net>
- <CACKFLikm1vDzz8eQJMJOEsbv-NNV41ki2TEPVPCSpP6VjaowBA@mail.gmail.com>
- <20170413.162315.1889531431093534154.davem@davemloft.net>
- <20170415005949.GB73685@ast-mbp.thefacebook.com>
-From: David Ahern <dsa@cumulusnetworks.com>
-Message-ID: <b4a5244e-306d-a5cc-2ad7-1907c80a1601@cumulusnetworks.com>
-Date: Sat, 15 Apr 2017 09:46:43 -0600
+Received: from mx1.redhat.com ([209.132.183.28]:36262 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756758AbdDPU0I (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Sun, 16 Apr 2017 16:26:08 -0400
+Date: Sun, 16 Apr 2017 22:26:01 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: [PATCH v3 net-next RFC] Generic XDP
+Message-ID: <20170416222601.671f037c@redhat.com>
+In-Reply-To: <20170415004642.GA73685@ast-mbp.thefacebook.com>
+References: <20170412.145415.1441440342830198148.davem@davemloft.net>
+        <20170413042036.GA46229@ast-mbp.thefacebook.com>
+        <20170413.113722.2174945057832588335.davem@davemloft.net>
+        <20170414110525.41317f5a@redhat.com>
+        <20170414192814.GD41922@ast-mbp.thefacebook.com>
+        <20170414153032.2b3e1a5c@cakuba.lan>
+        <20170415004642.GA73685@ast-mbp.thefacebook.com>
 MIME-Version: 1.0
-In-Reply-To: <20170415005949.GB73685@ast-mbp.thefacebook.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Alexei Starovoitov <alexei.starovoitov@gmail.com>, David Miller <davem@davemloft.net>
-Cc: michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Cc: Jakub Kicinski <kubakici@wp.pl>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, brouer@redhat.com
 
-On 4/14/17 6:59 PM, Alexei Starovoitov wrote:
-> I'll test it next week unless people beat me to it.
-> 
+On Fri, 14 Apr 2017 17:46:44 -0700
+Alexei Starovoitov <alexei.starovoitov@gmail.com> wrote:
 
-I have run the xdp1 example from samples/bpf.
+> But that's probably bad idea, since I was assuming that such ring
+> reconfiguration can be made fast, which is unlikely.
+> If it takes seconds to setup a ring, then drivers should just
+> assume XDP_PACKET_HEADROOM, since at that time the program
+> properties are unknown and in the future other programs will be loaded.
+>
+> Take a look at our current setup with slots for xdp_dump, ddos, lb
+> programs. Only root program is attached at the begining.
+> If the driver configures the ring for such empty program that would break
+> dynamic addition of lb prog.
+> The driver must not interrupt the traffic when user adds another
+> prog to prog array. In such case XDP side doesn't even know that
+> prog array is used. It's all happening purely on bpf side.
 
-I have a patch that modifies set_link_xdp_fd to take a flags argument
-which it adds to the request as the IFLA_XDP_FLAGS attribute. That's
-used by callers to set XDP_FLAGS_SKB_MODE.
+The bpf tail-call use-case is a very good example of why the verifier
+cannot deduct the needed HEADROOM upfront.
+
+Could we still make the verifier reject a program getting attached as a
+tail-call when a too "low"/small HEADROOM have been setup? (to satisfy
+programs needs)
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
