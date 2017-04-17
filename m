@@ -1,54 +1,41 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36262 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756758AbdDPU0I (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Sun, 16 Apr 2017 16:26:08 -0400
-Date: Sun, 16 Apr 2017 22:26:01 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+Received: from shards.monkeyblade.net ([184.105.139.130]:57590 "EHLO
+        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752527AbdDQTt5 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 17 Apr 2017 15:49:57 -0400
+Date: Mon, 17 Apr 2017 15:49:55 -0400 (EDT)
+Message-Id: <20170417.154955.1624611510140672627.davem@davemloft.net>
 Subject: Re: [PATCH v3 net-next RFC] Generic XDP
-Message-ID: <20170416222601.671f037c@redhat.com>
-In-Reply-To: <20170415004642.GA73685@ast-mbp.thefacebook.com>
-References: <20170412.145415.1441440342830198148.davem@davemloft.net>
-        <20170413042036.GA46229@ast-mbp.thefacebook.com>
-        <20170413.113722.2174945057832588335.davem@davemloft.net>
-        <20170414110525.41317f5a@redhat.com>
-        <20170414192814.GD41922@ast-mbp.thefacebook.com>
-        <20170414153032.2b3e1a5c@cakuba.lan>
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <20170416222601.671f037c@redhat.com>
+References: <20170414153032.2b3e1a5c@cakuba.lan>
         <20170415004642.GA73685@ast-mbp.thefacebook.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+        <20170416222601.671f037c@redhat.com>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Cc: Jakub Kicinski <kubakici@wp.pl>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, brouer@redhat.com
+To: brouer@redhat.com
+Cc: alexei.starovoitov@gmail.com, kubakici@wp.pl, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Fri, 14 Apr 2017 17:46:44 -0700
-Alexei Starovoitov <alexei.starovoitov@gmail.com> wrote:
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Date: Sun, 16 Apr 2017 22:26:01 +0200
 
-> But that's probably bad idea, since I was assuming that such ring
-> reconfiguration can be made fast, which is unlikely.
-> If it takes seconds to setup a ring, then drivers should just
-> assume XDP_PACKET_HEADROOM, since at that time the program
-> properties are unknown and in the future other programs will be loaded.
->
-> Take a look at our current setup with slots for xdp_dump, ddos, lb
-> programs. Only root program is attached at the begining.
-> If the driver configures the ring for such empty program that would break
-> dynamic addition of lb prog.
-> The driver must not interrupt the traffic when user adds another
-> prog to prog array. In such case XDP side doesn't even know that
-> prog array is used. It's all happening purely on bpf side.
+> The bpf tail-call use-case is a very good example of why the
+> verifier cannot deduct the needed HEADROOM upfront.
 
-The bpf tail-call use-case is a very good example of why the verifier
-cannot deduct the needed HEADROOM upfront.
+This brings up a very interesting question for me.
 
-Could we still make the verifier reject a program getting attached as a
-tail-call when a too "low"/small HEADROOM have been setup? (to satisfy
-programs needs)
+I notice that tail calls are implemented by JITs largely by skipping
+over the prologue of that destination program.
 
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+However, many JITs preload cached SKB values into fixed registers in
+the prologue.  But they only do this if the program being JITed needs
+those values.
+
+So how can it work properly if a program that does not need the SKB
+values tail calls into one that does?
+
+Daniel, Alexei?
