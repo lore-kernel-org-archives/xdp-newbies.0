@@ -1,74 +1,59 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:43218 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751424AbdDRSqa (ORCPT
+Received: from mail-oi0-f68.google.com ([209.85.218.68]:35165 "EHLO
+        mail-oi0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754250AbdDRTFp (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 18 Apr 2017 14:46:30 -0400
-Date: Tue, 18 Apr 2017 14:46:25 -0400 (EDT)
-Message-Id: <20170418.144625.406577615158455684.davem@davemloft.net>
-Subject: Re: [PATCH v3 net-next RFC] Generic XDP
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20170417230436.GA96258@ast-mbp.thefacebook.com>
-References: <20170416222601.671f037c@redhat.com>
-        <20170417.154955.1624611510140672627.davem@davemloft.net>
-        <20170417230436.GA96258@ast-mbp.thefacebook.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+        Tue, 18 Apr 2017 15:05:45 -0400
+Received: by mail-oi0-f68.google.com with SMTP id g11so436925oib.2
+        for <xdp-newbies@vger.kernel.org>; Tue, 18 Apr 2017 12:05:45 -0700 (PDT)
+Date: Tue, 18 Apr 2017 15:05:35 -0400
+From: Andy Gospodarek <andy@greyhouse.net>
+Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
+Message-ID: <20170418190535.GG4730@C02RW35GFVH8.dhcp.broadcom.net>
+References: <20170413.120925.2082322246776478766.davem@davemloft.net>
+ <CACKFLikm1vDzz8eQJMJOEsbv-NNV41ki2TEPVPCSpP6VjaowBA@mail.gmail.com>
+ <20170413.162315.1889531431093534154.davem@davemloft.net>
+ <20170415005949.GB73685@ast-mbp.thefacebook.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20170415005949.GB73685@ast-mbp.thefacebook.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: alexei.starovoitov@gmail.com
-Cc: brouer@redhat.com, kubakici@wp.pl, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Cc: David Miller <davem@davemloft.net>, michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Date: Mon, 17 Apr 2017 16:04:38 -0700
-
-> On Mon, Apr 17, 2017 at 03:49:55PM -0400, David Miller wrote:
->> From: Jesper Dangaard Brouer <brouer@redhat.com>
->> Date: Sun, 16 Apr 2017 22:26:01 +0200
->> 
->> > The bpf tail-call use-case is a very good example of why the
->> > verifier cannot deduct the needed HEADROOM upfront.
->> 
->> This brings up a very interesting question for me.
->> 
->> I notice that tail calls are implemented by JITs largely by skipping
->> over the prologue of that destination program.
->> 
->> However, many JITs preload cached SKB values into fixed registers in
->> the prologue.  But they only do this if the program being JITed needs
->> those values.
->> 
->> So how can it work properly if a program that does not need the SKB
->> values tail calls into one that does?
+On Fri, Apr 14, 2017 at 05:59:51PM -0700, Alexei Starovoitov wrote:
+> On Thu, Apr 13, 2017 at 04:23:15PM -0400, David Miller wrote:
+> > +
+> > +	switch (act) {
+> > +	case XDP_TX:
+> > +		__skb_push(skb, skb->mac_len);
 > 
-> For x86 JIT it's fine, since caching of skb values is not part of the prologue:
->   emit_prologue(&prog);
->   if (seen_ld_abs)
->           emit_load_skb_data_hlen(&prog);
-> and tail_call jumps into the next program as:
->   EMIT4(0x48, 0x83, 0xC0, PROLOGUE_SIZE);   /* add rax, prologue_size */
->   EMIT2(0xFF, 0xE0);                        /* jmp rax */
-> whereas inside emit_prologue() we have:
-> B  UILD_BUG_ON(cnt != PROLOGUE_SIZE);
+> s/skb->mac_len/mac_len/
 > 
-> arm64 has similar proplogue skipping code and it's even
-> simpler than x86, since it doesn't try to optimize LD_ABS/IND in assembler
-> and instead calls into bpf_load_pointer() from generated code,
-> so no caching of skb values at all.
+
+I was away from my keyboard for a few days, but was able to get some
+time to test this today.
+
+When using this change above suggested by Alexei, XDP_DROP and XDP_TX
+actions appear to work well with xdp1 and xdp2.
+
+I'm seeing some rather odd behavior with xdp_tx_tunnel so it might be
+good to hold off on committing this just yet.
+
+At first glance, it looks like there is enough headroom for the new
+frame, but the resulting packet data do not look right and I'm actually
+seeing some data that may be left on the stack from a previous caller.
+
+> > +	HARD_TX_UNLOCK(dev, txq);
+> > +	if (free_skb) {
+> > +		trace_xdp_exception(dev, xdp_prog, XDP_TX);
+> > +		kfree_skb(skb);
 > 
-> s390 jit has partial skipping of prologue, since bunch
-> of registers are save/restored during tail_call and it looks fine
-> to me as well.
-
-Ok, what about stack usage?
-
-Currently if I don't see a reference to FP then I elide allocating
-MAX_BPF_STACK stack space.
-
-What if, with tail calls, some programs need that stack space whilst
-other's done?
-
-It looks like, for example, JITs like powerpc avoids this issue
-because they allocate the full MAX_BPF_STACK all the time.  That seems
-like overkill to me and bad for cache locality.
+> nice that you didn't forget to add trace_xdp_exception in this path :)
+> 
+> Overall looks good to me and other than the minor nit in tx, i think it
+> should work for programs already used with in-driver xdp.
+> I'll test it next week unless people beat me to it.
+> 
