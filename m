@@ -1,86 +1,60 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-wr0-f182.google.com ([209.85.128.182]:33147 "EHLO
-        mail-wr0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754528AbdDRThP (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 18 Apr 2017 15:37:15 -0400
-Received: by mail-wr0-f182.google.com with SMTP id l28so1875630wre.0
-        for <xdp-newbies@vger.kernel.org>; Tue, 18 Apr 2017 12:37:14 -0700 (PDT)
-Date: Tue, 18 Apr 2017 15:37:02 -0400
-From: Andy Gospodarek <andy@greyhouse.net>
-Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
-Message-ID: <20170418193702.GH4730@C02RW35GFVH8.dhcp.broadcom.net>
-References: <20170415005949.GB73685@ast-mbp.thefacebook.com>
- <20170418190535.GG4730@C02RW35GFVH8.dhcp.broadcom.net>
- <20170418.150708.1605529107204449972.davem@davemloft.net>
- <20170418.152916.1361453741909754079.davem@davemloft.net>
+Received: from mx1.redhat.com ([209.132.183.28]:48236 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755272AbdDRT7D (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 18 Apr 2017 15:59:03 -0400
+Date: Tue, 18 Apr 2017 21:58:56 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: XDP question: best API for returning/setting egress port?
+Message-ID: <20170418215856.5fda7127@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20170418.152916.1361453741909754079.davem@davemloft.net>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: David Miller <davem@davemloft.net>
-Cc: alexei.starovoitov@gmail.com, michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
-
-On Tue, Apr 18, 2017 at 03:29:16PM -0400, David Miller wrote:
-> From: David Miller <davem@davemloft.net>
-> Date: Tue, 18 Apr 2017 15:07:08 -0400 (EDT)
-> 
-> > From: Andy Gospodarek <andy@greyhouse.net>
-> > Date: Tue, 18 Apr 2017 15:05:35 -0400
-> > 
-> >> On Fri, Apr 14, 2017 at 05:59:51PM -0700, Alexei Starovoitov wrote:
-> >>> On Thu, Apr 13, 2017 at 04:23:15PM -0400, David Miller wrote:
-> >>> > +
-> >>> > +	switch (act) {
-> >>> > +	case XDP_TX:
-> >>> > +		__skb_push(skb, skb->mac_len);
-> >>> 
-> >>> s/skb->mac_len/mac_len/
-> >>> 
-> >> 
-> >> I was away from my keyboard for a few days, but was able to get some
-> >> time to test this today.
-> >> 
-> >> When using this change above suggested by Alexei, XDP_DROP and XDP_TX
-> >> actions appear to work well with xdp1 and xdp2.
-> >> 
-> >> I'm seeing some rather odd behavior with xdp_tx_tunnel so it might be
-> >> good to hold off on committing this just yet.
-> >> 
-> >> At first glance, it looks like there is enough headroom for the new
-> >> frame, but the resulting packet data do not look right and I'm actually
-> >> seeing some data that may be left on the stack from a previous caller.
-> > 
-> > Thanks for testing Andy, I'll take a look and see if I can figure it out.
-> 
-> Andy, I think we might be getting burnt by signedness issues in the
-> offset handling when the XDP program adjusts the packet data pointer.
-
-I completely agree -- I just noted that the offset would be -20 in the
-tx_tunnel case and it's easy to get confused since a positive int for
-the second arg in skb_pull() does go 'back' with a positive value  and
-was just rebuilding and testing just this case with:
-
--	off = xdp.data - orig_data;
-+	/* note that offset is negative */
-+	off = orig_data - xdp.data;
+To: Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>
+Cc: brouer@redhat.com, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>
 
 
-> In netif_receive_generic_xdp(), try changing the offset handling code to
-> read something like:
-> 
-> 	off = xdp.data - orig_data;
-> 	if (off > 0)
-> 		__skb_pull(skb, off);
-> 	else if (off < 0)
-> 		__skb_push(skb, -off);
+As I argued in NetConf presentation[1] (from slide #9) we need a port
+mapping table (instead of using ifindex'es).  Both for supporting
+other "port" types than net_devices (think sockets), and for
+sandboxing what XDP can bypass.
 
-This should do it.  I'll give that run, too.
+I want to create a new XDP action called XDP_REDIRECT, that instruct
+XDP to send the xdp_buff to another "port" (get translated into a
+net_device, or something else depending on internal port type).
 
-> If that doesn't work try adding:
-> 
-> 	__skb_cow(skb, XDP_PACKET_HEADROOM, 0);
-> 
-> right after the skb_linearize() call in that same function.
+Looking at the userspace/eBPF interface, I'm wondering what is the
+best API for "returning" this port number from eBPF?
+
+The options I see is:
+
+1) Split-up the u32 action code, and e.g let the high-16-bit be the
+   port number and lower-16bit the (existing) action verdict.
+
+ Pros: Simple API
+ Cons: Number of ports limited to 64K
+
+2) Extend both xdp_buff + xdp_md to contain a (u32) port number, allow
+   eBPF to update xdp_md->port.
+
+ Pros: Larger number of ports.
+ Cons: This require some ebpf translation steps between xdp_buff <-> xdp_md.
+       (see xdp_convert_ctx_access)
+
+3) Extend only xdp_buff and create bpf_helper that set port in xdp_buff.
+
+ Pros: Hides impl details, and allows helper to give eBPF code feedback
+       (on e.g. if port doesn't exist any longer)
+ Cons: Helper function call likely slower?
+
+
+(Cc'ed xdp-newbies as end-users might have an opinion on UAPI?)
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
+
+[1] http://people.netfilter.org/hawk/presentations/NetConf2017/xdp_work_ahead_NetConf_April_2017.pdf
