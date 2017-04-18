@@ -1,68 +1,97 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg0-f42.google.com ([74.125.83.42]:33996 "EHLO
-        mail-pg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752310AbdDRUzE (ORCPT
+Received: from mail-pg0-f44.google.com ([74.125.83.44]:36012 "EHLO
+        mail-pg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1757924AbdDRXGA (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 18 Apr 2017 16:55:04 -0400
-Subject: Re: XDP question: best API for returning/setting egress port?
-References: <20170418215856.5fda7127@redhat.com>
-From: John Fastabend <john.fastabend@gmail.com>
-Message-ID: <58F67D15.3050308@gmail.com>
-Date: Tue, 18 Apr 2017 13:54:45 -0700
+        Tue, 18 Apr 2017 19:06:00 -0400
+Date: Tue, 18 Apr 2017 16:05:51 -0700
+From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Subject: Re: [PATCH v3 net-next RFC] Generic XDP
+Message-ID: <20170418230549.GB65449@ast-mbp.thefacebook.com>
+References: <20170416222601.671f037c@redhat.com>
+ <20170417.154955.1624611510140672627.davem@davemloft.net>
+ <20170417230436.GA96258@ast-mbp.thefacebook.com>
+ <20170418.144625.406577615158455684.davem@davemloft.net>
 MIME-Version: 1.0
-In-Reply-To: <20170418215856.5fda7127@redhat.com>
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20170418.144625.406577615158455684.davem@davemloft.net>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+To: David Miller <davem@davemloft.net>
+Cc: brouer@redhat.com, kubakici@wp.pl, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On 17-04-18 12:58 PM, Jesper Dangaard Brouer wrote:
+On Tue, Apr 18, 2017 at 02:46:25PM -0400, David Miller wrote:
+> From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+> Date: Mon, 17 Apr 2017 16:04:38 -0700
 > 
-> As I argued in NetConf presentation[1] (from slide #9) we need a port
-> mapping table (instead of using ifindex'es).  Both for supporting
-> other "port" types than net_devices (think sockets), and for
-> sandboxing what XDP can bypass.
+> > On Mon, Apr 17, 2017 at 03:49:55PM -0400, David Miller wrote:
+> >> From: Jesper Dangaard Brouer <brouer@redhat.com>
+> >> Date: Sun, 16 Apr 2017 22:26:01 +0200
+> >> 
+> >> > The bpf tail-call use-case is a very good example of why the
+> >> > verifier cannot deduct the needed HEADROOM upfront.
+> >> 
+> >> This brings up a very interesting question for me.
+> >> 
+> >> I notice that tail calls are implemented by JITs largely by skipping
+> >> over the prologue of that destination program.
+> >> 
+> >> However, many JITs preload cached SKB values into fixed registers in
+> >> the prologue.  But they only do this if the program being JITed needs
+> >> those values.
+> >> 
+> >> So how can it work properly if a program that does not need the SKB
+> >> values tail calls into one that does?
+> > 
+> > For x86 JIT it's fine, since caching of skb values is not part of the prologue:
+> >   emit_prologue(&prog);
+> >   if (seen_ld_abs)
+> >           emit_load_skb_data_hlen(&prog);
+> > and tail_call jumps into the next program as:
+> >   EMIT4(0x48, 0x83, 0xC0, PROLOGUE_SIZE);   /* add rax, prologue_size */
+> >   EMIT2(0xFF, 0xE0);                        /* jmp rax */
+> > whereas inside emit_prologue() we have:
+> > B  UILD_BUG_ON(cnt != PROLOGUE_SIZE);
+> > 
+> > arm64 has similar proplogue skipping code and it's even
+> > simpler than x86, since it doesn't try to optimize LD_ABS/IND in assembler
+> > and instead calls into bpf_load_pointer() from generated code,
+> > so no caching of skb values at all.
+> > 
+> > s390 jit has partial skipping of prologue, since bunch
+> > of registers are save/restored during tail_call and it looks fine
+> > to me as well.
 > 
-> I want to create a new XDP action called XDP_REDIRECT, that instruct
-> XDP to send the xdp_buff to another "port" (get translated into a
-> net_device, or something else depending on internal port type).
+> Ok, what about stack usage?
 > 
-> Looking at the userspace/eBPF interface, I'm wondering what is the
-> best API for "returning" this port number from eBPF?
+> Currently if I don't see a reference to FP then I elide allocating
+> MAX_BPF_STACK stack space.
 > 
-> The options I see is:
+> What if, with tail calls, some programs need that stack space whilst
+> other's done?
 > 
-> 1) Split-up the u32 action code, and e.g let the high-16-bit be the
->    port number and lower-16bit the (existing) action verdict.
-> 
->  Pros: Simple API
->  Cons: Number of ports limited to 64K
-> 
-> 2) Extend both xdp_buff + xdp_md to contain a (u32) port number, allow
->    eBPF to update xdp_md->port.
-> 
->  Pros: Larger number of ports.
->  Cons: This require some ebpf translation steps between xdp_buff <-> xdp_md.
->        (see xdp_convert_ctx_access)
-> 
-> 3) Extend only xdp_buff and create bpf_helper that set port in xdp_buff.
-> 
->  Pros: Hides impl details, and allows helper to give eBPF code feedback
->        (on e.g. if port doesn't exist any longer)
->  Cons: Helper function call likely slower?
-> 
-> 
+> It looks like, for example, JITs like powerpc avoids this issue
+> because they allocate the full MAX_BPF_STACK all the time.  That seems
+> like overkill to me and bad for cache locality.
 
-How about doing this the same way redirect is done in the tc case? I have this
-patch under test,
+For x86 we also give proper stack frame always, since optimizing
+for leaf functions is very rare. Most eBPF progs have at least
+one helper call. Even cBPF often use SKF_AD_CPU or SKF_AD_RANDOM
+which translate to function call as well and need stack frame.
+I think stack frames on sparc are much more expensive than on x86
+due to register window architecture, so there it may make sense
+to squeeze these extra cycles, but it will be rarely exercised
+in practice.
 
- https://github.com/jrfastab/linux/commit/e78f5425d5e3c305b4170ddd85c61c2e15359fee
+I was thinking to teach verifier to recognize required stack size,
+so we can JIT with that size instead of 512, but that's mainly
+to reduce kernel stack usage. I doubt it will make any performance
+difference.
 
-that should give you some idea. It just needs a port mapping table in the
-bpf_tx_xdp() call.
-
-
-> (Cc'ed xdp-newbies as end-users might have an opinion on UAPI?)
-> 
+As far as big sparc and other archs JIT optimizations would be
+great somehow to take advantage of extra registers that these
+archs have. I think it will only be possible once we have
+verifier 2.0 with proper register liveness and stuff, so
+we can convert spill/fills into register copies and may be
+even run simple regalloc pass after verifier. Crazy talk ;)
