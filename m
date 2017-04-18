@@ -1,54 +1,74 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from s3.sipsolutions.net ([5.9.151.49]:47340 "EHLO sipsolutions.net"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754871AbdDRJsE (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 18 Apr 2017 05:48:04 -0400
-Message-ID: <1492508879.2472.13.camel@sipsolutions.net>
+Received: from shards.monkeyblade.net ([184.105.139.130]:43218 "EHLO
+        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751424AbdDRSqa (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 18 Apr 2017 14:46:30 -0400
+Date: Tue, 18 Apr 2017 14:46:25 -0400 (EDT)
+Message-Id: <20170418.144625.406577615158455684.davem@davemloft.net>
 Subject: Re: [PATCH v3 net-next RFC] Generic XDP
-From: Johannes Berg <johannes@sipsolutions.net>
-Date: Tue, 18 Apr 2017 11:47:59 +0200
-In-Reply-To: <20170414194105.GA51147@ast-mbp.thefacebook.com> (sfid-20170414_214112_825421_99F913DC)
-References: <20170412.145415.1441440342830198148.davem@davemloft.net>
-         <20170413042036.GA46229@ast-mbp.thefacebook.com>
-         <1492063856.19193.4.camel@sipsolutions.net>
-         <20170413.113810.703136630867928001.davem@davemloft.net>
-         <20170414194105.GA51147@ast-mbp.thefacebook.com>
-         (sfid-20170414_214112_825421_99F913DC)
-Content-Type: text/plain; charset="UTF-8"
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <20170417230436.GA96258@ast-mbp.thefacebook.com>
+References: <20170416222601.671f037c@redhat.com>
+        <20170417.154955.1624611510140672627.davem@davemloft.net>
+        <20170417230436.GA96258@ast-mbp.thefacebook.com>
 Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Alexei Starovoitov <alexei.starovoitov@gmail.com>, David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: alexei.starovoitov@gmail.com
+Cc: brouer@redhat.com, kubakici@wp.pl, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Fri, 2017-04-14 at 12:41 -0700, Alexei Starovoitov wrote:
+From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Date: Mon, 17 Apr 2017 16:04:38 -0700
+
+> On Mon, Apr 17, 2017 at 03:49:55PM -0400, David Miller wrote:
+>> From: Jesper Dangaard Brouer <brouer@redhat.com>
+>> Date: Sun, 16 Apr 2017 22:26:01 +0200
+>> 
+>> > The bpf tail-call use-case is a very good example of why the
+>> > verifier cannot deduct the needed HEADROOM upfront.
+>> 
+>> This brings up a very interesting question for me.
+>> 
+>> I notice that tail calls are implemented by JITs largely by skipping
+>> over the prologue of that destination program.
+>> 
+>> However, many JITs preload cached SKB values into fixed registers in
+>> the prologue.  But they only do this if the program being JITed needs
+>> those values.
+>> 
+>> So how can it work properly if a program that does not need the SKB
+>> values tail calls into one that does?
 > 
-> ahh. i thought all drivers do at least copy-break (256) bytes 
+> For x86 JIT it's fine, since caching of skb values is not part of the prologue:
+>   emit_prologue(&prog);
+>   if (seen_ld_abs)
+>           emit_load_skb_data_hlen(&prog);
+> and tail_call jumps into the next program as:
+>   EMIT4(0x48, 0x83, 0xC0, PROLOGUE_SIZE);   /* add rax, prologue_size */
+>   EMIT2(0xFF, 0xE0);                        /* jmp rax */
+> whereas inside emit_prologue() we have:
+> B  UILD_BUG_ON(cnt != PROLOGUE_SIZE);
+> 
+> arm64 has similar proplogue skipping code and it's even
+> simpler than x86, since it doesn't try to optimize LD_ABS/IND in assembler
+> and instead calls into bpf_load_pointer() from generated code,
+> so no caching of skb values at all.
+> 
+> s390 jit has partial skipping of prologue, since bunch
+> of registers are save/restored during tail_call and it looks fine
+> to me as well.
 
-We do copy-break, but that's only applicable when there's no non-linear 
-data left afterwards :)
+Ok, what about stack usage?
 
-> or copy
-> get_headlen or build_skb the whole thing.
-> Since wireless does eth_hlen, then yeah, skb_linearize() is the only
-> way.
+Currently if I don't see a reference to FP then I elide allocating
+MAX_BPF_STACK stack space.
 
-It's rather difficult to do this in wifi because we'd need to parse
-deep into the packet - at a point where we haven't even parsed the
-802.11 header (which has variable length) fully.
+What if, with tail calls, some programs need that stack space whilst
+other's done?
 
-So that leaves us to do it at the very end, after conversion to
-ethernet format, but then it feels pointless since we might as well let
-the rest of the stack do it.
-
-> I guess any driver that would care about XDP performance would either
-> implement in-driver XDP or make sure that skb_linearize() doesn't
-> happen in generic XDP by doing build_skb() with the whole packet.
-> The driver can be smart and avoid doing copy-break if generic XDP is
-> on.
-
-Indeed. I think this is less about performance than ease of
-experimentation.
-
-johannes
+It looks like, for example, JITs like powerpc avoids this issue
+because they allocate the full MAX_BPF_STACK all the time.  That seems
+like overkill to me and bad for cache locality.
