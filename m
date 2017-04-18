@@ -1,73 +1,68 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57948 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755109AbdDRU00 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 18 Apr 2017 16:26:26 -0400
-Date: Tue, 18 Apr 2017 22:26:16 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
-Message-ID: <20170418222616.4761a781@redhat.com>
-In-Reply-To: <20170418190535.GG4730@C02RW35GFVH8.dhcp.broadcom.net>
-References: <20170413.120925.2082322246776478766.davem@davemloft.net>
-        <CACKFLikm1vDzz8eQJMJOEsbv-NNV41ki2TEPVPCSpP6VjaowBA@mail.gmail.com>
-        <20170413.162315.1889531431093534154.davem@davemloft.net>
-        <20170415005949.GB73685@ast-mbp.thefacebook.com>
-        <20170418190535.GG4730@C02RW35GFVH8.dhcp.broadcom.net>
+Received: from mail-pg0-f42.google.com ([74.125.83.42]:33996 "EHLO
+        mail-pg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752310AbdDRUzE (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 18 Apr 2017 16:55:04 -0400
+Subject: Re: XDP question: best API for returning/setting egress port?
+References: <20170418215856.5fda7127@redhat.com>
+From: John Fastabend <john.fastabend@gmail.com>
+Message-ID: <58F67D15.3050308@gmail.com>
+Date: Tue, 18 Apr 2017 13:54:45 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20170418215856.5fda7127@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Andy Gospodarek <andy@greyhouse.net>
-Cc: Alexei Starovoitov <alexei.starovoitov@gmail.com>, David Miller <davem@davemloft.net>, michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, brouer@redhat.com
+To: Jesper Dangaard Brouer <brouer@redhat.com>, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-
-On Tue, 18 Apr 2017 15:05:35 -0400 Andy Gospodarek <andy@greyhouse.net> wrote:
-
-> On Fri, Apr 14, 2017 at 05:59:51PM -0700, Alexei Starovoitov wrote:
-> > On Thu, Apr 13, 2017 at 04:23:15PM -0400, David Miller wrote:  
-> > > +
-> > > +	switch (act) {
-> > > +	case XDP_TX:
-> > > +		__skb_push(skb, skb->mac_len);  
-> > 
-> > s/skb->mac_len/mac_len/
-> >   
+On 17-04-18 12:58 PM, Jesper Dangaard Brouer wrote:
 > 
-[...]
+> As I argued in NetConf presentation[1] (from slide #9) we need a port
+> mapping table (instead of using ifindex'es).  Both for supporting
+> other "port" types than net_devices (think sockets), and for
+> sandboxing what XDP can bypass.
 > 
-> When using this change above suggested by Alexei, XDP_DROP and XDP_TX
-> actions appear to work well with xdp1 and xdp2.
+> I want to create a new XDP action called XDP_REDIRECT, that instruct
+> XDP to send the xdp_buff to another "port" (get translated into a
+> net_device, or something else depending on internal port type).
+> 
+> Looking at the userspace/eBPF interface, I'm wondering what is the
+> best API for "returning" this port number from eBPF?
+> 
+> The options I see is:
+> 
+> 1) Split-up the u32 action code, and e.g let the high-16-bit be the
+>    port number and lower-16bit the (existing) action verdict.
+> 
+>  Pros: Simple API
+>  Cons: Number of ports limited to 64K
+> 
+> 2) Extend both xdp_buff + xdp_md to contain a (u32) port number, allow
+>    eBPF to update xdp_md->port.
+> 
+>  Pros: Larger number of ports.
+>  Cons: This require some ebpf translation steps between xdp_buff <-> xdp_md.
+>        (see xdp_convert_ctx_access)
+> 
+> 3) Extend only xdp_buff and create bpf_helper that set port in xdp_buff.
+> 
+>  Pros: Hides impl details, and allows helper to give eBPF code feedback
+>        (on e.g. if port doesn't exist any longer)
+>  Cons: Helper function call likely slower?
+> 
+> 
 
-Also adjusted patch accordingly.
+How about doing this the same way redirect is done in the tc case? I have this
+patch under test,
 
-Ran a few quick tests today, but just against an really old e1000 NIC
-attached to a PCI-bus (32bit).  There were not difference between DROP
-and PASS, but this is likely due to a NIC HW limit.
+ https://github.com/jrfastab/linux/commit/e78f5425d5e3c305b4170ddd85c61c2e15359fee
 
-Sender were sending 951,146 pps (<= tx_queue_0_packets /sec)
+that should give you some idea. It just needs a port mapping table in the
+bpf_tx_xdp() call.
 
-$ sudo ./xdp_bench01_mem_access_cost --readmem --action XDP_DROP --dev e1000
-XDP_action   pps        pps-human-readable mem      
-XDP_DROP     671975     671,975            read     
-XDP_DROP     671997     671,997            read     
-XDP_DROP     672061     672,061            read     
-XDP_DROP     671861     671,861            read     
-^CInterrupted: Removing XDP program on ifindex:2 device:e1000
 
-$ sudo ./xdp_bench01_mem_access_cost --readmem --action XDP_PASS --dev e1000
-XDP_action   pps        pps-human-readable mem      
-XDP_PASS     672032     672,032            read     
-XDP_PASS     671910     671,910            read     
-XDP_PASS     671926     671,926            read     
-XDP_PASS     671947     671,947            read     
-^CInterrupted: Removing XDP program on ifindex:2 device:e1000
-
-Program xdp_bench01_mem_access_cost avail here:
- https://github.com/netoptimizer/prototype-kernel/tree/master/kernel/samples/bpf
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+> (Cc'ed xdp-newbies as end-users might have an opinion on UAPI?)
+> 
