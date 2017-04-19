@@ -1,158 +1,60 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56234 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1765479AbdDSPYc (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 19 Apr 2017 11:24:32 -0400
-Date: Wed, 19 Apr 2017 17:24:20 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: XDP question: best API for returning/setting egress port?
-Message-ID: <20170419172420.43333be1@redhat.com>
-In-Reply-To: <58F75917.1050409@iogearbox.net>
-References: <20170418215856.5fda7127@redhat.com>
-        <58F67D15.3050308@gmail.com>
-        <20170419140019.366fb1fb@redhat.com>
-        <58F75917.1050409@iogearbox.net>
+Received: from mail-yb0-f179.google.com ([209.85.213.179]:34997 "EHLO
+        mail-yb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S967971AbdDSRSG (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 19 Apr 2017 13:18:06 -0400
+Date: Wed, 19 Apr 2017 10:17:56 -0700
+From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
+Message-ID: <20170419171753.GA12838@ast-mbp.thefacebook.com>
+References: <20170415005949.GB73685@ast-mbp.thefacebook.com>
+ <20170418190535.GG4730@C02RW35GFVH8.dhcp.broadcom.net>
+ <20170418.150708.1605529107204449972.davem@davemloft.net>
+ <20170418.152916.1361453741909754079.davem@davemloft.net>
+ <20170419142903.GJ4730@C02RW35GFVH8.dhcp.broadcom.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20170419142903.GJ4730@C02RW35GFVH8.dhcp.broadcom.net>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>
-Cc: John Fastabend <john.fastabend@gmail.com>, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, brouer@redhat.com
+To: Andy Gospodarek <andy@greyhouse.net>
+Cc: David Miller <davem@davemloft.net>, michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Wed, 19 Apr 2017 14:33:27 +0200
-Daniel Borkmann <daniel@iogearbox.net> wrote:
-
-> On 04/19/2017 02:00 PM, Jesper Dangaard Brouer wrote:
-> > On Tue, 18 Apr 2017 13:54:45 -0700
-> > John Fastabend <john.fastabend@gmail.com> wrote:  
-> >> On 17-04-18 12:58 PM, Jesper Dangaard Brouer wrote:  
-> >>>
-> >>> As I argued in NetConf presentation[1] (from slide #9) we need a port
-> >>> mapping table (instead of using ifindex'es).  Both for supporting
-> >>> other "port" types than net_devices (think sockets), and for
-> >>> sandboxing what XDP can bypass.
-> >>>
-> >>> I want to create a new XDP action called XDP_REDIRECT, that instruct
-> >>> XDP to send the xdp_buff to another "port" (get translated into a
-> >>> net_device, or something else depending on internal port type).
-> >>>
-> >>> Looking at the userspace/eBPF interface, I'm wondering what is the
-> >>> best API for "returning" this port number from eBPF?
-> >>>
-> >>> The options I see is:
-> >>>
-> >>> 1) Split-up the u32 action code, and e.g let the high-16-bit be the
-> >>>     port number and lower-16bit the (existing) action verdict.
-> >>>
-> >>>   Pros: Simple API
-> >>>   Cons: Number of ports limited to 64K
-> >>>
-> >>> 2) Extend both xdp_buff + xdp_md to contain a (u32) port number, allow
-> >>>     eBPF to update xdp_md->port.
-> >>>
-> >>>   Pros: Larger number of ports.
-> >>>   Cons: This require some ebpf translation steps between xdp_buff <-> xdp_md.
-> >>>         (see xdp_convert_ctx_access)
-> >>>
-> >>> 3) Extend only xdp_buff and create bpf_helper that set port in xdp_buff.
-> >>>
-> >>>   Pros: Hides impl details, and allows helper to give eBPF code feedback
-> >>>         (on e.g. if port doesn't exist any longer)
-> >>>   Cons: Helper function call likely slower?  
-> >>
-> >> How about doing this the same way redirect is done in the tc case? I have this
-> >> patch under test,
-> >>
-> >>   https://github.com/jrfastab/linux/commit/e78f5425d5e3c305b4170ddd85c61c2e15359fee  
-> >
-> > I have been looking at this approach, which is close to option #3 above.
-> >
-> > The problem with your implementation that you use a per-cpu store.
-> > This creates the problem of storing state between packets. First packet
-> > can call helper bpf_xdp_redirect() setting an ifindex, but program can
-> > still return XDP_PASS.  Next packet can call XDP_REDIRECT and use the
-> > ifindex set from the first packet.  IMHO this is a problematic API to
-> > expose.
-> >
-> > I do see that the TC interface that uses the same approach, via helper
-> > bpf_redirect().  Maybe it have the same API problem?  Looking at
-> > sch_handle_ingress() I don't see this is handled (e.g. by always
-> > clearing this_cpu_ptr(redirect_info)->ifindex = 0).  
+On Wed, Apr 19, 2017 at 10:29:03AM -0400, Andy Gospodarek wrote:
 > 
-> It's cleared in {skb,xdp}_do_redirect() right after fetching the
-> ifindex. I think this approach is just fine. The example described
-> above is a misuse of the API by a buggy program calling bpf_xdp_redirect()
-> and returning XDP_PASS while another time it returns XDP_REDIRECT
-> without the bpf_xdp_redirect() helper, sounds very exotic, but it's
-> as buggy as, say, a program doing the csum update wrong, a program
-> writing the wrong data to the packet, doing adjust head on the wrong
-> header offset, jumping into the wrong tail call entry and other things.
+> I ran this on top of a card that uses the bnxt_en driver on a desktop
+> class system with an i7-6700 CPU @ 3.40GHz, sending a single stream of
+> UDP traffic with flow control disabled and saw the following (all stats
+> in Million PPS).
+> 
+>                 xdp1                xdp2            xdp_tx_tunnel
+> Generic XDP      7.8    5.5 (1.3 actual)         4.6 (1.1 actual)
+> Optimized XDP   11.7		     9.7                      4.6
 
-For TC I guess it is fine to keep it as is, because it is needed to
-avoid extending skb.  IHMO for XDP I see no reason to keep a
-per-cpu-store (which besides will be slower), simply update
-xdp_buff.port should be sufficient (which is only relevant for this
-packet).
+Nice! Thanks for testing.
 
-As noted in option#3, my concern is that calling a helper function call
-will be slower, than simply returning the needed port info? 
+> One thing to note is that the Generic XDP case shows some different
+> results for reported by the application vs actual (seen on the wire).  I
+> did not debug where the drops are happening and what counter needs to be
+> incremented to note this -- I'll add that to my TODO list.  The
+> Optimized XDP case does not have a difference in reported vs actual
+> frames on the wire.
 
-Maybe some bpf experts can tell me if such helper call could be
-optimized out with some bpf magic?
+The missed packets are probably due to xmit queue being full.
+We need 'xdp_tx_full' counter in:
++       if (free_skb) {
++               trace_xdp_exception(dev, xdp_prog, XDP_TX);
++               kfree_skb(skb);
++       }
+like in-driver xdp does.
+It's surprising that tx becomes full so often. May be bnxt specific behavior?
 
-> I think encoding this into an action code is rather limiting, f.e.
-> where would we place a flags argument if needed in future? Would
-> that mean, we need a XDP_REDIRECT2 return code that also allows for
-> encoding flags?
+> I agree with all those who have asserted that this is great tool for
+> those that want to get started with XDP but do not have hardware, so I'd
+> say it's ready to have the 'RFC' tag dropped.  Thanks for pushing this
+> forward, Dave!  :-)
 
-Nope, it will be extensible.
-
-We can start with:
-
- struct xdp_ret {
-     union {
-         __u32 act;
-         struct {
-             __u16 action;
-             __u16 port;
-         };
- };
-
-And later change it to:
-
- struct xdp_ret {
-     union {
-         __u32 act;
-         struct {
-             __u8  action;
-             __u8  flags;
-             __u16 port;
-         };
- };
-
-If actions does not go above 255.  I would prefer that we start with
-the latter, else people would argue that we need to extend the
-structure like:
-
- struct xdp_ret {
-     union {
-         __u32 act;
-         struct {
-             union {
-                 __u16 action;
-                 struct {
-                     __u8 action2;
-                     __u8 flags;
-                 };
-             };
-             __u16 port;
-         };
- };
-
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
++1
+ 
