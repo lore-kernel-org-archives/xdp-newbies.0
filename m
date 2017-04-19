@@ -1,120 +1,78 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-yb0-f178.google.com ([209.85.213.178]:35342 "EHLO
-        mail-yb0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S936044AbdDSUDR (ORCPT
+Received: from mail-yw0-f195.google.com ([209.85.161.195]:33257 "EHLO
+        mail-yw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S939403AbdDSUZw (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 19 Apr 2017 16:03:17 -0400
-Received: by mail-yb0-f178.google.com with SMTP id 6so13523196ybq.2
-        for <xdp-newbies@vger.kernel.org>; Wed, 19 Apr 2017 13:03:17 -0700 (PDT)
-Date: Wed, 19 Apr 2017 16:02:59 -0400
+        Wed, 19 Apr 2017 16:25:52 -0400
+Received: by mail-yw0-f195.google.com with SMTP id 203so3178368ywe.0
+        for <xdp-newbies@vger.kernel.org>; Wed, 19 Apr 2017 13:25:52 -0700 (PDT)
+Date: Wed, 19 Apr 2017 16:25:43 -0400
 From: Andy Gospodarek <andy@greyhouse.net>
-Subject: Re: XDP question: best API for returning/setting egress port?
-Message-ID: <20170419200259.GK4730@C02RW35GFVH8.dhcp.broadcom.net>
-References: <20170418215856.5fda7127@redhat.com>
+Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
+Message-ID: <20170419202543.GL4730@C02RW35GFVH8.dhcp.broadcom.net>
+References: <20170415005949.GB73685@ast-mbp.thefacebook.com>
+ <20170418190535.GG4730@C02RW35GFVH8.dhcp.broadcom.net>
+ <20170418.150708.1605529107204449972.davem@davemloft.net>
+ <20170418.152916.1361453741909754079.davem@davemloft.net>
+ <20170419142903.GJ4730@C02RW35GFVH8.dhcp.broadcom.net>
+ <20170419171753.GA12838@ast-mbp.thefacebook.com>
+ <58F7A21B.9060309@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20170418215856.5fda7127@redhat.com>
+In-Reply-To: <58F7A21B.9060309@gmail.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>
+To: John Fastabend <john.fastabend@gmail.com>
+Cc: Alexei Starovoitov <alexei.starovoitov@gmail.com>, David Miller <davem@davemloft.net>, michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Tue, Apr 18, 2017 at 09:58:56PM +0200, Jesper Dangaard Brouer wrote:
+On Wed, Apr 19, 2017 at 10:44:59AM -0700, John Fastabend wrote:
+> On 17-04-19 10:17 AM, Alexei Starovoitov wrote:
+> > On Wed, Apr 19, 2017 at 10:29:03AM -0400, Andy Gospodarek wrote:
+> >>
+> >> I ran this on top of a card that uses the bnxt_en driver on a desktop
+> >> class system with an i7-6700 CPU @ 3.40GHz, sending a single stream of
+> >> UDP traffic with flow control disabled and saw the following (all stats
+> >> in Million PPS).
+> >>
+> >>                 xdp1                xdp2            xdp_tx_tunnel
+> >> Generic XDP      7.8    5.5 (1.3 actual)         4.6 (1.1 actual)
+> >> Optimized XDP   11.7		     9.7                      4.6
+> > 
+> > Nice! Thanks for testing.
+> > 
+> >> One thing to note is that the Generic XDP case shows some different
+> >> results for reported by the application vs actual (seen on the wire).  I
+> >> did not debug where the drops are happening and what counter needs to be
+> >> incremented to note this -- I'll add that to my TODO list.  The
+> >> Optimized XDP case does not have a difference in reported vs actual
+> >> frames on the wire.
+> > 
+> > The missed packets are probably due to xmit queue being full.
+> > We need 'xdp_tx_full' counter in:
+> > +       if (free_skb) {
+> > +               trace_xdp_exception(dev, xdp_prog, XDP_TX);
+> > +               kfree_skb(skb);
+> > +       }
+> > like in-driver xdp does.
+> > It's surprising that tx becomes full so often. May be bnxt specific behavior?
 > 
-> As I argued in NetConf presentation[1] (from slide #9) we need a port
-> mapping table (instead of using ifindex'es).  Both for supporting
-> other "port" types than net_devices (think sockets), and for
-> sandboxing what XDP can bypass.
-> 
-> I want to create a new XDP action called XDP_REDIRECT, that instruct
-> XDP to send the xdp_buff to another "port" (get translated into a
-> net_device, or something else depending on internal port type).
-> 
-> Looking at the userspace/eBPF interface, I'm wondering what is the
-> best API for "returning" this port number from eBPF?
-> 
-> The options I see is:
-> 
-> 1) Split-up the u32 action code, and e.g let the high-16-bit be the
->    port number and lower-16bit the (existing) action verdict.
-> 
->  Pros: Simple API
->  Cons: Number of ports limited to 64K
+> hmm as a data point I get better numbers than 1.3Mpps running through the qdisc
+> layer with pktgen so seems like something is wrong with the driver perhaps? If
 
-Practically speaking this may be seem reserving 64k for the port number
-might be enough space, but I would also like to see a new return option
-for flags so I start to get concerned about space.  Daniel also
-hightlights the fact that encoding the port in the action may does not
-leave room for flags and could get confusing.
+I get ~6.5Mpps on a single core with pktgen, so inconclusive for now....
 
-One unfortunate side-effect of dropping or transmitting frames with XDP
-is that we lose the opportunity to statistically sample in netfilter
-since the frames were dropped so early and I'd like to bring that back
-with a call to parse flags and possibly call psample_sample_packet()
-after the xdp action.  Packet sampling cannot simply be an action
-since there are times when a frame should be dropped but should also be
-sampled, so it seems logical to add this as a flag.
-
+> I get a chance I'll take a look with my setup here, although it likely wont be
+> until the weekend. I don't think it needs to slow down dropping the RFC tag
+> and getting the patch applied though.
 > 
-> 2) Extend both xdp_buff + xdp_md to contain a (u32) port number, allow
->    eBPF to update xdp_md->port.
+> > 
+> >> I agree with all those who have asserted that this is great tool for
+> >> those that want to get started with XDP but do not have hardware, so I'd
+> >> say it's ready to have the 'RFC' tag dropped.  Thanks for pushing this
+> >> forward, Dave!  :-)
+> > 
+> > +1
+> >  
+> > 
 > 
->  Pros: Larger number of ports.
->  Cons: This require some ebpf translation steps between xdp_buff <-> xdp_md.
->        (see xdp_convert_ctx_access)
-
-I think I would lean towards this based on the fact that I'd like to see
-a flags field added to the u32 return (maybe the top 8 bits) as
-mentioned above.
-
-So if we follow down this path and add a 'dest' field to xdp_buff and
-xdp_md like this:
-
-struct xdp_buff {
-        void *data;
-        void *data_end;
-        void *data_hard_start;
-	__u32 dest; 
-};
-
-struct xdp_md {
-        __u32 data;
-        __u32 data_end;
-	__u32 dest;
-};
-
-and then lookup this dest in a table we have the option to make that
-dest an ifindex/socket/other.
-
-I did also look at JohnF's patch and I do like the simplicity of the redirect
-action and new ndo_xdp_xmit and how it moves towards a way to transmit the
-frame.  The downside is that it presumes an ifindex, so it might not be ideal
-we want the lookup to return something other than an ifindex.
-
-Before aligning on a direction for the return values from exiting xdp
-call, it seems like we should also think about the tx side and how that
-would be handled.  If we are ultimately going to need a new netdev op to
-handle the redirect then what may be the issue with not providing the
-destination port the return code and the option proposed by JohnF looks
-good to me with maybe a small tweak to not presume ifindex in some manner.
-
-JohnF, any test results with this you can share?  Presumably you tested with
-virtio-net, right?
-
-> 
-> 3) Extend only xdp_buff and create bpf_helper that set port in xdp_buff.
-> 
->  Pros: Hides impl details, and allows helper to give eBPF code feedback
->        (on e.g. if port doesn't exist any longer)
->  Cons: Helper function call likely slower?
-> 
-> 
-> (Cc'ed xdp-newbies as end-users might have an opinion on UAPI?)
-> -- 
-> Best regards,
->   Jesper Dangaard Brouer
->   MSc.CS, Principal Kernel Engineer at Red Hat
->   LinkedIn: http://www.linkedin.com/in/brouer
-> 
-> [1] http://people.netfilter.org/hawk/presentations/NetConf2017/xdp_work_ahead_NetConf_April_2017.pdf
