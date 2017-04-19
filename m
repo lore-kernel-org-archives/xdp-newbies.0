@@ -1,44 +1,120 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from slow1-d.mail.gandi.net ([217.70.178.86]:54526 "EHLO
-        slow1-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S968908AbdDSSWI (ORCPT
+Received: from mail-yb0-f178.google.com ([209.85.213.178]:35342 "EHLO
+        mail-yb0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S936044AbdDSUDR (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 19 Apr 2017 14:22:08 -0400
-Received: from relay7-d.mail.gandi.net (relay7-d.mail.gandi.net [217.70.183.200])
-        by slow1-d.mail.gandi.net (Postfix) with ESMTP id 5C4B2486619
-        for <xdp-newbies@vger.kernel.org>; Wed, 19 Apr 2017 20:14:24 +0200 (CEST)
-Received: from relay3-d.mail.gandi.net (relay3-d.mail.gandi.net [217.70.183.195])
-        by relay7-d.mail.gandi.net (Postfix) with ESMTPS id F0528119B
-        for <xdp-newbies@vger.kernel.org>; Wed, 19 Apr 2017 20:14:22 +0200 (CEST)
-Received: from mfilter31-d.gandi.net (mfilter31-d.gandi.net [217.70.178.162])
-        by relay3-d.mail.gandi.net (Postfix) with ESMTP id CE3FBA80DB
-        for <xdp-newbies@vger.kernel.org>; Wed, 19 Apr 2017 20:14:22 +0200 (CEST)
-Received: from relay3-d.mail.gandi.net ([IPv6:::ffff:217.70.183.195])
-        by mfilter31-d.gandi.net (mfilter31-d.gandi.net [::ffff:10.0.15.180]) (amavisd-new, port 10024)
-        with ESMTP id u1l_Wky16V7D for <xdp-newbies@vger.kernel.org>;
-        Wed, 19 Apr 2017 20:14:21 +0200 (CEST)
-Received: from mail-qt0-f176.google.com (mail-qt0-f176.google.com [209.85.216.176])
-        (Authenticated sender: joe@ovn.org)
-        by relay3-d.mail.gandi.net (Postfix) with ESMTPSA id 62CF1A80C6
-        for <xdp-newbies@vger.kernel.org>; Wed, 19 Apr 2017 20:14:21 +0200 (CEST)
-Received: by mail-qt0-f176.google.com with SMTP id c45so26671265qtb.1
-        for <xdp-newbies@vger.kernel.org>; Wed, 19 Apr 2017 11:14:21 -0700 (PDT)
+        Wed, 19 Apr 2017 16:03:17 -0400
+Received: by mail-yb0-f178.google.com with SMTP id 6so13523196ybq.2
+        for <xdp-newbies@vger.kernel.org>; Wed, 19 Apr 2017 13:03:17 -0700 (PDT)
+Date: Wed, 19 Apr 2017 16:02:59 -0400
+From: Andy Gospodarek <andy@greyhouse.net>
+Subject: Re: XDP question: best API for returning/setting egress port?
+Message-ID: <20170419200259.GK4730@C02RW35GFVH8.dhcp.broadcom.net>
+References: <20170418215856.5fda7127@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <CALDO+SZPQGmp4VH0LvCh95uXWvwzAoj+wN-rm0pGu5e0wCcyNw@mail.gmail.com>
-References: <CALDO+SZPQGmp4VH0LvCh95uXWvwzAoj+wN-rm0pGu5e0wCcyNw@mail.gmail.com>
-From: Joe Stringer <joe@ovn.org>
-Date: Wed, 19 Apr 2017 11:13:56 -0700
-Message-ID: <CAPWQB7H+L8naX6ee5dk5_X6QXFSk3MdoxNW0Q=rT_OgoeebJAQ@mail.gmail.com>
-Subject: Re:
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20170418215856.5fda7127@redhat.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: William Tu <u9012063@gmail.com>
-Cc: xdp-newbies@vger.kernel.org
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>
 
-On 19 April 2017 at 11:12, William Tu <u9012063@gmail.com> wrote:
-> subscribe xdp-newbies
+On Tue, Apr 18, 2017 at 09:58:56PM +0200, Jesper Dangaard Brouer wrote:
+> 
+> As I argued in NetConf presentation[1] (from slide #9) we need a port
+> mapping table (instead of using ifindex'es).  Both for supporting
+> other "port" types than net_devices (think sockets), and for
+> sandboxing what XDP can bypass.
+> 
+> I want to create a new XDP action called XDP_REDIRECT, that instruct
+> XDP to send the xdp_buff to another "port" (get translated into a
+> net_device, or something else depending on internal port type).
+> 
+> Looking at the userspace/eBPF interface, I'm wondering what is the
+> best API for "returning" this port number from eBPF?
+> 
+> The options I see is:
+> 
+> 1) Split-up the u32 action code, and e.g let the high-16-bit be the
+>    port number and lower-16bit the (existing) action verdict.
+> 
+>  Pros: Simple API
+>  Cons: Number of ports limited to 64K
 
-You'll need to send this to majordomo@vger.kernel.org :-)
+Practically speaking this may be seem reserving 64k for the port number
+might be enough space, but I would also like to see a new return option
+for flags so I start to get concerned about space.  Daniel also
+hightlights the fact that encoding the port in the action may does not
+leave room for flags and could get confusing.
 
-http://vger.kernel.org/vger-lists.html
+One unfortunate side-effect of dropping or transmitting frames with XDP
+is that we lose the opportunity to statistically sample in netfilter
+since the frames were dropped so early and I'd like to bring that back
+with a call to parse flags and possibly call psample_sample_packet()
+after the xdp action.  Packet sampling cannot simply be an action
+since there are times when a frame should be dropped but should also be
+sampled, so it seems logical to add this as a flag.
+
+> 
+> 2) Extend both xdp_buff + xdp_md to contain a (u32) port number, allow
+>    eBPF to update xdp_md->port.
+> 
+>  Pros: Larger number of ports.
+>  Cons: This require some ebpf translation steps between xdp_buff <-> xdp_md.
+>        (see xdp_convert_ctx_access)
+
+I think I would lean towards this based on the fact that I'd like to see
+a flags field added to the u32 return (maybe the top 8 bits) as
+mentioned above.
+
+So if we follow down this path and add a 'dest' field to xdp_buff and
+xdp_md like this:
+
+struct xdp_buff {
+        void *data;
+        void *data_end;
+        void *data_hard_start;
+	__u32 dest; 
+};
+
+struct xdp_md {
+        __u32 data;
+        __u32 data_end;
+	__u32 dest;
+};
+
+and then lookup this dest in a table we have the option to make that
+dest an ifindex/socket/other.
+
+I did also look at JohnF's patch and I do like the simplicity of the redirect
+action and new ndo_xdp_xmit and how it moves towards a way to transmit the
+frame.  The downside is that it presumes an ifindex, so it might not be ideal
+we want the lookup to return something other than an ifindex.
+
+Before aligning on a direction for the return values from exiting xdp
+call, it seems like we should also think about the tx side and how that
+would be handled.  If we are ultimately going to need a new netdev op to
+handle the redirect then what may be the issue with not providing the
+destination port the return code and the option proposed by JohnF looks
+good to me with maybe a small tweak to not presume ifindex in some manner.
+
+JohnF, any test results with this you can share?  Presumably you tested with
+virtio-net, right?
+
+> 
+> 3) Extend only xdp_buff and create bpf_helper that set port in xdp_buff.
+> 
+>  Pros: Hides impl details, and allows helper to give eBPF code feedback
+>        (on e.g. if port doesn't exist any longer)
+>  Cons: Helper function call likely slower?
+> 
+> 
+> (Cc'ed xdp-newbies as end-users might have an opinion on UAPI?)
+> -- 
+> Best regards,
+>   Jesper Dangaard Brouer
+>   MSc.CS, Principal Kernel Engineer at Red Hat
+>   LinkedIn: http://www.linkedin.com/in/brouer
+> 
+> [1] http://people.netfilter.org/hawk/presentations/NetConf2017/xdp_work_ahead_NetConf_April_2017.pdf
