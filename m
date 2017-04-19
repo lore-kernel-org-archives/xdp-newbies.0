@@ -1,11 +1,11 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:39140 "EHLO
+Received: from www62.your-server.de ([213.133.104.62]:47034 "EHLO
         www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S968108AbdDSVmh (ORCPT
+        with ESMTP id S1764773AbdDSWvh (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 19 Apr 2017 17:42:37 -0400
-Message-ID: <58F7D9C6.5040707@iogearbox.net>
-Date: Wed, 19 Apr 2017 23:42:30 +0200
+        Wed, 19 Apr 2017 18:51:37 -0400
+Message-ID: <58F7E9F3.5090604@iogearbox.net>
+Date: Thu, 20 Apr 2017 00:51:31 +0200
 From: Daniel Borkmann <daniel@iogearbox.net>
 MIME-Version: 1.0
 Subject: Re: XDP question: best API for returning/setting egress port?
@@ -19,48 +19,23 @@ To: Andy Gospodarek <andy@greyhouse.net>, Jesper Dangaard Brouer <brouer@redhat.
 Cc: Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>
 
 On 04/19/2017 10:02 PM, Andy Gospodarek wrote:
-> On Tue, Apr 18, 2017 at 09:58:56PM +0200, Jesper Dangaard Brouer wrote:
->>
->> As I argued in NetConf presentation[1] (from slide #9) we need a port
->> mapping table (instead of using ifindex'es).  Both for supporting
->> other "port" types than net_devices (think sockets), and for
->> sandboxing what XDP can bypass.
->>
->> I want to create a new XDP action called XDP_REDIRECT, that instruct
->> XDP to send the xdp_buff to another "port" (get translated into a
->> net_device, or something else depending on internal port type).
->>
->> Looking at the userspace/eBPF interface, I'm wondering what is the
->> best API for "returning" this port number from eBPF?
->>
->> The options I see is:
->>
->> 1) Split-up the u32 action code, and e.g let the high-16-bit be the
->>     port number and lower-16bit the (existing) action verdict.
->>
->>   Pros: Simple API
->>   Cons: Number of ports limited to 64K
+[...]
+> and then lookup this dest in a table we have the option to make that
+> dest an ifindex/socket/other.
 >
-> Practically speaking this may be seem reserving 64k for the port number
-> might be enough space, but I would also like to see a new return option
-> for flags so I start to get concerned about space.  Daniel also
-> hightlights the fact that encoding the port in the action may does not
-> leave room for flags and could get confusing.
+> I did also look at JohnF's patch and I do like the simplicity of the redirect
+> action and new ndo_xdp_xmit and how it moves towards a way to transmit the
+> frame.  The downside is that it presumes an ifindex, so it might not be ideal
+> we want the lookup to return something other than an ifindex.
 >
-> One unfortunate side-effect of dropping or transmitting frames with XDP
-> is that we lose the opportunity to statistically sample in netfilter
-> since the frames were dropped so early and I'd like to bring that back
-> with a call to parse flags and possibly call psample_sample_packet()
-> after the xdp action.  Packet sampling cannot simply be an action
-> since there are times when a frame should be dropped but should also be
-> sampled, so it seems logical to add this as a flag.
+[...]
+> would be handled.  If we are ultimately going to need a new netdev op to
+> handle the redirect then what may be the issue with not providing the
+> destination port the return code and the option proposed by JohnF looks
+> good to me with maybe a small tweak to not presume ifindex in some manner.
 
-Hmm, you can do that already today with bpf_xdp_event_output() helper
-and the program decides when to sample and what custom meta data to
-prepend along with the (partial or full) xdp packet, see also [1], slide
-11 for the "XDP dump" part.
-
-No need to change drivers for this, psample_sample_packet() would also
-be slower.
-
-   [1] http://netdevconf.org/2.1/slides/apr6/zhou-netdev-xdp-2017.pdf
+Is there a concrete reason that all the proposed future cases like sockets
+have to be handled within the very same XDP_REDIRECT return code? F.e. why
+not XDP_TX_NIC that only assumes ifindex as proposed in the patch, and future
+ones would get a different return code f.e. XDP_TX_SK only handling sockets
+when we get there implementation-wise?
