@@ -1,61 +1,72 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50672 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:63027 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S966233AbdDTGjh (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 20 Apr 2017 02:39:37 -0400
-Date: Thu, 20 Apr 2017 08:39:29 +0200
+        id S946388AbdDTOam (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 20 Apr 2017 10:30:42 -0400
+Date: Thu, 20 Apr 2017 16:30:34 +0200
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: XDP question: best API for returning/setting egress port?
-Message-ID: <20170420083929.3eec20ee@redhat.com>
-In-Reply-To: <58F7E9F3.5090604@iogearbox.net>
-References: <20170418215856.5fda7127@redhat.com>
-        <20170419200259.GK4730@C02RW35GFVH8.dhcp.broadcom.net>
-        <58F7E9F3.5090604@iogearbox.net>
+Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
+Message-ID: <20170420163034.053ec42c@redhat.com>
+In-Reply-To: <20170419142903.GJ4730@C02RW35GFVH8.dhcp.broadcom.net>
+References: <20170415005949.GB73685@ast-mbp.thefacebook.com>
+        <20170418190535.GG4730@C02RW35GFVH8.dhcp.broadcom.net>
+        <20170418.150708.1605529107204449972.davem@davemloft.net>
+        <20170418.152916.1361453741909754079.davem@davemloft.net>
+        <20170419142903.GJ4730@C02RW35GFVH8.dhcp.broadcom.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>
-Cc: Andy Gospodarek <andy@greyhouse.net>, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>, brouer@redhat.com
+To: Andy Gospodarek <andy@greyhouse.net>
+Cc: David Miller <davem@davemloft.net>, alexei.starovoitov@gmail.com, michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, brouer@redhat.com
 
-On Thu, 20 Apr 2017 00:51:31 +0200
-Daniel Borkmann <daniel@iogearbox.net> wrote:
+On Wed, 19 Apr 2017 10:29:03 -0400
+Andy Gospodarek <andy@greyhouse.net> wrote:
 
-> On 04/19/2017 10:02 PM, Andy Gospodarek wrote:
-> [...]
-> > and then lookup this dest in a table we have the option to make that
-> > dest an ifindex/socket/other.
-> >
-> > I did also look at JohnF's patch and I do like the simplicity of the redirect
-> > action and new ndo_xdp_xmit and how it moves towards a way to transmit the
-> > frame.  The downside is that it presumes an ifindex, so it might not be ideal
-> > we want the lookup to return something other than an ifindex.
-> >  
-> [...]
-> > would be handled.  If we are ultimately going to need a new netdev op to
-> > handle the redirect then what may be the issue with not providing the
-> > destination port the return code and the option proposed by JohnF looks
-> > good to me with maybe a small tweak to not presume ifindex in some manner.  
+> I ran this on top of a card that uses the bnxt_en driver on a desktop
+> class system with an i7-6700 CPU @ 3.40GHz, sending a single stream of
+> UDP traffic with flow control disabled and saw the following (all stats
+> in Million PPS).
 > 
-> Is there a concrete reason that all the proposed future cases like sockets
-> have to be handled within the very same XDP_REDIRECT return code? F.e. why
-> not XDP_TX_NIC that only assumes ifindex as proposed in the patch, and future
-> ones would get a different return code f.e. XDP_TX_SK only handling sockets
-> when we get there implementation-wise?
+>                 xdp1                xdp2            xdp_tx_tunnel
+> Generic XDP      7.8    5.5 (1.3 actual)         4.6 (1.1 actual)
+> Optimized XDP   11.7		     9.7                      4.6
+> 
+> One thing to note is that the Generic XDP case shows some different
+> results for reported by the application vs actual (seen on the wire).  I
+> did not debug where the drops are happening and what counter needs to be
+> incremented to note this -- I'll add that to my TODO list.  The
+> Optimized XDP case does not have a difference in reported vs actual
+> frames on the wire.
 
-The concrete reason for an "unified" return code is to simplify changes
-needed in the drivers.  The purpose is moving code out of the drivers
-into the core.  IMHO we should keep drivers as simple as possible and
-stop adding more return action codes. XDP_REDIRECT combined with a
-port-table should be the last action-code needed in the drivers.
-As the port table will know the "type" of the port.
+The reported application vs actual (seen on the wire) number sound scary.
+How do you evaluate/measure "seen on the wire"?
 
-Keeping action XDP_DROP and XDP_TX inside the drivers make sense,
-because it allow for driver level optimizations. Actions that want to
-transfer the packet/xdp_buff "outside" the driver should call a core
-function (given it will be called with the xdp_buff struct, you can
-hide all your extra extensions there without changing the driver code).
+Perhaps you could use ethtool -S stats to see if anything is fishy?
+I recommend using my tool[1] like:
+
+ ~/git/network-testing/bin/ethtool_stats.pl --dev mlx5p2 --sec 2
+
+[1] https://github.com/netoptimizer/network-testing/blob/master/bin/ethtool_stats.pl
+
+I'm evaluating this patch on a mlx5 NIC, and something is not right...
+I'm seeing:
+
+ Ethtool(mlx5p2) stat:     349599 (        349,599) <= tx_multicast_phy /sec
+ Ethtool(mlx5p2) stat:    4940185 (      4,940,185) <= tx_packets /sec
+ Ethtool(mlx5p2) stat:     349596 (        349,596) <= tx_packets_phy /sec
+ [...]
+ Ethtool(mlx5p2) stat:      36898 (         36,898) <= rx_cache_busy /sec
+ Ethtool(mlx5p2) stat:      36898 (         36,898) <= rx_cache_full /sec
+ Ethtool(mlx5p2) stat:    4903287 (      4,903,287) <= rx_cache_reuse /sec
+ Ethtool(mlx5p2) stat:    4940185 (      4,940,185) <= rx_csum_complete /sec
+ Ethtool(mlx5p2) stat:    4940185 (      4,940,185) <= rx_packets /sec
+
+Something is wrong... when I tcpdump on the generator machine, I see
+garbled packets with IPv6 multicast addresses.
+
+And it looks like I'm only sending 349,596 tx_packets_phy/sec on the "wire".
 
 -- 
 Best regards,
