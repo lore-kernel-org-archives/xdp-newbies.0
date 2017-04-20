@@ -1,116 +1,74 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-oi0-f68.google.com ([209.85.218.68]:35634 "EHLO
-        mail-oi0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S943399AbdDTRKN (ORCPT
+Received: from mail-oi0-f47.google.com ([209.85.218.47]:36611 "EHLO
+        mail-oi0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S945808AbdDTRM2 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 20 Apr 2017 13:10:13 -0400
-Date: Thu, 20 Apr 2017 10:10:08 -0700
-From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Subject: Re: xdp_redirect ifindex vs port. Was: best API for
- returning/setting egress port?
-Message-ID: <20170420171006.GA97067@ast-mbp.thefacebook.com>
+        Thu, 20 Apr 2017 13:12:28 -0400
+Received: by mail-oi0-f47.google.com with SMTP id r203so58952279oib.3
+        for <xdp-newbies@vger.kernel.org>; Thu, 20 Apr 2017 10:12:27 -0700 (PDT)
+Date: Thu, 20 Apr 2017 13:12:18 -0400
+From: Andy Gospodarek <andy@greyhouse.net>
+Subject: Re: XDP question: best API for returning/setting egress port?
+Message-ID: <20170420171218.GM4730@C02RW35GFVH8.dhcp.broadcom.net>
 References: <20170418215856.5fda7127@redhat.com>
  <20170419200259.GK4730@C02RW35GFVH8.dhcp.broadcom.net>
- <58F7E9F3.5090604@iogearbox.net>
- <20170420025611.GA53935@ast-mbp.thefacebook.com>
- <20170420081051.77a41aa8@redhat.com>
+ <58F7D9C6.5040707@iogearbox.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20170420081051.77a41aa8@redhat.com>
+In-Reply-To: <58F7D9C6.5040707@iogearbox.net>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: Daniel Borkmann <daniel@iogearbox.net>, Andy Gospodarek <andy@greyhouse.net>, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <ast@fb.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>
+To: Daniel Borkmann <daniel@iogearbox.net>
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>
 
-On Thu, Apr 20, 2017 at 08:10:51AM +0200, Jesper Dangaard Brouer wrote:
-> On Wed, 19 Apr 2017 19:56:13 -0700
-> Alexei Starovoitov <alexei.starovoitov@gmail.com> wrote:
-> 
-> > On Thu, Apr 20, 2017 at 12:51:31AM +0200, Daniel Borkmann wrote:
+On Wed, Apr 19, 2017 at 11:42:30PM +0200, Daniel Borkmann wrote:
+> On 04/19/2017 10:02 PM, Andy Gospodarek wrote:
+> > On Tue, Apr 18, 2017 at 09:58:56PM +0200, Jesper Dangaard Brouer wrote:
 > > > 
-> > > Is there a concrete reason that all the proposed future cases like sockets
-> > > have to be handled within the very same XDP_REDIRECT return code? F.e. why
-> > > not XDP_TX_NIC that only assumes ifindex as proposed in the patch, and future
-> > > ones would get a different return code f.e. XDP_TX_SK only handling sockets
-> > > when we get there implementation-wise?  
+> > > As I argued in NetConf presentation[1] (from slide #9) we need a port
+> > > mapping table (instead of using ifindex'es).  Both for supporting
+> > > other "port" types than net_devices (think sockets), and for
+> > > sandboxing what XDP can bypass.
+> > > 
+> > > I want to create a new XDP action called XDP_REDIRECT, that instruct
+> > > XDP to send the xdp_buff to another "port" (get translated into a
+> > > net_device, or something else depending on internal port type).
+> > > 
+> > > Looking at the userspace/eBPF interface, I'm wondering what is the
+> > > best API for "returning" this port number from eBPF?
+> > > 
+> > > The options I see is:
+> > > 
+> > > 1) Split-up the u32 action code, and e.g let the high-16-bit be the
+> > >     port number and lower-16bit the (existing) action verdict.
+> > > 
+> > >   Pros: Simple API
+> > >   Cons: Number of ports limited to 64K
 > > 
-> > yeah. let's keep redirect to sockets, tunnels, crypto and exotic things
-> > out of this discussion.
-> > XDP_REDIRECT should assume L2 raw packet is being redirected to another L2 netdev.
-> > If we make it too generic it will lose performance.
+> > Practically speaking this may be seem reserving 64k for the port number
+> > might be enough space, but I would also like to see a new return option
+> > for flags so I start to get concerned about space.  Daniel also
+> > hightlights the fact that encoding the port in the action may does not
+> > leave room for flags and could get confusing.
 > > 
-> > For cls_bpf the ifindex concept is symmetric. The program can access it as
-> > skb->ifindex on receive and can redirect to another ifindex via bpf_redirect() helper.
-> > Since netdev is not locked, it's actually big plus, since container management
-> > control plane can simply delete netns+veth and it goes away. The program can
-> > have dangling ifindex (if control plane is buggy and didn't update the bpf side),
-> > but it's harmless. Packets that redirect to non-existing ifindex are dropped.
-> > This approach already understood and works well, so for XDP I suggest to use
-> > the same approach initially before starting to reinvent the wheel.
-> > struct xdp_md needs ifindex field and xdp_redirect() helper that redirects
-> > to L2 netdev only. That's it. Simple and easy.
-> > I think the main use cases in John's and Jesper's minds is something like
-> > xdpswitch where packets are coming from VMs and from physical eths and
-> > being redirected to either physical eth or to VM via upcoming vhost+xdp support.
-> > This xdp_md->ifindex + xdp_redirect(to_ifindex) will solve it just fine.
-> > 
-> > Once we have vhost+xdp and all other bits implemented, we must come back
-> > to this discussion about having port mapping table. As I mentioned
-> > during netconf I think it's very useful, but I don't think we should
-> > gate vhost+xdp and xdp_redirect work on this discussion.
-> > As far as this port mapping table we would need 'port' field in xdp_md as well
-> > and xdp_redirect_port() done via helper or via extra 'out_port' field in xdp_md
-> > plus another XDP_REDIRECT_PORT action code.
+> > One unfortunate side-effect of dropping or transmitting frames with XDP
+> > is that we lose the opportunity to statistically sample in netfilter
+> > since the frames were dropped so early and I'd like to bring that back
+> > with a call to parse flags and possibly call psample_sample_packet()
+> > after the xdp action.  Packet sampling cannot simply be an action
+> > since there are times when a frame should be dropped but should also be
+> > sampled, so it seems logical to add this as a flag.
 > 
-> Guess it would be easier to talk about if we name it "ingress_port" and
-> "egress_port".
+> Hmm, you can do that already today with bpf_xdp_event_output() helper
+> and the program decides when to sample and what custom meta data to
+> prepend along with the (partial or full) xdp packet, see also [1], slide
+> 11 for the "XDP dump" part.
 > 
-> > The actual port table (array) should be populated by user space with netdevs
-> > and these netdev will have their refcnt incremented. Then we'll have discussion
-> > what to do with netdev_unregister notifiers, whether they should be auto-removed
-> > from port table or bpf should have a chance to be notified and act on it.
-> > Such port mapping will allow us to optimize inevitable call
-> > dev_get_by_index_rcu(dev_net(skb->dev), ri->ifindex);
-> > away, since netdevs will be stored in the port table and direct deref
-> > port_map_array[xdp_md->out_port] will give us target netdev quickly.
+> No need to change drivers for this, psample_sample_packet() would also
+> be slower.
 > 
-> I agree with above paragraph, and is happy that you can see that this
-> will actually be faster than using ifindex'es.
-> 
-> > It's nice optimization and there are other more powerful optimizations we
-> > can do with such port table (since we will know in advance which netdevs
-> > the program will be redirecting too), but I still think we should do
-> > ifindex based xdp_redirect first and only add this port table later.
-> 
-> No, we cannot first do an ifindex based xdp_redirect. The point of the
-> port table is to sandbox which ports XDP can use.
+>   [1] http://netdevconf.org/2.1/slides/apr6/zhou-netdev-xdp-2017.pdf
 
-hmm. port table cannot sandbox the ports. The only thing it does
-from 'safety' point of view is moving the checks from run-time into
-static insertion time.
-So the checks that we would do on netdev after looking it up
-based on ifindex are the same checks we will do at insertion time
-into port table. The user space will insert/delete them live
-from that port table, so from program point of view it's exactly
-the same as ifindex. The ports can disappear and can be added
-while the program is running.
-
-Note the very first bpf patchset years ago contained the port table
-abstraction. ovs has concept of vports as well. These two very
-different projects needed port table to provide a layer of
-indirection between ifindex==netdev and virtual port number.
-This is still the case and I'd like to see this port table to be
-implemented for both cls_bpf and xdp. In that sense xdp is not special.
-
-> XDP is different than TC/cls_bpf, as it does "bypass", there is no
-> other layer that can stop or inspect these packets. The TC hooks
-> redirect into the network stack, which have all the usual facilities
-> available for filtering, inspection and debugging what is going on
-> (e.g. tcpdump works for TC redirect).
-
-not true. when bpf_redirect() drops the packet due to incorrect ifindex
-that packet disappears without a trace. No tcpdump and no counter.
-And this is fine. We can add tracepoint there for debugging,
-but it wasn't a problem for anyone who's using it today, so it's
-'nice to have', but certainly not mandatory.
+Thanks, Daniel.  Not sure how I missed this, but I appreciate the pointer.
+I'll add coding up a program to demo this to my TODO list.
