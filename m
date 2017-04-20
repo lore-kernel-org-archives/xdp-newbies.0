@@ -1,74 +1,58 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-oi0-f47.google.com ([209.85.218.47]:36611 "EHLO
-        mail-oi0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S945808AbdDTRM2 (ORCPT
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:34819 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S944611AbdDTWKA (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 20 Apr 2017 13:12:28 -0400
-Received: by mail-oi0-f47.google.com with SMTP id r203so58952279oib.3
-        for <xdp-newbies@vger.kernel.org>; Thu, 20 Apr 2017 10:12:27 -0700 (PDT)
-Date: Thu, 20 Apr 2017 13:12:18 -0400
+        Thu, 20 Apr 2017 18:10:00 -0400
+Received: by mail-qt0-f196.google.com with SMTP id o36so9574958qtb.2
+        for <xdp-newbies@vger.kernel.org>; Thu, 20 Apr 2017 15:09:59 -0700 (PDT)
+Date: Thu, 20 Apr 2017 18:09:51 -0400
 From: Andy Gospodarek <andy@greyhouse.net>
-Subject: Re: XDP question: best API for returning/setting egress port?
-Message-ID: <20170420171218.GM4730@C02RW35GFVH8.dhcp.broadcom.net>
-References: <20170418215856.5fda7127@redhat.com>
- <20170419200259.GK4730@C02RW35GFVH8.dhcp.broadcom.net>
- <58F7D9C6.5040707@iogearbox.net>
+Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
+Message-ID: <20170420220951.GO4730@C02RW35GFVH8.dhcp.broadcom.net>
+References: <20170418.150708.1605529107204449972.davem@davemloft.net>
+ <20170418.152916.1361453741909754079.davem@davemloft.net>
+ <20170419142903.GJ4730@C02RW35GFVH8.dhcp.broadcom.net>
+ <20170419.214049.2190624657363276447.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <58F7D9C6.5040707@iogearbox.net>
+In-Reply-To: <20170419.214049.2190624657363276447.davem@davemloft.net>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Alexei Starovoitov <ast@fb.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>
+To: David Miller <davem@davemloft.net>
+Cc: alexei.starovoitov@gmail.com, michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Wed, Apr 19, 2017 at 11:42:30PM +0200, Daniel Borkmann wrote:
-> On 04/19/2017 10:02 PM, Andy Gospodarek wrote:
-> > On Tue, Apr 18, 2017 at 09:58:56PM +0200, Jesper Dangaard Brouer wrote:
-> > > 
-> > > As I argued in NetConf presentation[1] (from slide #9) we need a port
-> > > mapping table (instead of using ifindex'es).  Both for supporting
-> > > other "port" types than net_devices (think sockets), and for
-> > > sandboxing what XDP can bypass.
-> > > 
-> > > I want to create a new XDP action called XDP_REDIRECT, that instruct
-> > > XDP to send the xdp_buff to another "port" (get translated into a
-> > > net_device, or something else depending on internal port type).
-> > > 
-> > > Looking at the userspace/eBPF interface, I'm wondering what is the
-> > > best API for "returning" this port number from eBPF?
-> > > 
-> > > The options I see is:
-> > > 
-> > > 1) Split-up the u32 action code, and e.g let the high-16-bit be the
-> > >     port number and lower-16bit the (existing) action verdict.
-> > > 
-> > >   Pros: Simple API
-> > >   Cons: Number of ports limited to 64K
+On Wed, Apr 19, 2017 at 09:40:49PM -0400, David Miller wrote:
+> From: Andy Gospodarek <andy@greyhouse.net>
+> Date: Wed, 19 Apr 2017 10:29:03 -0400
+> 
+> > So I tried a variety of things and the simplest change on top of yours that
+> > works well for xdp1, xdp2, and xdp_tx_iptunnel. 
 > > 
-> > Practically speaking this may be seem reserving 64k for the port number
-> > might be enough space, but I would also like to see a new return option
-> > for flags so I start to get concerned about space.  Daniel also
-> > hightlights the fact that encoding the port in the action may does not
-> > leave room for flags and could get confusing.
-> > 
-> > One unfortunate side-effect of dropping or transmitting frames with XDP
-> > is that we lose the opportunity to statistically sample in netfilter
-> > since the frames were dropped so early and I'd like to bring that back
-> > with a call to parse flags and possibly call psample_sample_packet()
-> > after the xdp action.  Packet sampling cannot simply be an action
-> > since there are times when a frame should be dropped but should also be
-> > sampled, so it seems logical to add this as a flag.
+> > diff --git a/net/core/dev.c b/net/core/dev.c
+> > index b3d3a6e..1bab3dc 100644
+> > --- a/net/core/dev.c
+> > +++ b/net/core/dev.c
+> > @@ -4316,11 +4316,11 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
+> >  
+> >  	off = xdp.data - orig_data;
+> >  	if (off)
+> > -		__skb_push(skb, off);
+> > +		__skb_push(skb, -off);
 > 
-> Hmm, you can do that already today with bpf_xdp_event_output() helper
-> and the program decides when to sample and what custom meta data to
-> prepend along with the (partial or full) xdp packet, see also [1], slide
-> 11 for the "XDP dump" part.
+> We have to handle both pushing and popping headers, so could you
+> please test the snippet I asked you to try?
 > 
-> No need to change drivers for this, psample_sample_packet() would also
-> be slower.
-> 
->   [1] http://netdevconf.org/2.1/slides/apr6/zhou-netdev-xdp-2017.pdf
 
-Thanks, Daniel.  Not sure how I missed this, but I appreciate the pointer.
-I'll add coding up a program to demo this to my TODO list.
+I will tomorrow or by Monday of next week.
+
+I'm also going to hack^W write a quick test app to exercise it as well.
+
+
+> > 	if (off > 0)
+> > 		__skb_pull(skb, off);
+> > 	else if (off < 0)
+> > 		__skb_push(skb, -off);
+> 
+> Thanks.
