@@ -1,58 +1,78 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:34819 "EHLO
-        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S944611AbdDTWKA (ORCPT
+Received: from youngberry.canonical.com ([91.189.89.112]:59561 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1161596AbdDUU6r (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 20 Apr 2017 18:10:00 -0400
-Received: by mail-qt0-f196.google.com with SMTP id o36so9574958qtb.2
-        for <xdp-newbies@vger.kernel.org>; Thu, 20 Apr 2017 15:09:59 -0700 (PDT)
-Date: Thu, 20 Apr 2017 18:09:51 -0400
-From: Andy Gospodarek <andy@greyhouse.net>
-Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
-Message-ID: <20170420220951.GO4730@C02RW35GFVH8.dhcp.broadcom.net>
-References: <20170418.150708.1605529107204449972.davem@davemloft.net>
- <20170418.152916.1361453741909754079.davem@davemloft.net>
- <20170419142903.GJ4730@C02RW35GFVH8.dhcp.broadcom.net>
- <20170419.214049.2190624657363276447.davem@davemloft.net>
+        Fri, 21 Apr 2017 16:58:47 -0400
+From: Jay Vosburgh <jay.vosburgh@canonical.com>
+Subject: Re: [PATCH] Enable Netdev XDP tutorial for Ubuntu 17.04
+In-reply-to: <1491997888.2855.1.camel@sipsolutions.net>
+References: <20602.1491881713@famine> (sfid-20170411_053552_749185_2EF01FC0) <1491997888.2855.1.camel@sipsolutions.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20170419.214049.2190624657363276447.davem@davemloft.net>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+Date: Fri, 21 Apr 2017 13:58:42 -0700
+Message-ID: <5170.1492808322@famine>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: David Miller <davem@davemloft.net>
-Cc: alexei.starovoitov@gmail.com, michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
-
-On Wed, Apr 19, 2017 at 09:40:49PM -0400, David Miller wrote:
-> From: Andy Gospodarek <andy@greyhouse.net>
-> Date: Wed, 19 Apr 2017 10:29:03 -0400
-> 
-> > So I tried a variety of things and the simplest change on top of yours that
-> > works well for xdp1, xdp2, and xdp_tx_iptunnel. 
-> > 
-> > diff --git a/net/core/dev.c b/net/core/dev.c
-> > index b3d3a6e..1bab3dc 100644
-> > --- a/net/core/dev.c
-> > +++ b/net/core/dev.c
-> > @@ -4316,11 +4316,11 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
-> >  
-> >  	off = xdp.data - orig_data;
-> >  	if (off)
-> > -		__skb_push(skb, off);
-> > +		__skb_push(skb, -off);
-> 
-> We have to handle both pushing and popping headers, so could you
-> please test the snippet I asked you to try?
-> 
-
-I will tomorrow or by Monday of next week.
-
-I'm also going to hack^W write a quick test app to exercise it as well.
+To: Johannes Berg <johannes@sipsolutions.net>
+Cc: xdp-newbies@vger.kernel.org, Jesper Dangaard Brouer <brouer@redhat.com>, Andy Gospodarek <andy@greyhouse.net>
 
 
-> > 	if (off > 0)
-> > 		__skb_pull(skb, off);
-> > 	else if (off < 0)
-> > 		__skb_push(skb, -off);
-> 
-> Thanks.
+Johannes Berg <johannes@sipsolutions.net> wrote:
+
+>On Mon, 2017-04-10 at 20:35 -0700, Jay Vosburgh wrote:
+>> 	This patch resolves build issues when compiling the samples on
+>> Ubuntu 17.04 with the distro 4.10 kernel and the linux-headers
+>> package
+>> installed.  This permits running the samples using distro packages
+>> without needing to rebuild the kernel from source.
+>> 
+>> 	Tested on a 17.04 VM using virtio_net.
+>> 
+>> Signed-off-by: Jay Vosburgh <jay.vosburgh@canonical.com>
+>> ---
+>> 
+>> 	I haven't tried the patched version of this on a built from
+>> source kernel yet, so it might break that.
+>
+>I was able to build on a recent Debian testing by simply inserting the
+>following line into samples/bpf/Makefile to force it to use the
+>kernel's UAPI instead of the installed headers:
+>
+>HOSTCFLAGS += -I$(srctree)/include/uapi/ -D__EXPORTED_HEADERS__
+
+	Getting back to this after a couple of weeks...
+
+	The above changes didn't make any difference for me, but it
+turns out all of the various Makefile hacks I did previously aren't
+needed for Ubuntu 17.04, the following lets the examples build and run
+fine:
+
+diff --git a/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c b/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c
+index 11157f9..5cf297e 100644
+--- a/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c
++++ b/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c
+@@ -13,7 +13,6 @@ static const char *__doc__=
+ #include <string.h>
+ #include <unistd.h>
+ #include <locale.h>
+-#include <linux/bitops.h>
+ 
+ #include <sys/resource.h>
+ #include <getopt.h>
+@@ -212,7 +211,7 @@ static void blacklist_print_proto(int key, __u64 count)
+ 	printf("\n\t\"%s\" : %llu", xdp_proto_filter_names[key], count);
+ }
+ 
+-static void blacklist_print_port(int key, u32 val, int countfds[])
++static void blacklist_print_port(int key, __u32 val, int countfds[])
+ {
+ 	int i;
+ 	__u64 count;
+
+
+	-J
+
+---
+	-Jay Vosburgh, jay.vosburgh@canonical.com
