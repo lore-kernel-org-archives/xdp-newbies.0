@@ -1,78 +1,91 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:59561 "EHLO
-        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1161596AbdDUU6r (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 21 Apr 2017 16:58:47 -0400
-From: Jay Vosburgh <jay.vosburgh@canonical.com>
-Subject: Re: [PATCH] Enable Netdev XDP tutorial for Ubuntu 17.04
-In-reply-to: <1491997888.2855.1.camel@sipsolutions.net>
-References: <20602.1491881713@famine> (sfid-20170411_053552_749185_2EF01FC0) <1491997888.2855.1.camel@sipsolutions.net>
+Received: from mx1.redhat.com ([209.132.183.28]:56106 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1170736AbdDXNSl (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 24 Apr 2017 09:18:41 -0400
+Date: Mon, 24 Apr 2017 15:18:34 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: [PATCH v4 net-next RFC] net: Generic XDP
+Message-ID: <20170424151834.66fd0a43@redhat.com>
+In-Reply-To: <20170420163034.053ec42c@redhat.com>
+References: <20170415005949.GB73685@ast-mbp.thefacebook.com>
+        <20170418190535.GG4730@C02RW35GFVH8.dhcp.broadcom.net>
+        <20170418.150708.1605529107204449972.davem@davemloft.net>
+        <20170418.152916.1361453741909754079.davem@davemloft.net>
+        <20170419142903.GJ4730@C02RW35GFVH8.dhcp.broadcom.net>
+        <20170420163034.053ec42c@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
-Date: Fri, 21 Apr 2017 13:58:42 -0700
-Message-ID: <5170.1492808322@famine>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Johannes Berg <johannes@sipsolutions.net>
-Cc: xdp-newbies@vger.kernel.org, Jesper Dangaard Brouer <brouer@redhat.com>, Andy Gospodarek <andy@greyhouse.net>
+To: Andy Gospodarek <andy@greyhouse.net>
+Cc: David Miller <davem@davemloft.net>, alexei.starovoitov@gmail.com, michael.chan@broadcom.com, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, brouer@redhat.com
 
 
-Johannes Berg <johannes@sipsolutions.net> wrote:
+On Thu, 20 Apr 2017 16:30:34 +0200 Jesper Dangaard Brouer <brouer@redhat.com> wrote:
 
->On Mon, 2017-04-10 at 20:35 -0700, Jay Vosburgh wrote:
->> 	This patch resolves build issues when compiling the samples on
->> Ubuntu 17.04 with the distro 4.10 kernel and the linux-headers
->> package
->> installed.  This permits running the samples using distro packages
->> without needing to rebuild the kernel from source.
->> 
->> 	Tested on a 17.04 VM using virtio_net.
->> 
->> Signed-off-by: Jay Vosburgh <jay.vosburgh@canonical.com>
->> ---
->> 
->> 	I haven't tried the patched version of this on a built from
->> source kernel yet, so it might break that.
->
->I was able to build on a recent Debian testing by simply inserting the
->following line into samples/bpf/Makefile to force it to use the
->kernel's UAPI instead of the installed headers:
->
->HOSTCFLAGS += -I$(srctree)/include/uapi/ -D__EXPORTED_HEADERS__
+> On Wed, 19 Apr 2017 10:29:03 -0400
+> Andy Gospodarek <andy@greyhouse.net> wrote:
+> 
+> > I ran this on top of a card that uses the bnxt_en driver on a desktop
+> > class system with an i7-6700 CPU @ 3.40GHz, sending a single stream of
+> > UDP traffic with flow control disabled and saw the following (all stats
+> > in Million PPS).
+> > 
+> >                 xdp1                xdp2            xdp_tx_tunnel
+> > Generic XDP      7.8    5.5 (1.3 actual)         4.6 (1.1 actual)
+> > Optimized XDP   11.7		     9.7                      4.6
+> > 
+> > One thing to note is that the Generic XDP case shows some different
+> > results for reported by the application vs actual (seen on the wire).  I
+> > did not debug where the drops are happening and what counter needs to be
+> > incremented to note this -- I'll add that to my TODO list.  The
+> > Optimized XDP case does not have a difference in reported vs actual
+> > frames on the wire.  
+> 
+> The reported application vs actual (seen on the wire) number sound scary.
+> How do you evaluate/measure "seen on the wire"?
+> 
+> Perhaps you could use ethtool -S stats to see if anything is fishy?
+> I recommend using my tool[1] like:
+> 
+>  ~/git/network-testing/bin/ethtool_stats.pl --dev mlx5p2 --sec 2
+> 
+> [1] https://github.com/netoptimizer/network-testing/blob/master/bin/ethtool_stats.pl
+> 
+> I'm evaluating this patch on a mlx5 NIC, and something is not right...
+> I'm seeing:
+> 
+>  Ethtool(mlx5p2) stat:     349599 (        349,599) <= tx_multicast_phy /sec
+>  Ethtool(mlx5p2) stat:    4940185 (      4,940,185) <= tx_packets /sec
+>  Ethtool(mlx5p2) stat:     349596 (        349,596) <= tx_packets_phy /sec
+>  [...]
+>  Ethtool(mlx5p2) stat:      36898 (         36,898) <= rx_cache_busy /sec
+>  Ethtool(mlx5p2) stat:      36898 (         36,898) <= rx_cache_full /sec
+>  Ethtool(mlx5p2) stat:    4903287 (      4,903,287) <= rx_cache_reuse /sec
+>  Ethtool(mlx5p2) stat:    4940185 (      4,940,185) <= rx_csum_complete /sec
+>  Ethtool(mlx5p2) stat:    4940185 (      4,940,185) <= rx_packets /sec
+> 
+> Something is wrong... when I tcpdump on the generator machine, I see
+> garbled packets with IPv6 multicast addresses.
+> 
+> And it looks like I'm only sending 349,596 tx_packets_phy/sec on the "wire".
+> 
 
-	Getting back to this after a couple of weeks...
+Not seeing packets on the TX wire was caused by the NIC HW dropping the
+packets, because the ethernet MAC-addr were not changed/swapped.
 
-	The above changes didn't make any difference for me, but it
-turns out all of the various Makefile hacks I did previously aren't
-needed for Ubuntu 17.04, the following lets the examples build and run
-fine:
+Fixed this XDP_TX bug in my test program xdp_bench01_mem_access_cost.
+https://github.com/netoptimizer/prototype-kernel/commit/85f7ba2f0ea2
 
-diff --git a/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c b/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c
-index 11157f9..5cf297e 100644
---- a/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c
-+++ b/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c
-@@ -13,7 +13,6 @@ static const char *__doc__=
- #include <string.h>
- #include <unistd.h>
- #include <locale.h>
--#include <linux/bitops.h>
- 
- #include <sys/resource.h>
- #include <getopt.h>
-@@ -212,7 +211,7 @@ static void blacklist_print_proto(int key, __u64 count)
- 	printf("\n\t\"%s\" : %llu", xdp_proto_filter_names[key], count);
- }
- 
--static void blacklist_print_port(int key, u32 val, int countfds[])
-+static void blacklist_print_port(int key, __u32 val, int countfds[])
- {
- 	int i;
- 	__u64 count;
+Even added a new option --swapmac for creating another test option for
+modifying the packet.
+https://github.com/netoptimizer/prototype-kernel/commit/fe080e6f3ccf
 
-
-	-J
-
----
-	-Jay Vosburgh, jay.vosburgh@canonical.com
+I will shortly publish a full report of testing this patch.
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
