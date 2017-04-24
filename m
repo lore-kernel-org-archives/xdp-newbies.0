@@ -1,64 +1,42 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57852 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1764064AbdDXOYM (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 24 Apr 2017 10:24:12 -0400
-Date: Mon, 24 Apr 2017 16:24:05 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Blogpost evaluation this [PATCH v4 net-next RFC] net: Generic XDP
-Message-ID: <20170424162405.1183f2e7@redhat.com>
-In-Reply-To: <20170413.120925.2082322246776478766.davem@davemloft.net>
+Received: from shards.monkeyblade.net ([184.105.139.130]:58552 "EHLO
+        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S967445AbdDXW0p (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 24 Apr 2017 18:26:45 -0400
+Date: Mon, 24 Apr 2017 18:26:43 -0400 (EDT)
+Message-Id: <20170424.182643.485613135674690555.davem@davemloft.net>
+Subject: Re: Blogpost evaluation this [PATCH v4 net-next RFC] net: Generic
+ XDP
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <20170424162405.1183f2e7@redhat.com>
 References: <20170413.120925.2082322246776478766.davem@davemloft.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+        <20170424162405.1183f2e7@redhat.com>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: David Miller <davem@davemloft.net>, xdp-newbies@vger.kernel.org
-Cc: netdev@vger.kernel.org, brouer@redhat.com, Andy Gospodarek <andy@greyhouse.net>
+To: brouer@redhat.com
+Cc: xdp-newbies@vger.kernel.org, netdev@vger.kernel.org, andy@greyhouse.net
 
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Date: Mon, 24 Apr 2017 16:24:05 +0200
 
-I've done a very detailed evaluation of this patch, and I've created a
-blogpost like report here:
-
- https://prototype-kernel.readthedocs.io/en/latest/blogposts/xdp25_eval_generic_xdp_tx.html
-
-I didn't evaluate the adjust_head part, so I hope Andy is still
-planning to validate that part?
-
---Jesper
-
-
-
-On Thu, 13 Apr 2017 12:09:25 -0400 (EDT)
-David Miller <davem@davemloft.net> wrote:
-
-> This provides a generic SKB based non-optimized XDP path which is used
-> if either the driver lacks a specific XDP implementation, or the user
-> requests it via a new IFLA_XDP_FLAGS value named XDP_FLAGS_SKB_MODE.
+> I've done a very detailed evaluation of this patch, and I've created a
+> blogpost like report here:
 > 
-> It is arguable that perhaps I should have required something like
-> this as part of the initial XDP feature merge.
-> 
-> I believe this is critical for two reasons:
-> 
-> 1) Accessibility.  More people can play with XDP with less
->    dependencies.  Yes I know we have XDP support in virtio_net, but
->    that just creates another depedency for learning how to use this
->    facility.
-> 
->    I wrote this to make life easier for the XDP newbies.
-> 
-> 2) As a model for what the expected semantics are.  If there is a pure
->    generic core implementation, it serves as a semantic example for
->    driver folks adding XDP support.
-> 
-> This is just a rough draft and is untested.
+>  https://prototype-kernel.readthedocs.io/en/latest/blogposts/xdp25_eval_generic_xdp_tx.html
 
+Thanks for doing this Jesper.
 
+> I didn't evaluate the adjust_head part, so I hope Andy is still
+> planning to validate that part?
 
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+I was hoping he would post some results today as well.
+
+Andy, how goes it? :)
+
+Once the basic patch is ready and integrated in we can try to do
+xmit_more in generic XDP and see what that does for XDP_TX
+performance.
