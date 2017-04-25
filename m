@@ -1,72 +1,44 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:33287 "EHLO
-        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1951947AbdDYRZx (ORCPT
+Received: from shards.monkeyblade.net ([184.105.139.130]:42720 "EHLO
+        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754281AbdDYRbF (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 25 Apr 2017 13:25:53 -0400
-Received: by mail-qk0-f193.google.com with SMTP id o85so15946914qkh.0
-        for <xdp-newbies@vger.kernel.org>; Tue, 25 Apr 2017 10:25:53 -0700 (PDT)
-Date: Tue, 25 Apr 2017 13:25:49 -0400
-From: Andy Gospodarek <andy@greyhouse.net>
-Subject: Re: Blogpost evaluation this [PATCH v4 net-next RFC] net: Generic XDP
-Message-ID: <20170425172549.GQ4730@C02RW35GFVH8.dhcp.broadcom.net>
-References: <20170413.120925.2082322246776478766.davem@davemloft.net>
- <20170424162405.1183f2e7@redhat.com>
- <20170424.182643.485613135674690555.davem@davemloft.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20170424.182643.485613135674690555.davem@davemloft.net>
+        Tue, 25 Apr 2017 13:31:05 -0400
+Date: Tue, 25 Apr 2017 13:31:03 -0400 (EDT)
+Message-Id: <20170425.133103.1549209166033304482.davem@davemloft.net>
+Subject: Re: Blogpost evaluation this [PATCH v4 net-next RFC] net: Generic
+ XDP
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <20170425172549.GQ4730@C02RW35GFVH8.dhcp.broadcom.net>
+References: <20170424162405.1183f2e7@redhat.com>
+        <20170424.182643.485613135674690555.davem@davemloft.net>
+        <20170425172549.GQ4730@C02RW35GFVH8.dhcp.broadcom.net>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: David Miller <davem@davemloft.net>
+To: andy@greyhouse.net
 Cc: brouer@redhat.com, xdp-newbies@vger.kernel.org, netdev@vger.kernel.org
 
-On Mon, Apr 24, 2017 at 06:26:43PM -0400, David Miller wrote:
-> From: Jesper Dangaard Brouer <brouer@redhat.com>
-> Date: Mon, 24 Apr 2017 16:24:05 +0200
+From: Andy Gospodarek <andy@greyhouse.net>
+Date: Tue, 25 Apr 2017 13:25:49 -0400
+
+> On Mon, Apr 24, 2017 at 06:26:43PM -0400, David Miller wrote:
+>> Andy, how goes it? :)
 > 
-> > I've done a very detailed evaluation of this patch, and I've created a
-> > blogpost like report here:
-> > 
-> >  https://prototype-kernel.readthedocs.io/en/latest/blogposts/xdp25_eval_generic_xdp_tx.html
+> Sorry for the delayed response.  I was AFK yesterday, but based on
+> testing from Friday and what I wrapped up today all looks good to me.
 > 
-> Thanks for doing this Jesper.
-
-Yes, this is excellent.  I'm not all the way thru it, but I looked at
-the data and corroborate the results you are seeing.
-
-My results for both optimized and generic XDP for
-xdp_bench01_mem_access_cost --action XDP_DROP --readmem are quite
-similar to yours (11.7Mpps and 7.8Mpps, respectively for me 11.7Mpps and
-8.4Mpps for you).
-
-I also noted (as you did) that there is no discernible difference
-running xdp_bench01_mem_access_cost with or without the --readmem
-option since the packet data is already being accessed that late it the
-stack.
-
+> On my system (i7-6700 CPU @ 3.40GHz) the reported and actual TX
+> throughput for xdp_tx_iptunnel is 4.6Mpps for the optimized XDP.
 > 
-> > I didn't evaluate the adjust_head part, so I hope Andy is still
-> > planning to validate that part?
-> 
-> I was hoping he would post some results today as well.
-> 
-> Andy, how goes it? :)
+> For generic XDP the reported throughput of xdp_tx_iptunnel is 4.6Mpps
+> but only ~880kpps actually on the wire.  It seems to me that can be
+> fixed with a follow-up for offending drivers or the stack if deemed that
+> there is a real error there.
 
-Sorry for the delayed response.  I was AFK yesterday, but based on
-testing from Friday and what I wrapped up today all looks good to me.
+Ok, I'll commit the latest version with tested-by tags for you, Jesper,
+and David Ahern added.
 
-On my system (i7-6700 CPU @ 3.40GHz) the reported and actual TX
-throughput for xdp_tx_iptunnel is 4.6Mpps for the optimized XDP.
-
-For generic XDP the reported throughput of xdp_tx_iptunnel is 4.6Mpps
-but only ~880kpps actually on the wire.  It seems to me that can be
-fixed with a follow-up for offending drivers or the stack if deemed that
-there is a real error there.
-
-> Once the basic patch is ready and integrated in we can try to do
-> xmit_more in generic XDP and see what that does for XDP_TX
-> performance.
-
-Agreed.
+Thanks everyone.
