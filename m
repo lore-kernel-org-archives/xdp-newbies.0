@@ -1,86 +1,145 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39342 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52586 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1176024AbdDYIfq (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 25 Apr 2017 04:35:46 -0400
-Date: Tue, 25 Apr 2017 10:35:37 +0200
+        id S1428729AbdDYJfA (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 25 Apr 2017 05:35:00 -0400
+Date: Tue, 25 Apr 2017 11:34:53 +0200
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [PATCH] Enable Netdev XDP tutorial for Ubuntu 17.04
-Message-ID: <20170425103537.1114aece@redhat.com>
-In-Reply-To: <5170.1492808322@famine>
-References: <20602.1491881713@famine>
-        <1491997888.2855.1.camel@sipsolutions.net>
-        <5170.1492808322@famine>
+Subject: Re: xdp_redirect ifindex vs port. Was: best API for
+ returning/setting egress port?
+Message-ID: <20170425113453.5c72080f@redhat.com>
+In-Reply-To: <20170420171006.GA97067@ast-mbp.thefacebook.com>
+References: <20170418215856.5fda7127@redhat.com>
+        <20170419200259.GK4730@C02RW35GFVH8.dhcp.broadcom.net>
+        <58F7E9F3.5090604@iogearbox.net>
+        <20170420025611.GA53935@ast-mbp.thefacebook.com>
+        <20170420081051.77a41aa8@redhat.com>
+        <20170420171006.GA97067@ast-mbp.thefacebook.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jay Vosburgh <jay.vosburgh@canonical.com>
-Cc: Johannes Berg <johannes@sipsolutions.net>, xdp-newbies@vger.kernel.org, Andy Gospodarek <andy@greyhouse.net>, brouer@redhat.com
+To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Cc: Daniel Borkmann <daniel@iogearbox.net>, Andy Gospodarek <andy@greyhouse.net>, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <ast@fb.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>, brouer@redhat.com
 
+On Thu, 20 Apr 2017 10:10:08 -0700
+Alexei Starovoitov <alexei.starovoitov@gmail.com> wrote:
 
-On Fri, 21 Apr 2017 13:58:42 -0700 Jay Vosburgh <jay.vosburgh@canonical.com> wrote:
-
-> Johannes Berg <johannes@sipsolutions.net> wrote:
+> On Thu, Apr 20, 2017 at 08:10:51AM +0200, Jesper Dangaard Brouer wrote:
+> > On Wed, 19 Apr 2017 19:56:13 -0700
+> > Alexei Starovoitov <alexei.starovoitov@gmail.com> wrote:
+> >   
+> > > On Thu, Apr 20, 2017 at 12:51:31AM +0200, Daniel Borkmann wrote:  
+> > > > 
+> > > > Is there a concrete reason that all the proposed future cases like sockets
+> > > > have to be handled within the very same XDP_REDIRECT return code? F.e. why
+> > > > not XDP_TX_NIC that only assumes ifindex as proposed in the patch, and future
+> > > > ones would get a different return code f.e. XDP_TX_SK only handling sockets
+> > > > when we get there implementation-wise?    
+> > > 
+> > > yeah. let's keep redirect to sockets, tunnels, crypto and exotic things
+> > > out of this discussion.
+> > > XDP_REDIRECT should assume L2 raw packet is being redirected to another L2 netdev.
+> > > If we make it too generic it will lose performance.
+> > > 
+> > > For cls_bpf the ifindex concept is symmetric. The program can access it as
+> > > skb->ifindex on receive and can redirect to another ifindex via bpf_redirect() helper.
+> > > Since netdev is not locked, it's actually big plus, since container management
+> > > control plane can simply delete netns+veth and it goes away. The program can
+> > > have dangling ifindex (if control plane is buggy and didn't update the bpf side),
+> > > but it's harmless. Packets that redirect to non-existing ifindex are dropped.
+> > > This approach already understood and works well, so for XDP I suggest to use
+> > > the same approach initially before starting to reinvent the wheel.
+> > > struct xdp_md needs ifindex field and xdp_redirect() helper that redirects
+> > > to L2 netdev only. That's it. Simple and easy.
+> > > I think the main use cases in John's and Jesper's minds is something like
+> > > xdpswitch where packets are coming from VMs and from physical eths and
+> > > being redirected to either physical eth or to VM via upcoming vhost+xdp support.
+> > > This xdp_md->ifindex + xdp_redirect(to_ifindex) will solve it just fine.
+> > > 
+> > > Once we have vhost+xdp and all other bits implemented, we must come back
+> > > to this discussion about having port mapping table. As I mentioned
+> > > during netconf I think it's very useful, but I don't think we should
+> > > gate vhost+xdp and xdp_redirect work on this discussion.
+> > > As far as this port mapping table we would need 'port' field in xdp_md as well
+> > > and xdp_redirect_port() done via helper or via extra 'out_port' field in xdp_md
+> > > plus another XDP_REDIRECT_PORT action code.  
+> > 
+> > Guess it would be easier to talk about if we name it "ingress_port" and
+> > "egress_port".
+> >   
+> > > The actual port table (array) should be populated by user space with netdevs
+> > > and these netdev will have their refcnt incremented. Then we'll have discussion
+> > > what to do with netdev_unregister notifiers, whether they should be auto-removed
+> > > from port table or bpf should have a chance to be notified and act on it.
+> > > Such port mapping will allow us to optimize inevitable call
+> > > dev_get_by_index_rcu(dev_net(skb->dev), ri->ifindex);
+> > > away, since netdevs will be stored in the port table and direct deref
+> > > port_map_array[xdp_md->out_port] will give us target netdev quickly.  
+> > 
+> > I agree with above paragraph, and is happy that you can see that this
+> > will actually be faster than using ifindex'es.
+> >   
+> > > It's nice optimization and there are other more powerful optimizations we
+> > > can do with such port table (since we will know in advance which netdevs
+> > > the program will be redirecting too), but I still think we should do
+> > > ifindex based xdp_redirect first and only add this port table later.  
+> > 
+> > No, we cannot first do an ifindex based xdp_redirect. The point of the
+> > port table is to sandbox which ports XDP can use.  
 > 
-> >On Mon, 2017-04-10 at 20:35 -0700, Jay Vosburgh wrote:  
-> >> 	This patch resolves build issues when compiling the samples on
-> >> Ubuntu 17.04 with the distro 4.10 kernel and the linux-headers
-> >> package
-> >> installed.  This permits running the samples using distro packages
-> >> without needing to rebuild the kernel from source.
-> >> 
-> >> 	Tested on a 17.04 VM using virtio_net.
-> >> 
-> >> Signed-off-by: Jay Vosburgh <jay.vosburgh@canonical.com>
-> >> ---
-> >> 
-> >> 	I haven't tried the patched version of this on a built from
-> >> source kernel yet, so it might break that.  
-> >
-> >I was able to build on a recent Debian testing by simply inserting the
-> >following line into samples/bpf/Makefile to force it to use the
-> >kernel's UAPI instead of the installed headers:
-> >
-> >HOSTCFLAGS += -I$(srctree)/include/uapi/ -D__EXPORTED_HEADERS__  
+> hmm. port table cannot sandbox the ports. The only thing it does
+> from 'safety' point of view is moving the checks from run-time into
+> static insertion time.
+> So the checks that we would do on netdev after looking it up
+> based on ifindex are the same checks we will do at insertion time
+> into port table. The user space will insert/delete them live
+> from that port table, so from program point of view it's exactly
+> the same as ifindex. The ports can disappear and can be added
+> while the program is running.
+
+I agree, that from the eBPF programs point of view using an ifindex or a
+port number is the same.  And I do like this model, that this is just a
+number seem from bpf.  It provides a clean separation between the
+kernel and ebpf program world.
+
+
+> Note the very first bpf patchset years ago contained the port table
+> abstraction. ovs has concept of vports as well. These two very
+> different projects needed port table to provide a layer of
+> indirection between ifindex==netdev and virtual port number.
+> This is still the case and I'd like to see this port table to be
+> implemented for both cls_bpf and xdp. In that sense xdp is not
+> special.
+
+Glad to hear you want to see this implemented, I will start coding on
+this then.  Good point with cls_bpf, I was planning to make this port
+table strongly connected to XDP, guess I should also think of cls_bpf.
+
+
+> > XDP is different than TC/cls_bpf, as it does "bypass", there is no
+> > other layer that can stop or inspect these packets. The TC hooks
+> > redirect into the network stack, which have all the usual facilities
+> > available for filtering, inspection and debugging what is going on
+> > (e.g. tcpdump works for TC redirect).  
 > 
-> 	Getting back to this after a couple of weeks...
-> 
-> 	The above changes didn't make any difference for me, but it
-> turns out all of the various Makefile hacks I did previously aren't
-> needed for Ubuntu 17.04, the following lets the examples build and run
-> fine:
-> 
-> diff --git a/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c b/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c
-> index 11157f9..5cf297e 100644
-> --- a/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c
-> +++ b/kernel/samples/bpf/xdp_ddos01_blacklist_cmdline.c
-> @@ -13,7 +13,6 @@ static const char *__doc__=
->  #include <string.h>
->  #include <unistd.h>
->  #include <locale.h>
-> -#include <linux/bitops.h>
-
-This include was added by Andy in commit 888606b5accb ("samples/bpf:
-xdp_ddos01 add support for port blacklisting").
-
-To Andy, are you okay with this change/patch?
-
-
->  #include <sys/resource.h>
->  #include <getopt.h>
-> @@ -212,7 +211,7 @@ static void blacklist_print_proto(int key, __u64 count)
->  	printf("\n\t\"%s\" : %llu", xdp_proto_filter_names[key], count);
->  }
->  
-> -static void blacklist_print_port(int key, u32 val, int countfds[])
-> +static void blacklist_print_port(int key, __u32 val, int countfds[])
->  {
->  	int i;
->  	__u64 count;
-> 
-
+> not true. when bpf_redirect() drops the packet due to incorrect ifindex
+> that packet disappears without a trace. No tcpdump and no counter.
+> And this is fine. We can add tracepoint there for debugging,
+> but it wasn't a problem for anyone who's using it today, so it's
+> 'nice to have', but certainly not mandatory.
+ 
+I'm not worried about the DROP case, I agree that is fine (as you also
+say).  The problem is unintentionally sending a packet to a wrong
+ifindex.  This is clearly an eBPF program error, BUT with XDP this
+becomes a very hard to debug program error.  With TC-redirect/cls_bpf
+we can tcpdump the packets, with XDP there is no visibility into this
+happening (the NSA is going to love this "feature").  Maybe we could add
+yet-another tracepoint to allow debugging this.  My proposal that we
+simply remove the possibility for such program errors, by as you say
+move the validation from run-time into static insertion-time, via a
+port table.
 
 -- 
 Best regards,
