@@ -1,85 +1,71 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:35118 "EHLO
-        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1424815AbdD1RJV (ORCPT
+Received: from shards.monkeyblade.net ([184.105.139.130]:56950 "EHLO
+        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1422832AbdD1ReC (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 28 Apr 2017 13:09:21 -0400
-Received: by mail-qk0-f193.google.com with SMTP id a19so9768121qkg.2
-        for <xdp-newbies@vger.kernel.org>; Fri, 28 Apr 2017 10:09:21 -0700 (PDT)
-From: Aaron Conole <aconole@bytheb.org>
+        Fri, 28 Apr 2017 13:34:02 -0400
+Date: Fri, 28 Apr 2017 13:33:57 -0400 (EDT)
+Message-Id: <20170428.133357.1350487366358004505.davem@davemloft.net>
 Subject: Re: [PATCH v2 binutils] Add BPF support to binutils...
-References: <20170427.170934.891283291562287326.davem@davemloft.net>
-        <f7td1bwtthr.fsf@redhat.com>
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <f7tfugssblu.fsf@redhat.com>
+References: <f7td1bwtthr.fsf@redhat.com>
         <20170428.120457.408834081300892396.davem@davemloft.net>
-Date: Fri, 28 Apr 2017 13:09:17 -0400
-In-Reply-To: <20170428.120457.408834081300892396.davem@davemloft.net> (David
-        Miller's message of "Fri, 28 Apr 2017 12:04:57 -0400 (EDT)")
-Message-ID: <f7tfugssblu.fsf@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+        <f7tfugssblu.fsf@redhat.com>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: David Miller <davem@davemloft.net>
+To: aconole@bytheb.org
 Cc: ast@fb.com, daniel@iogearbox.net, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-David Miller <davem@davemloft.net> writes:
+From: Aaron Conole <aconole@bytheb.org>
+Date: Fri, 28 Apr 2017 13:09:17 -0400
 
-> From: Aaron Conole <aconole@bytheb.org>
-> Date: Fri, 28 Apr 2017 11:57:36 -0400
->
->> I'll get an arm board up and running to do some testing there.  As a
->> teaser:
->
-> Great.
->
-> I started working on some more relocation stuff, so more of the
-> generic gas tests pass.
->
-> For example, stuff like this now works properly:
->
-> [davem@dhcp-10-15-49-210 build-bpf]$ cat gas/y.s
-> 	.data
-> 	.globl	foo
-> foo:	.xword	bar
-> [davem@dhcp-10-15-49-210 build-bpf]$ gas/as-new -o gas/y.o gas/y.s
-> [davem@dhcp-10-15-49-210 build-bpf]$ binutils/objdump -r gas/y.o
->
-> gas/y.o:     file format elf64-bpfle
->
-> RELOCATION RECORDS FOR [.data]:
-> OFFSET           TYPE              VALUE 
-> 0000000000000000 R_BPF_DATA_64     bar
->
->
-> [davem@dhcp-10-15-49-210 build-bpf]$
->
-> It turned out that I needed to separate the R_BPF_* relocations into
-> data vs. insn ones.
->
-> Another idea I am thinking about pursuing is adding BPF simulator
-> support under sim/ so that people can use gdb to step through BPF
-> programs.
->
-> I hope we can make it work in a way that we can even step through
-> XDP programs and feed them simple test packets, stuff like that.
->
-> Anyways, quick relative live patch against v2 from my tree for the
-> reloc stuff:
->
-> diff --git a/bfd/elf64-bpf.c b/bfd/elf64-bpf.c
-> index 9944bb4..1be285d 100644
-> --- a/bfd/elf64-bpf.c
-> +++ b/bfd/elf64-bpf.c
-> @@ -1,8 +1,89 @@
->  #include "sysdep.h"
->  #include "bfd.h"
-> +#include "bfdlink.h"
->  #include "libbfd.h"
-> +#include "libiberty.h"
->  #include "elf-bfd.h"
-> +#include "elf/bpf.h"
->  #include "opcode/bpf.h"
-> +#include "objalloc.h"
-> +#include "elf64-bpf.h"
+> David Miller <davem@davemloft.net> writes:
+> 
+>> diff --git a/bfd/elf64-bpf.c b/bfd/elf64-bpf.c
+>> index 9944bb4..1be285d 100644
+>> --- a/bfd/elf64-bpf.c
+>> +++ b/bfd/elf64-bpf.c
+>> @@ -1,8 +1,89 @@
+>>  #include "sysdep.h"
+>>  #include "bfd.h"
+>> +#include "bfdlink.h"
+>>  #include "libbfd.h"
+>> +#include "libiberty.h"
+>>  #include "elf-bfd.h"
+>> +#include "elf/bpf.h"
+>>  #include "opcode/bpf.h"
+>> +#include "objalloc.h"
+>> +#include "elf64-bpf.h"
+> 
+> I get a compile error here.  I guess this file wasn't included.
 
-I get a compile error here.  I guess this file wasn't included.
+Sorry about that, here is bfd/elf64-bpf.h:
+
+/* BPF ELF specific backend routines.
+   Copyright (C) 2017 Free Software Foundation, Inc.
+
+   This file is part of BFD, the Binary File Descriptor library.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston,
+   MA 02110-1301, USA.  */
+
+extern reloc_howto_type *_bfd_bpf_elf_reloc_type_lookup
+  (bfd *, bfd_reloc_code_real_type);
+extern reloc_howto_type *_bfd_bpf_elf_reloc_name_lookup
+  (bfd *, const char *);
