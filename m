@@ -1,85 +1,96 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:43488 "EHLO
-        mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1755227AbdD0Xbk (ORCPT
+Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:45672 "EHLO
+        mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S965201AbdD1CGi (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 27 Apr 2017 19:31:40 -0400
-Subject: Re: xdp_redirect ifindex vs port. Was: best API for returning/setting
- egress port?
-References: <58F7E9F3.5090604@iogearbox.net>
- <20170420025611.GA53935@ast-mbp.thefacebook.com>
- <20170420081051.77a41aa8@redhat.com>
- <20170420171006.GA97067@ast-mbp.thefacebook.com>
- <20170425113453.5c72080f@redhat.com>
- <20170426002610.eihwmz4knbmrolfw@ast-mbp.dhcp.thefacebook.com>
- <59000EF6.1050204@gmail.com> <20170426111158.578b925e@redhat.com>
- <5900CC41.2070502@gmail.com> <c9b3ff9b-8938-3274-da29-c04f9da2a314@fb.com>
- <20170426205544.GA40859@C02RW35GFVH8> <20170427104121.32df2178@redhat.com>
+        Thu, 27 Apr 2017 22:06:38 -0400
+Subject: Re: assembler mnenomics for call/tailcall plus maps...
+References: <20170427.164245.1980485298195850482.davem@davemloft.net>
 From: Alexei Starovoitov <ast@fb.com>
-Message-ID: <53e9dd2f-f40a-b43b-99c9-62f5ce3a665c@fb.com>
-Date: Thu, 27 Apr 2017 16:31:14 -0700
+Message-ID: <398986a4-ef4b-6631-c6eb-96505e0a5849@fb.com>
+Date: Thu, 27 Apr 2017 19:06:14 -0700
 MIME-Version: 1.0
-In-Reply-To: <20170427104121.32df2178@redhat.com>
+In-Reply-To: <20170427.164245.1980485298195850482.davem@davemloft.net>
 Content-Type: text/plain; charset="windows-1252"; format=flowed
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>, Andy Gospodarek <andy@greyhouse.net>
-Cc: John Fastabend <john.fastabend@gmail.com>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Daniel Borkmann <borkmann@iogearbox.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+To: David Miller <davem@davemloft.net>, daniel@iogearbox.net
+Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On 4/27/17 1:41 AM, Jesper Dangaard Brouer wrote:
-> When registering/attaching a XDP/bpf program, we would just send the
-> file-descriptor for this port-map along (like we do with the bpf_prog
-> FD). Plus, it own ingress-port number this program is in the port-map.
+On 4/27/17 1:42 PM, David Miller wrote:
 >
-> It is not clear to me, in-which-data-structure on the kernel-side we
-> store this reference to the port-map and ingress-port. As today we only
-> have the "raw" struct bpf_prog pointer. I see several options:
+> Can you guys give me some kind of idea of how it might be nice to
+> represent calls and tailcalls in assembler files?
+
+llvm prints them as 'call 1' for bpf_map_lookup
+and 'call 12' for bpf_tail_call.
+In the instruction stream bpf_tail_call is no different
+than regular call. Only after verifier it becomes special instruction.
+This 'call 1234' is obviously not readable.
+We probably should allow both 'call 123' to make sure that
+we don't need to change assembler/compiler with every new
+helper added and allow more sane
+'call bpf_map_lookup_elem'
+for helpers with known func_id.
+
+> And also the emission of maps.
 >
-> 1. Create a new xdp_prog struct that contains existing bpf_prog,
-> a port-map pointer and ingress-port. (IMHO easiest solution)
+> Right now I just have the assembler looking for 32-bit immediate
+> values for call and tailcall instructions.
 >
-> 2. Just create a new pointer to port-map and store it in driver rx-ring
-> struct (like existing bpf_prog), but this create a race-challenge
-> replacing (cmpxchg) the program (or perhaps it's not a problem as it
-> runs under rcu and RTNL-lock).
+> Looking at samples/bpf/sockex3_kern.c we have:
 >
-> 3. Extend bpf_prog to store this port-map and ingress-port, and have a
-> fast-way to access it.  I assume it will be accessible via
-> bpf_prog->bpf_prog_aux->used_maps[X] but it will be too slow for XDP.
+> struct bpf_map_def SEC("maps") jmp_table = {
+> 	.type = BPF_MAP_TYPE_PROG_ARRAY,
+> 	.key_size = sizeof(u32),
+> 	.value_size = sizeof(u32),
+> 	.max_entries = 8,
+> };
 
-I'm not sure I completely follow the 3 proposals.
-Are you suggesting to have only one netdev_array per program?
-Why not to allow any number like we do for tailcall+prog_array, etc?
-We can teach verifier to allow new helper
-bpf_tx_port(netdev_array, port_num);
-to only be used with netdev_array map type.
-It will fetch netdevice pointer from netdev_array[port_num]
-and will tx the packet into it.
-We can make it similar to bpf_tail_call(), so that program will
-finish on successful bpf_tx_port() or
-make it into 'delayed' tx which will be executed when program finishes.
-Not sure which approach is better.
+yeah. this one is tricky.
+Currently there is a protocol between C file section name
+and user space bpf_loader.
+The above 'struct bpf_map_def' is recognized by
+samples/bpf/bpf_load.c
+and by tools/lib/bpf/libbpf.c which is used by perf.
+iproute2 allows extended format with two extra fields
+for pinning.
 
-We can also extend this netdev_array into broadcast/multicast. Like
-bpf_tx_allports(&netdev_array);
-call from the program will xmit the packet to all netdevices
-in that 'netdev_array' map type.
+So if we write the same stuff in assembler, the existing
+loaders will understand it.
+The tricky part is in relocations.
+To do bpf_map_lookup_elem() the R1 needs to point to map,
+so in assembler we need to be able to say something like:
 
-The map-in-map support can be trivially extended to allow netdev_array,
-then the program can create N multicast groups of netdevices.
-Each multicast group == one netdev_array map.
-The user space will populate a hashmap with these netdev_arrays and
-bpf kernel side can select dynamically which multicast group to use
-to send the packets to.
-bpf kernel side may look like:
-struct bpf_netdev_array *netdev_array = bpf_map_lookup_elem(&hash, key);
-if (!netdev_array)
-   ...
-if (my_condition)
-    bpf_tx_allports(netdev_array);  /* broadcast to all netdevices */
-else
-    bpf_tx_port(netdev_array, port_num); /* tx into one netdevice */
+ldimm64 r1, jmp_table
 
-that's an artificial example. Just trying to point out
-that we shouldn't restrict the feature too soon.
+where jmp_table will be in data section named 'maps'.
+
+So in asm the map lookup will look like:
+	.section        maps,"aw",@progbits
+         .globl  hashmap_def
+hashmap_def:
+         .long   1  # type
+         .long   24 # key_size
+         .long   40 # value_size
+         .long   256 # max_entries
+
+         .text
+         .section        xdp_tx_iptunnel,"ax",@progbits
+         .globl  _xdp_prog
+_xdp_prog:
+          ldimm64 r1, hashmap_def
+          mov r2, r10
+          add r2, -8
+          call bpf_map_lookup_elem
+
+this is 64-bit relo for ldimm64 insn
+
+This is how it's defined in llvm:
+ELF_RELOC(R_BPF_NONE,        0)
+ELF_RELOC(R_BPF_64_64,       1)
+ELF_RELOC(R_BPF_64_32,      10)
+
+The R_BPF_64_64 is the only relocation against .text
+The other one is used for relo into dwarf sections.
