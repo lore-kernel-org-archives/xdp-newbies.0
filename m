@@ -1,155 +1,96 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28848 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1034955AbdD1K6u (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 28 Apr 2017 06:58:50 -0400
-Date: Fri, 28 Apr 2017 12:58:42 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: xdp_redirect ifindex vs port. Was: best API for
- returning/setting egress port?
-Message-ID: <20170428125842.6b144d20@redhat.com>
-In-Reply-To: <53e9dd2f-f40a-b43b-99c9-62f5ce3a665c@fb.com>
-References: <58F7E9F3.5090604@iogearbox.net>
-        <20170420025611.GA53935@ast-mbp.thefacebook.com>
-        <20170420081051.77a41aa8@redhat.com>
-        <20170420171006.GA97067@ast-mbp.thefacebook.com>
-        <20170425113453.5c72080f@redhat.com>
-        <20170426002610.eihwmz4knbmrolfw@ast-mbp.dhcp.thefacebook.com>
-        <59000EF6.1050204@gmail.com>
-        <20170426111158.578b925e@redhat.com>
-        <5900CC41.2070502@gmail.com>
-        <c9b3ff9b-8938-3274-da29-c04f9da2a314@fb.com>
-        <20170426205544.GA40859@C02RW35GFVH8>
-        <20170427104121.32df2178@redhat.com>
-        <53e9dd2f-f40a-b43b-99c9-62f5ce3a665c@fb.com>
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:34383 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2998869AbdD1P5k (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 28 Apr 2017 11:57:40 -0400
+Received: by mail-qk0-f195.google.com with SMTP id u75so9472914qka.1
+        for <xdp-newbies@vger.kernel.org>; Fri, 28 Apr 2017 08:57:40 -0700 (PDT)
+From: Aaron Conole <aconole@bytheb.org>
+Subject: Re: [PATCH v2 binutils] Add BPF support to binutils...
+References: <20170427.170934.891283291562287326.davem@davemloft.net>
+Date: Fri, 28 Apr 2017 11:57:36 -0400
+In-Reply-To: <20170427.170934.891283291562287326.davem@davemloft.net> (David
+        Miller's message of "Thu, 27 Apr 2017 17:09:34 -0400 (EDT)")
+Message-ID: <f7td1bwtthr.fsf@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Alexei Starovoitov <ast@fb.com>
-Cc: Andy Gospodarek <andy@greyhouse.net>, John Fastabend <john.fastabend@gmail.com>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Daniel Borkmann <borkmann@iogearbox.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, brouer@redhat.com
+To: David Miller <davem@davemloft.net>
+Cc: ast@fb.com, daniel@iogearbox.net, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Thu, 27 Apr 2017 16:31:14 -0700
-Alexei Starovoitov <ast@fb.com> wrote:
+Hi David,
 
-> On 4/27/17 1:41 AM, Jesper Dangaard Brouer wrote:
-> > When registering/attaching a XDP/bpf program, we would just send the
-> > file-descriptor for this port-map along (like we do with the bpf_prog
-> > FD). Plus, it own ingress-port number this program is in the port-map.
-> >
-> > It is not clear to me, in-which-data-structure on the kernel-side we
-> > store this reference to the port-map and ingress-port. As today we only
-> > have the "raw" struct bpf_prog pointer. I see several options:
-> >
-> > 1. Create a new xdp_prog struct that contains existing bpf_prog,
-> > a port-map pointer and ingress-port. (IMHO easiest solution)
-> >
-> > 2. Just create a new pointer to port-map and store it in driver rx-ring
-> > struct (like existing bpf_prog), but this create a race-challenge
-> > replacing (cmpxchg) the program (or perhaps it's not a problem as it
-> > runs under rcu and RTNL-lock).
-> >
-> > 3. Extend bpf_prog to store this port-map and ingress-port, and have a
-> > fast-way to access it.  I assume it will be accessible via
-> > bpf_prog->bpf_prog_aux->used_maps[X] but it will be too slow for XDP.  
-> 
-> I'm not sure I completely follow the 3 proposals.
-> Are you suggesting to have only one netdev_array per program?
+David Miller <davem@davemloft.net> writes:
 
-Yes, but I can see you have a more clever idea below.
+> Here is what I have after today's work.  I think I sorted out the
+> endianness issues.
+>
+> gas can be controlled explicitly using "-EB" and "-EL" options.  The
+> default is whatever endianness the host has.  The elf names for the
+> two variants are "elf64-bpfbe" and "elf64-bpfle".
+>
+> I fleshed out all the rest of the assembler parsing for instructions
+> and added many entries to the gas testsuite.
+>
+> They are all explicitly in little endian, although I should add big
+> endian versions too of course.
+>
+> If someone is looking for a way to help, could you please verify the
+> testsuite output to make sure the opcode and fields are correctly
+> set in the testsuite.  Just look in:
+>
+> 	gas/testsuite/gas/bpf/
+>
+> and there are two files for every test.  One is the "foo.s" file which
+> gets built using gas into an object file "foo.o".  Then there is a
+> dump file named "foo.d" which specifies optionally how to run gas and
+> with what options, and then what to dump with (usually "objdump -dr")
+> then there is text which the testsuite compares with the dump of
+> the resulting "foo.o" file.
+>
+> The testsuite is driven by bpf.exp which has pretty straightforward
+> syntax.
+>
+> Anyways, enjoy.  I'll keep cracking on this tomorrow.
 
-> Why not to allow any number like we do for tailcall+prog_array, etc?
+I'll get an arm board up and running to do some testing there.  As a
+teaser:
 
-> We can teach verifier to allow new helper
->  bpf_tx_port(netdev_array, port_num);
-> to only be used with netdev_array map type.
-> It will fetch netdevice pointer from netdev_array[port_num]
-> and will tx the packet into it.
+  Test run by aconole on Fri Apr 28 11:52:18 2017
+  Target is bpf-linux-elf
+  Host   is x86_64-pc-linux-gnu
 
-I love it. 
+  		=== gas tests ===
 
-I just don't like the "netdev" part of the name "netdev_array" as one
-basic ideas of a port tabel, is that a port can be anything that can
-consume a XDP_buff packet.  This generalization allow us to move code
-out of the drivers.  We might be on the same page, as I do imagine that
-netdev_array or port_array is just a struct bpf_map pointer, and the
-bpf_map->map_type will tell us that this bpf_map contains net_device
-pointers.  Thus, when later introducing a new type of redirect (like to
-a socket or remote-CPU) then we just add a new bpf_map_type for this,
-without needing to change anything in the drivers, right?
+  ...
+  Running /home/aconole/git/binutils-gdb/gas/testsuite/gas/bfin/error.exp ...
+  Running /home/aconole/git/binutils-gdb/gas/testsuite/gas/bpf/bpf.exp ...
+  Running /home/aconole/git/binutils-gdb/gas/testsuite/gas/cfi/cfi.exp ...
+  ...
 
-Do you imagine that bpf-side bpf_tx_port() returns XDP_REDIRECT?
-Or does it return if the call was successful (e.g validate port_num
-existed in map)?
+And also:
 
-On the kernel side, we need to receive this info "port_array" and
-"port_num", given you don't provide the call a xdp_buff/ctx, then I
-assume you want the per-CPU temp-store solution.  Then during the
-XDP_REDIRECT action we call a core redirect function that based on the
-bpf_map_type does a lookup, and find the net_device ptr.
+  11:56:08 aconole {master} ~/git/binutils-gdb$ ./binutils/objdump -dr move.o
+
+  move.o:     file format elf64-bpfle
 
 
-> We can make it similar to bpf_tail_call(), so that program will
-> finish on successful bpf_tx_port() or
-> make it into 'delayed' tx which will be executed when program finishes.
-> Not sure which approach is better.
+  Disassembly of section .text:
 
-I know you are talking about something slightly different, about
-delaying TX.
+  0000000000000000 <.text>:
+     0:	bf 12 00 00 00 00 00 00 	mov	r1, r2
+     8:	b7 10 00 00 ef 00 00 00 	mov	r1, 239
+    10:	bc 12 00 00 00 00 00 00 	mov32	r1, r2
+    18:	b4 10 00 00 ef 00 00 00 	mov32	r1, 239
+    20:	bf 36 00 00 00 00 00 00 	mov	r3, r6
+    28:	bf 63 00 00 00 00 00 00 	mov	r6, r3
+    30:	bf 89 00 00 00 00 00 00 	mov	r8, r9
+    38:	bf a1 00 00 00 00 00 00 	mov	r10, r1
+    40:	bf 73 00 00 00 00 00 00 	mov	r7, r3
+    48:	b7 50 00 00 02 00 00 00 	mov	r5, 2
 
-But I want to mention (as I've done before) that it is important (for
-me) that we get bulking working/integrated.   I imagine the driver will
-call a function that will delay the TX/redirect action and at the end
-of the NAPI cycle have a function that flush packets, bulk per
-destination port.
+This is on an intel i7 (so not terribly exotic)
 
-I was wondering where to store these delayed TX packets, but now that
-we have an associated bpf_map data-structure (netdev_array), I'm thinking
-about storing packets (ordered by port) inside that.  And then have a
-bpf_tx_flush(netdev_array) call in the driver (for every port-table-map
-seen, which will likely be small).
-
-
-> We can also extend this netdev_array into broadcast/multicast. Like
-> bpf_tx_allports(&netdev_array);
-> call from the program will xmit the packet to all netdevices
-> in that 'netdev_array' map type.
-
-When broadcasting you often don't want to broadcast the packet out of
-the incoming interface.  How can you support this?
-
-Normally you would know your ingress port, and then excluded that port
-in the broadcast.  But with many netdev_array's how do the program know
-it's own ingress port.
-
-
-> The map-in-map support can be trivially extended to allow netdev_array,
-> then the program can create N multicast groups of netdevices.
-> Each multicast group == one netdev_array map.
-> The user space will populate a hashmap with these netdev_arrays and
-> bpf kernel side can select dynamically which multicast group to use
-> to send the packets to.
-> bpf kernel side may look like:
-> struct bpf_netdev_array *netdev_array = bpf_map_lookup_elem(&hash, key);
-> if (!netdev_array)
->    ...
-> if (my_condition)
->     bpf_tx_allports(netdev_array);  /* broadcast to all netdevices */
-> else
->     bpf_tx_port(netdev_array, port_num); /* tx into one netdevice */
-> 
-> that's an artificial example. Just trying to point out
-> that we shouldn't restrict the feature too soon.
- 
-I like how you solve the multicast problem.  (But I do need to learn
-some more of the inner-workings of bpf map-in-map to follow this
-completely).
-
-Thanks a lot for all this input, I got a much more clear picture of how
-I can/should implement this :-)
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+-Aaron
