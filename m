@@ -1,131 +1,164 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:40996 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S376820AbdD2Sii (ORCPT
+Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:41599 "EHLO
+        mx0b-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S378364AbdD3AtY (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Sat, 29 Apr 2017 14:38:38 -0400
-Date: Sat, 29 Apr 2017 14:38:35 -0400 (EDT)
-Message-Id: <20170429.143835.270339931242716768.davem@davemloft.net>
-Subject: Re: assembler mnenomics for call/tailcall plus maps...
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <398986a4-ef4b-6631-c6eb-96505e0a5849@fb.com>
-References: <20170427.164245.1980485298195850482.davem@davemloft.net>
-        <398986a4-ef4b-6631-c6eb-96505e0a5849@fb.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+        Sat, 29 Apr 2017 20:49:24 -0400
+Subject: Re: [PATCH v3 binutils] Add BPF support to binutils...
+References: <20170428.163355.2067951664875385680.davem@davemloft.net>
+From: Alexei Starovoitov <ast@fb.com>
+Message-ID: <9d5e3a87-15d0-01d7-6272-fa8d2bf0d076@fb.com>
+Date: Sat, 29 Apr 2017 17:48:43 -0700
+MIME-Version: 1.0
+In-Reply-To: <20170428.163355.2067951664875385680.davem@davemloft.net>
+Content-Type: text/plain; charset="windows-1252"; format=flowed
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: ast@fb.com
-Cc: daniel@iogearbox.net, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: daniel@iogearbox.net, aconole@bytheb.org, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-From: Alexei Starovoitov <ast@fb.com>
-Date: Thu, 27 Apr 2017 19:06:14 -0700
+On 4/28/17 1:33 PM, David Miller wrote:
+> New in this version:
+>
+> 1) All the relocation work I posted earlier today.
+> 2) Teach readelf about a few bpf relocs as needed
+> 3) Add a 'nop' instruction which facilitates the gas
+>    testsuite.  I used "mov r0,r0"
+>
+> The whole gas testsuite passes now. :-)  But that just
+> means we have to add more tests I guess....
+>
+> Signed-off-by: David S. Miller <davem@davemloft.net>
 
-> So in asm the map lookup will look like:
-> 	.section        maps,"aw",@progbits
->         .globl  hashmap_def
-> hashmap_def:
->         .long   1  # type
->         .long   24 # key_size
->         .long   40 # value_size
->         .long   256 # max_entries
-> 
->         .text
->         .section        xdp_tx_iptunnel,"ax",@progbits
->         .globl  _xdp_prog
-> _xdp_prog:
->          ldimm64 r1, hashmap_def
->          mov r2, r10
->          add r2, -8
->          call bpf_map_lookup_elem
-> 
-> this is 64-bit relo for ldimm64 insn
-> 
-> This is how it's defined in llvm:
-> ELF_RELOC(R_BPF_NONE,        0)
-> ELF_RELOC(R_BPF_64_64,       1)
-> ELF_RELOC(R_BPF_64_32,      10)
-> 
-> The R_BPF_64_64 is the only relocation against .text
-> The other one is used for relo into dwarf sections.
+it seems by default bpf target is not enabled,
+so I tried to build it with:
+../configure --enable-targets=bpf,x86
+make -j40
+but it failed to build :(
 
-There is another missing element here, we don't use the relocation to
-write the actual address of "&hashmap_def" into the ldimm64
-instruction.
+Then I did ../configure --target=bpf
+and it went better. At least I could compile objdump,
+but gas refused to be configured:
+checking whether byte ordering is bigendian... no
+This target is no longer supported in gas
+make[1]: *** [configure-gas] Error 1
 
-Instead, we use the relocation to write the file descriptor number for
-that map into the instruction.  The only parts of the relocation that
-are used are the offset (to find the BPF instruction) and the symbol
-reference (to find out which map we are referencing).
+Not sure what I'm doing wrong.
 
-The BPF loader also doesn't even check the relocation number to make
-sure it's of the correct type.  It just assumes that any relocation it
-sees is exactly this kind used for maps.
+At least i tested objdump:
+$ clang -O2 -target bpfeb -c test.c
+$ llvm-objdump -S test.o
 
-My relocations in binutils currently look like this:
+test.o:	file format ELF64-BPF
 
-START_RELOC_NUMBERS (elf_bpf_reloc_type)
-  RELOC_NUMBER (R_BPF_NONE, 0)
-  RELOC_NUMBER (R_BPF_INSN_16, 1)
-  RELOC_NUMBER (R_BPF_INSN_32, 2)
-  RELOC_NUMBER (R_BPF_INSN_64, 3)
-  RELOC_NUMBER (R_BPF_WDISP16, 4)
-  RELOC_NUMBER (R_BPF_DATA_8,  5)
-  RELOC_NUMBER (R_BPF_DATA_16, 6)
-  RELOC_NUMBER (R_BPF_DATA_32, 7)
-  RELOC_NUMBER (R_BPF_DATA_64, 8)
-END_RELOC_NUMBERS (R_BPF_max)
+Disassembly of section .text:
+bpf_prog1:
+        0:	18 10 00 00 83 98 47 39 00 00 00 00 00 00 00 89 	r1 = 
+590618314553ll
+        2:	7b a1 ff f8 00 00 00 00 	*(u64 *)(r10 - 8) = r1
+        3:	79 1a ff f8 00 00 00 00 	r1 = *(u64 *)(r10 - 8)
+        4:	07 10 00 00 8f ff 00 02 	r1 += -1879113726
+        5:	79 01 00 00 00 00 00 00 	r0 = *(u64 *)(r1 + 0)
+        6:	95 00 00 00 00 00 00 00 	exit
 
-There is of course R_BPF_NONE, and then we have 4 relocations for
-instructions.  One for the 16-bit offset field (non-pc-relative), one
-for the 32-bit immediate field (again, non-pc-relative), one for
-ldimm64's immediate field, and finally R_BPF_WDISP16 for doing a
-pc-relative relocation to the offset field of a jump instruction.
+$ bld/binutils/objdump -S test.o
 
-Then we have the usual data relocations, for 8, 16, 32, and 64-bit.
+test.o:     file format elf64-bpfbe
 
-I guess LLVM's R_BPF_64_64 is the one used for the ldimm64 reference
-to a map, and is equivalent to R_BPF_INSN_64 above.
+Disassembly of section .text:
 
-We just need to sort out how we want this semantically to interconnect
-etc.
+0000000000000000 <bpf_prog1>:
+    0:	18 10 00 00 83 98 47 39 	ldimm64	r1, 590618314553
+    8:	00 00 00 00 00 00 00 89
+   10:	7b a1 ff f8 00 00 00 00 	stdw	[r10+65528], r1
+   18:	79 1a ff f8 00 00 00 00 	lddw	r1, [r10+65528]
+   20:	07 10 00 00 8f ff 00 02 	add	r1, -1879113726
+   28:	79 01 00 00 00 00 00 00 	lddw	r0, [r1+0]
+   30:	95 00 00 00 00 00 00 00 	exit
 
-In binutils we can make the MAP reference special and explicit, so we
-would for example add:
+looks good except negative offsets are reported as large positive.
 
-	RELOC_NUMBER (R_BPF_MAP, 9)
+If compiled with clang -O2 -target bpfel and result is:
+$ bld/binutils/objdump -S test.o
 
-or whatever.  And then for assembler syntax, use something like:
+test.o:     file format elf64-bpfle
 
-	%map(SYMBOL)
+Disassembly of section .text:
 
-So you would go:
+0000000000000000 <bpf_prog1>:
+    0:	18 01 00 00 39 47 98 83 	ldimm64	r0, 590618314553
+    8:	00 00 00 00 89 00 00 00
+   10:	7b 1a f8 ff 00 00 00 00 	stdw	[r1+65528], r10
+   18:	79 a1 f8 ff 00 00 00 00 	lddw	r10, [r1+65528]
 
-	ldimm64	r1, %map(hash_map)
+Now the src/dst registers are swapped :(
+The bytes printed are correct though.
 
-or, taking it one step further, do the following since we know this
-maps to a 32-bit FD:
+clang debug info is not recognized as well:
+$ clang -O2 -g -target bpfel -c test.c
+/w/binutils-gdb/bld/binutils/objdump -S test.o
 
-	mov32	r1, %map(hash_map)
+test.o:     file format elf64-bpfle
 
-and this way avoid eating up a 16-byte opcode just for this.
 
-In GCC it will be simple to get the backend to emit this, various
-options exist.  We can make it a special "__attribute__((map))", or
-use address spaces to annotate the map object.  And then when the
-ldimm64 or whatever instruction is emitted, and it sees the symbol
-referenced has this special type, it will emit "%%map(%s)" instead of
-just "%s" for the symbol name in the asembler output.
+Disassembly of section .text:
 
-That in turn will lead to the correct relocation.
+0000000000000000 <bpf_prog1>:
+/w/binutils-gdb/bld/binutils/objdump: invalid relocation type 10
+/w/binutils-gdb/bld/binutils/objdump: BFD (GNU Binutils) 
+2.28.51.20170429 assertion fail ../../bfd/elf64-bpf.c:139
+...
+/w/binutils-gdb/bld/binutils/objdump: BFD (GNU Binutils) 
+2.28.51.20170429 assertion fail ../../bfd/elf64-bpf.c:139
+/w/binutils-gdb/bld/binutils/objdump: invalid relocation type 10
+/w/binutils-gdb/bld/binutils/objdump: BFD (GNU Binutils) 
+2.28.51.20170429 assertion fail ../../bfd/elf64-bpf.c:139
+    0:	18 01 00 00 39 47 98 83 	ldimm64	r0, 590618314553
+    8:	00 00 00 00 89 00 00 00
+   10:	7b 1a f8 ff 00 00 00 00 	stdw	[r1+65528], r10
 
-But I guess for now what I could do is just make R_BPF_INSN_64 have
-the same number as LLVM's R_BPF_64_64 and it should "just work" using
-tooling.
+$ clang -O2 -g -target bpfeb -c test.c
+$ /w/binutils-gdb/bld/binutils/objdump -S test.o
 
-I think we should spend serious time properly designing the
-relocations and thinking ahead about people perhaps wanting to link
-multiple objects together, call functions in other objects, and
-perhaps even doing dynamic relocations.  Nothing fundamentally in
-eBPF prevents this.
+test.o:     file format elf64-bpfbe
+
+Disassembly of section .text:
+
+0000000000000000 <bpf_prog1>:
+/w/binutils-gdb/bld/binutils/objdump: invalid relocation type 10
+/w/binutils-gdb/bld/binutils/objdump: BFD (GNU Binutils) 
+2.28.51.20170429 assertion fail ../../bfd/elf64-bpf.c:139
+...
+/w/binutils-gdb/bld/binutils/objdump: invalid relocation type 10
+/w/binutils-gdb/bld/binutils/objdump: Dwarf Error: found address size 
+'0', this reader can only handle address sizes '2', '4' and '8'.
+    0:	18 10 00 00 83 98 47 39 	ldimm64	r1, 590618314553
+    8:	00 00 00 00 00 00 00 89
+   10:	7b a1 ff f8 00 00 00 00 	stdw	[r10+65528], r1
+   18:	79 1a ff f8 00 00 00 00 	lddw	r1, [r10+65528]
+
+With llvm it should be like this:
+$ ./bin/clang -O2 -g -target bpfel -c test.c
+$ ./bin/llvm-objdump -S test.o
+
+test.o:	file format ELF64-BPF
+
+Disassembly of section .text:
+bpf_prog1:
+; {
+        0:	18 01 00 00 39 47 98 83 00 00 00 00 89 00 00 00 	r1 = 
+590618314553ll
+; volatile unsigned long t = 0x8983984739ull;
+        2:	7b 1a f8 ff 00 00 00 00 	*(u64 *)(r10 - 8) = r1
+; return *(unsigned long *)((0xffffffff8fff0002ull) + t);
+        3:	79 a1 f8 ff 00 00 00 00 	r1 = *(u64 *)(r10 - 8)
+        4:	07 01 00 00 02 00 ff 8f 	r1 += -1879113726
+        5:	79 10 00 00 00 00 00 00 	r0 = *(u64 *)(r1 + 0)
+        6:	95 00 00 00 00 00 00 00 	exit
+
+The output of llvm with '-g -target bpfeb' is probably partially broken,
+since 'llvm-objdump -S test.o' doesn't see any debug in there.
+So gnu objdump's error:
+  Dwarf Error: found address size '0'
+is likely legit.
