@@ -1,35 +1,54 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:35152 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750710AbdEARwE (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 1 May 2017 13:52:04 -0400
-Date: Mon, 01 May 2017 13:52:02 -0400 (EDT)
-Message-Id: <20170501.135202.2175412915689459473.davem@davemloft.net>
+Received: from mail-qt0-f193.google.com ([209.85.216.193]:34592 "EHLO
+        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750841AbdEASjn (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 1 May 2017 14:39:43 -0400
+Received: by mail-qt0-f193.google.com with SMTP id y33so17395214qta.1
+        for <xdp-newbies@vger.kernel.org>; Mon, 01 May 2017 11:39:43 -0700 (PDT)
+From: Aaron Conole <aconole@bytheb.org>
 Subject: Re: [PATCH v4 binutils] Add BPF support to binutils...
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <f7ttw541ohz.fsf@redhat.com>
 References: <20170430.120750.651845251226226775.davem@davemloft.net>
         <f7ttw541ohz.fsf@redhat.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+        <20170501.135202.2175412915689459473.davem@davemloft.net>
+Date: Mon, 01 May 2017 14:39:39 -0400
+In-Reply-To: <20170501.135202.2175412915689459473.davem@davemloft.net> (David
+        Miller's message of "Mon, 01 May 2017 13:52:02 -0400 (EDT)")
+Message-ID: <f7t37coxvys.fsf@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: aconole@bytheb.org
+To: David Miller <davem@davemloft.net>
 Cc: ast@fb.com, daniel@iogearbox.net, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-From: Aaron Conole <aconole@bytheb.org>
-Date: Mon, 01 May 2017 13:22:00 -0400
+David Miller <davem@davemloft.net> writes:
 
-> x86-64:
->   Running /home/aconole/git/binutils-gdb/gas/testsuite/gas/bpf/bpf.exp ...
->   FAIL: jump
->   FAIL: call
->   FAIL: imm64a
->   Running /home/aconole/git/binutils-gdb/gas/testsuite/gas/cfi/cfi.exp ...
+> From: Aaron Conole <aconole@bytheb.org>
+> Date: Mon, 01 May 2017 13:22:00 -0400
+>
+>> x86-64:
+>>   Running /home/aconole/git/binutils-gdb/gas/testsuite/gas/bpf/bpf.exp ...
+>>   FAIL: jump
+>>   FAIL: call
+>>   FAIL: imm64a
+>>   Running /home/aconole/git/binutils-gdb/gas/testsuite/gas/cfi/cfi.exp ...
+>
+> I cannot reproduce this, can you show what it says in the:
+>
+> 	/home/aconole/git/binutils-gdb/gas/testsuite/gas.log
+>
+> file near the "FAIL" cases?
 
-I cannot reproduce this, can you show what it says in the:
+Executing on host: sh -c {/home/aconole/git/binutils-gdb/gas/testsuite/../../binutils/objdump  -dr dump.o >dump.out 2>gas.stderr}  /dev/null  (timeout = 300)
+spawn [open ...]
+regexp_diff match failure
+regexp "^ 108:	95 00 00 00 00 00 00 00 	exit$"
+line   " 108:	95 00 00 00 00 00 00 00 	exit	"
+FAIL: jump
 
-	/home/aconole/git/binutils-gdb/gas/testsuite/gas.log
 
-file near the "FAIL" cases?
+Same style of error for call and imm64a.  After reverting and then
+re-applying your patch, the FAILs all go away, so I must have broken
+these files somehow.  Sorry for the false alarm.
+
+-Aaron
