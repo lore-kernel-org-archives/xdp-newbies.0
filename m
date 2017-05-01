@@ -1,10 +1,10 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:35030 "EHLO
+Received: from shards.monkeyblade.net ([184.105.139.130]:35152 "EHLO
         shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750743AbdEARmQ (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 1 May 2017 13:42:16 -0400
-Date: Mon, 01 May 2017 13:42:11 -0400 (EDT)
-Message-Id: <20170501.134211.450600640257539634.davem@davemloft.net>
+        with ESMTP id S1750710AbdEARwE (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 1 May 2017 13:52:04 -0400
+Date: Mon, 01 May 2017 13:52:02 -0400 (EDT)
+Message-Id: <20170501.135202.2175412915689459473.davem@davemloft.net>
 Subject: Re: [PATCH v4 binutils] Add BPF support to binutils...
 From: David Miller <davem@davemloft.net>
 In-Reply-To: <f7ttw541ohz.fsf@redhat.com>
@@ -21,11 +21,15 @@ Cc: ast@fb.com, daniel@iogearbox.net, netdev@vger.kernel.org, xdp-newbies@vger.k
 From: Aaron Conole <aconole@bytheb.org>
 Date: Mon, 01 May 2017 13:22:00 -0400
 
-> Latest results from x86-64 and aarch64:
+> x86-64:
+>   Running /home/aconole/git/binutils-gdb/gas/testsuite/gas/bpf/bpf.exp ...
+>   FAIL: jump
+>   FAIL: call
+>   FAIL: imm64a
+>   Running /home/aconole/git/binutils-gdb/gas/testsuite/gas/cfi/cfi.exp ...
 
-I'll see if I can reproduce here...
+I cannot reproduce this, can you show what it says in the:
 
-> I've also got a small incremental to fix some trailing whitespace, and
-> s/SPARC/BPF/ in one file, attached.
+	/home/aconole/git/binutils-gdb/gas/testsuite/gas.log
 
-Applied, thanks!
+file near the "FAIL" cases?
