@@ -1,69 +1,74 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:56029 "EHLO
+Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:49368 "EHLO
         mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750902AbdEBDPZ (ORCPT
+        by vger.kernel.org with ESMTP id S1750847AbdEBDtr (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 1 May 2017 23:15:25 -0400
-Subject: Re: [PATCH v3 binutils] Add BPF support to binutils...
-References: <76ed19a7-add3-0642-4298-9402c7ff0be8@fb.com>
- <20170430.142104.1845572453793505873.davem@davemloft.net>
- <b96ef138-9862-5091-9041-76516f852e48@fb.com>
- <20170501.230323.816591707269395321.davem@davemloft.net>
+        Mon, 1 May 2017 23:49:47 -0400
+Subject: Re: [PATCH v4 binutils] Add BPF support to binutils...
+References: <20170430.120750.651845251226226775.davem@davemloft.net>
 From: Alexei Starovoitov <ast@fb.com>
-Message-ID: <1004b0e6-eecf-75bd-d215-aac903ba8da6@fb.com>
-Date: Mon, 1 May 2017 20:14:57 -0700
+Message-ID: <33505cff-f730-ebac-c2d7-38f1793062b7@fb.com>
+Date: Mon, 1 May 2017 20:49:21 -0700
 MIME-Version: 1.0
-In-Reply-To: <20170501.230323.816591707269395321.davem@davemloft.net>
+In-Reply-To: <20170430.120750.651845251226226775.davem@davemloft.net>
 Content-Type: text/plain; charset="windows-1252"; format=flowed
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: David Miller <davem@davemloft.net>
-Cc: daniel@iogearbox.net, aconole@bytheb.org, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+Cc: daniel@iogearbox.net, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On 5/1/17 8:03 PM, David Miller wrote:
-> From: Alexei Starovoitov <ast@fb.com>
-> Date: Mon, 1 May 2017 19:49:21 -0700
+On 4/30/17 9:07 AM, David Miller wrote:
+> This is mainly a synchronization point, I still need to look
+> more deeply into Alexei's -g issue.
 >
->> On 4/30/17 11:21 AM, David Miller wrote:
->>> built with:
->>>
->>> 	clang -O2 -target bpfel -g -c x.c -o x.o
->>>
->>> readelf can see it just fine:
->>>
->>> [davem@localhost binutils]$ ./readelf --debug-dump=loc ./xel.o
->>> Contents of the .debug_loc section:
->>>
->>>     Offset   Begin            End              Expression
->>>     00000000 0000000000000000 0000000000000010 (DW_OP_reg1 (r1))
->>>     00000013 <End of list>
->>>     00000023 0000000000000010 0000000000000020 (DW_OP_constu:
->>>     590618314553; DW_OP_stack_value)
->>>     0000003d 0000000000000020 0000000000000030 (DW_OP_reg1 (r1))
->>>     00000050 <End of list>
->>>
->>> But with big-endian:
->>>
->>> [davem@localhost binutils]$ ./readelf --debug-dump=loc ./xeb.o
->>> readelf: Warning: Invalid pointer size (0) in compunit header, using 4
->>> instead
->>> readelf: Warning: Bogus end-of-siblings marker detected at offset 27
->>> in .debug_info section
->>> readelf: Warning: Bogus end-of-siblings marker detected at offset 28
->>> in .debug_info section
->>> readelf: Warning: DIE at offset 0x29 refers to abbreviation number 48
->>> which does not exist
->>> readelf: Warning: Unable to load/parse the .debug_info section, so
->>> cannot interpret the .debug_loc section.
->>
->> yeah. clang emitted dwarf for big-endian is broken.
->> This dwarf stuff is too complicated for normal human beings.
->> The tight packing making debugging it quite painful.
+> New in this version from v3:
+>  - Remove tailcall from opcode table
+>  - Rearrange relocations so that numbers match with LLVM ones
+>  - Emit relocs properly so that dwarf2 debug info tests pass
+>  - Handle negative load/store offsets properly, add tests
 >
-> But doesn't the CLANG DWARF2 emission code look at the target
-> endianness?
+> Signed-off-by: David S. Miller <davem@davemloft.net>
 
-it certainly does and on bpf backend side I'm not doing
-anything special comparing to what other bi-endian architectures
-like ppc and mips are doing. Obviously I missed something.
+dwarf on little endian works now :)
+
+$ /w/binutils-gdb/bld/binutils/objdump -S test.o
+
+test.o:     file format elf64-bpfle
+
+Disassembly of section .text:
+
+0000000000000000 <bpf_prog1>:
+int bpf_prog1(void *ign)
+{
+   volatile unsigned long t = 0x8983984739ull;
+    0:	18 01 00 00 39 47 98 83 	ldimm64	r0, 590618314553
+    8:	00 00 00 00 89 00 00 00
+   10:	7b 1a f8 ff 00 00 00 00 	stdw	[r1+-8], r10
+   return *(unsigned long *)((0xffffffff8fff0002ull) + t);
+   18:	79 a1 f8 ff 00 00 00 00 	lddw	r10, [r1+-8]
+
+This is great milestone.
+
+Also I finally figured out how to enable native+bpf:
+../configure --enable-targets=bpf-elf,x86_64-elf
+
+having support for both in one binary is a big deal :)
+
+Only 'gdb' warns with dual arch support:
+"
+warning: A handler for the OS ABI "GNU/Linux" is not built into this 
+configuration
+of GDB.  Attempting to continue with the default bpf settings.
+"
+
+(gdb) x/10i bpf_prog1
+    0x0 <bpf_prog1>:	ldimm64	r0, 590618314553
+    0x10 <bpf_prog1+16>:	stdw	[r1+-8], r10
+    0x18 <bpf_prog1+24>:	lddw	r10, [r1+-8]
+    0x20 <bpf_prog1+32>:	add	r0, -1879113726
+    0x28 <bpf_prog1+40>:	lddw	r1, [r0+0]
+    0x30 <bpf_prog1+48>:	exit
+    0x38:	Cannot access memory at address 0x38
+
+the last line also seems wrong. Off by 1 error?
