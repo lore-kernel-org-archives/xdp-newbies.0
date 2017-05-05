@@ -1,59 +1,32 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40832 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751031AbdECHv7 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 3 May 2017 03:51:59 -0400
-Date: Wed, 3 May 2017 09:51:53 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: BPF Updates 01
-Message-ID: <20170503095153.561ed64d@redhat.com>
-In-Reply-To: <20170503045432.GB19919@gmail.com>
-References: <20170503045432.GB19919@gmail.com>
+Received: from mail-yb0-f174.google.com ([209.85.213.174]:36024 "EHLO
+        mail-yb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753418AbdEENjT (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 5 May 2017 09:39:19 -0400
+Received: by mail-yb0-f174.google.com with SMTP id s22so1280687ybe.3
+        for <xdp-newbies@vger.kernel.org>; Fri, 05 May 2017 06:39:19 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+From: Kevin Wilson <wkevils@gmail.com>
+Date: Fri, 5 May 2017 16:39:03 +0300
+Message-ID: <CAGXs5wVkCMNnK8zXU4UGQf5fmE=9B1_x-E8qRfjS1p-dHm0S9Q@mail.gmail.com>
+Subject: Link to archives of xdp-newbies mailing list is missing in http://vger.kernel.org/vger-lists.html
+Content-Type: text/plain; charset=UTF-8
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Alexander Alemayhu <alexander@alemayhu.com>
-Cc: xdp-newbies@vger.kernel.org, brouer@redhat.com
+To: xdp-newbies@vger.kernel.org
+
+Hi all,
+I think that xdp-newbies is an important mailing list and it was a
+good idea to create it.
+It seems that the messages are archived under:
+http://www.spinics.net/lists/xdp-newbies/
+
+However, there is no link to these archives in
+http://vger.kernel.org/vger-lists.html
 
 
-On Wed, 3 May 2017 06:54:32 +0200 Alexander Alemayhu <alexander@alemayhu.com> wrote:
+I think it will be a great idea to arrange such a link (unfortunately,
+I cannot do it myself)
 
-> I have started writing a short weekly roundup on the various BPF related
-> activity. The first issue 
-> https://www.cilium.io/blog/2017/5/2/bpf-updates-01-2017-05-02
-> 
-> The main motivation is to have something similar to LLVM Weekly[0] and This
-> week in Swift[1]. Hopefully useful for people hungry after more BPF related
-> content without wanting to subscribe to netdev or filtering through lkml.
-> 
-> The second issue is already in the works and will be sent to the list
-> sometime next week. If you have any feedback, that would very
-> appreciated.
-
-This is great thanks for sharing.
-
-I also want to point to this cilium blogpost:
- https://www.cilium.io/blog/2017/4/24/launch-of-bpf-xdp-documentation
-
-eBPF is sort of the XDP programming language, and if you want to learn
-the details of the BPF Architecture and know more about the instruction
-set, follow the blogpost link to: http://docs.cilium.io/en/latest/bpf/
-
-I believe people subscribed to this list is more interested in having a
-toolchain like LLVM that allow us to write (restricted) C-code and
-generate the eBPF assembler for us. Luckily the same document describes
-how this works and why e.g. inlining is required, here:
-
- http://docs.cilium.io/en/latest/bpf/#toolchain
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
-
-
-> [0]: http://llvmweekly.org/issue/174
-> [1]: https://swiftnews.curated.co/
+Regards,
+Kevin
