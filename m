@@ -1,47 +1,102 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-wm0-f54.google.com ([74.125.82.54]:38039 "EHLO
-        mail-wm0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S935251AbdEYTPB (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 25 May 2017 15:15:01 -0400
-Received: by mail-wm0-f54.google.com with SMTP id e127so118854214wmg.1
-        for <xdp-newbies@vger.kernel.org>; Thu, 25 May 2017 12:15:00 -0700 (PDT)
-Date: Thu, 25 May 2017 21:14:57 +0200
-From: Alexander Alemayhu <alexander@alemayhu.com>
-Subject: Re: BPF updates 04
-Message-ID: <20170525191457.GA16894@gmail.com>
-References: <20170524220214.GA22467@gmail.com>
- <730459F6B71BFC4F82D772602655063DDC533F@HASMSX106.ger.corp.intel.com>
+Received: from mx1.redhat.com ([209.132.183.28]:43858 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751761AbdE3MYp (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 30 May 2017 08:24:45 -0400
+Date: Tue, 30 May 2017 14:24:37 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: Error with printk and bpf_trace_printk
+Message-ID: <20170530142437.656ec63d@redhat.com>
+In-Reply-To: <CAErYV9EJtbgaWn4KAeoADxnHgj7S+vFdHgu78Y2PxNuhpWrANw@mail.gmail.com>
+References: <CAErYV9EJtbgaWn4KAeoADxnHgj7S+vFdHgu78Y2PxNuhpWrANw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <730459F6B71BFC4F82D772602655063DDC533F@HASMSX106.ger.corp.intel.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: "Fuchs, Adel" <adel.fuchs@intel.com>
-Cc: xdp-newbies@vger.kernel.org
+To: Adel Fuchs <adelfuchs@gmail.com>
+Cc: brouer@redhat.com, netdev@vger.kernel.org, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "iovisor-dev@lists.iovisor.org" <iovisor-dev@lists.iovisor.org>
 
-On Thu, May 25, 2017 at 06:49:55PM +0000, Fuchs, Adel wrote:
+
+Notice, there are two mailing lists (Cc'ed) that you should likely ask
+these kind of questions on (instead of netdev), depending on if this is
+mostly related to bpf (iovisor-dev@lists.iovisor.org) or somehow
+related to XDP (xdp-newbies@vger.kernel.org).
+
+See my answer inlined below:
+
+On Sun, 28 May 2017 17:48:20 +0300 Adel Fuchs <adelfuchs@gmail.com> wrote:
+
+> I have a working eBPF program, and I'm trying to add outputs to it.
+> I'm not able to use both printk and bpf_trace_printk functions. I get
+> this error:
 > 
-> I registered to this mailing list since I need help running a eBPF
-> sample. Though, I'm not able to post anything. I get an email back,
-> saying that I'm a virus.  Do you have any idea how to solve this? I
-> really need help with eBPF. I get an error, and I don't now haw to
-> solve it...
->
-Not sure what the error is without any specifics. Are you sending a text
-only message?  From the LKML FAQ[0] it says:
-"Don't post in HTML format! If you are using IE or Netscape, please turn
-off HTML formatting for your posts to the kernel list."
+> ELF contains non-map related relo data in entry 0 pointing to section
+> 8! Compiler bug?!
+> 
+> Prog section 'ingress' rejected: Invalid argument (22)!
+>  - Type:         3
+>  - Instructions: 16 (0 over limit)
+>  - License:      GPL
+> 
+> Verifier analysis:
+> 
+> 0: (bf) r6 = r1
+> 1: (18) r1 = 0x0
+> 3: (85) call bpf_unspec#0
+> unknown func bpf_unspec#0
+> 
+> Error fetching program/map!
+> Failed to retrieve (e)BPF data!
+> 
+> Are there certain "includes" that I need to add?
+> In addition, I'm not sure I'm using the function correctly. I just
+> wrote: printk("hi")
 
-Maybe you can check that and resend? 
+You obviously cannot call printk directly from and eBPF program.
+I wonder how you got this compiling...
 
-Thanks.
+As you hinted yourself, you should be using: bpf_trace_printk().
+But it is actually tricky to use... and not much help is around to
+figure this out.
 
-[0]: http://vger.kernel.org/lkml/
+First of all the output end-up in this file: /sys/kernel/debug/tracing/trace_pipe
+Remember to read the output use 'cat' like:
 
+ sudo cat /sys/kernel/debug/tracing/trace_pipe
+
+And only the first process to read the output gets the output...
+
+
+I deduct you are using the TC/iproute2 examples:
+ https://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git/tree/examples/bpf
+
+Next gotcha is that, you need to provide the char* string in a very
+special way to make this compile correctly.  The iproute2 provide a
+helper define called "printt()" in include/bpf_api.h for this:
+
+#ifndef printt
+# define printt(fmt, ...)                                               \
+        ({                                                              \
+                char ____fmt[] = fmt;                                   \
+                trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);  \
+        })
+#endif
+
+Or see my solution here:
+[1] https://github.com/netoptimizer/prototype-kernel/blob/master/kernel/samples/bpf/xdp_ddos01_blacklist_kern.c#L86:L99
+
+
+Another gotcha I've experienced is that if you format the string
+incorrectly, or use a modifier like %X, which bpf_trace_printk() does
+not seem to understand, then you "hear-nothing"...  Also experienced if
+using more than 3 arguments, then it fails or also go silent. Be
+careful when using this somewhat "flaky" debug facility.
+
+Do remember these bpf_trace_printk() should only be used for debugging,
+as it is very slow...
 -- 
-Mit freundlichen Grüßen
-
-Alexander Alemayhu
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
