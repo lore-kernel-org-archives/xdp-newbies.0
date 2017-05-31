@@ -1,102 +1,47 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43858 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751761AbdE3MYp (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 30 May 2017 08:24:45 -0400
-Date: Tue, 30 May 2017 14:24:37 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: Error with printk and bpf_trace_printk
-Message-ID: <20170530142437.656ec63d@redhat.com>
-In-Reply-To: <CAErYV9EJtbgaWn4KAeoADxnHgj7S+vFdHgu78Y2PxNuhpWrANw@mail.gmail.com>
-References: <CAErYV9EJtbgaWn4KAeoADxnHgj7S+vFdHgu78Y2PxNuhpWrANw@mail.gmail.com>
+Received: from mail-pg0-f42.google.com ([74.125.83.42]:36546 "EHLO
+        mail-pg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751004AbdEaJ3D (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 31 May 2017 05:29:03 -0400
+Received: by mail-pg0-f42.google.com with SMTP id x64so5407638pgd.3
+        for <xdp-newbies@vger.kernel.org>; Wed, 31 May 2017 02:29:03 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <CABWTmTqGtb5bH_vDz986AUNTrygdEubQskvoJ2oh1S=m8VwNbg@mail.gmail.com>
+References: <CABWTmTqGtb5bH_vDz986AUNTrygdEubQskvoJ2oh1S=m8VwNbg@mail.gmail.com>
+From: Jeffrey Panneman <jeffrey.panneman@student.uva.nl>
+Date: Wed, 31 May 2017 11:29:02 +0200
+Message-ID: <CABWTmTqaQh_YqMgt=Vh0SPqzdtLmVc=fSY2kJVYNFAA_h=1jkg@mail.gmail.com>
+Subject: Fwd: Empty ethernet fram after XDP_TX
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Adel Fuchs <adelfuchs@gmail.com>
-Cc: brouer@redhat.com, netdev@vger.kernel.org, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "iovisor-dev@lists.iovisor.org" <iovisor-dev@lists.iovisor.org>
+To: xdp-newbies@vger.kernel.org
 
+Hi all,
 
-Notice, there are two mailing lists (Cc'ed) that you should likely ask
-these kind of questions on (instead of netdev), depending on if this is
-mostly related to bpf (iovisor-dev@lists.iovisor.org) or somehow
-related to XDP (xdp-newbies@vger.kernel.org).
+I have recently started experimenting with XDP in regards to my master
+thesis project. I have been playing around with some examples and had
+a question regarding the following sample file from the linux kernel:
+https://github.com/torvalds/linux/blob/master/samples/bpf/xdp2_kern.c
 
-See my answer inlined below:
+I have setup a test environment on which I can monitor both my source
+and destination port using Wireshark. I observe that when I run the
+example, always returning XDP_PASS, packets go on normal but the MAC
+swapping does not occur. When using the XDP_TX return code after
+swapping I observe that I see Ethernet frames appear in wireshark with
+a source and destination 00:00:00:00:00:00. The IP related headers are
+gone and this is the only thing I am seeing.
 
-On Sun, 28 May 2017 17:48:20 +0300 Adel Fuchs <adelfuchs@gmail.com> wrote:
+For some context, I am running on: 4.11.0-041100-generic x86_64 x86_64
+x86_64 GNU/Linux using ConnectX-4 Lx cards with the mlx5_core driver
+(from lspci -v output). From "systool -vm" output I see my mlx5_core
+version is "4.0-2.0.0"
 
-> I have a working eBPF program, and I'm trying to add outputs to it.
-> I'm not able to use both printk and bpf_trace_printk functions. I get
-> this error:
-> 
-> ELF contains non-map related relo data in entry 0 pointing to section
-> 8! Compiler bug?!
-> 
-> Prog section 'ingress' rejected: Invalid argument (22)!
->  - Type:         3
->  - Instructions: 16 (0 over limit)
->  - License:      GPL
-> 
-> Verifier analysis:
-> 
-> 0: (bf) r6 = r1
-> 1: (18) r1 = 0x0
-> 3: (85) call bpf_unspec#0
-> unknown func bpf_unspec#0
-> 
-> Error fetching program/map!
-> Failed to retrieve (e)BPF data!
-> 
-> Are there certain "includes" that I need to add?
-> In addition, I'm not sure I'm using the function correctly. I just
-> wrote: printk("hi")
+I was wondering if this behaviour was normal, and if anyone knows what
+is going wrong here. I am happy to provide some more diagnostic
+information if needed.
 
-You obviously cannot call printk directly from and eBPF program.
-I wonder how you got this compiling...
+Kind regards,
 
-As you hinted yourself, you should be using: bpf_trace_printk().
-But it is actually tricky to use... and not much help is around to
-figure this out.
-
-First of all the output end-up in this file: /sys/kernel/debug/tracing/trace_pipe
-Remember to read the output use 'cat' like:
-
- sudo cat /sys/kernel/debug/tracing/trace_pipe
-
-And only the first process to read the output gets the output...
-
-
-I deduct you are using the TC/iproute2 examples:
- https://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git/tree/examples/bpf
-
-Next gotcha is that, you need to provide the char* string in a very
-special way to make this compile correctly.  The iproute2 provide a
-helper define called "printt()" in include/bpf_api.h for this:
-
-#ifndef printt
-# define printt(fmt, ...)                                               \
-        ({                                                              \
-                char ____fmt[] = fmt;                                   \
-                trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);  \
-        })
-#endif
-
-Or see my solution here:
-[1] https://github.com/netoptimizer/prototype-kernel/blob/master/kernel/samples/bpf/xdp_ddos01_blacklist_kern.c#L86:L99
-
-
-Another gotcha I've experienced is that if you format the string
-incorrectly, or use a modifier like %X, which bpf_trace_printk() does
-not seem to understand, then you "hear-nothing"...  Also experienced if
-using more than 3 arguments, then it fails or also go silent. Be
-careful when using this somewhat "flaky" debug facility.
-
-Do remember these bpf_trace_printk() should only be used for debugging,
-as it is very slow...
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+Jeffrey
