@@ -1,149 +1,150 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39254 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751090AbdFAOfX (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 1 Jun 2017 10:35:23 -0400
-Date: Thu, 1 Jun 2017 16:35:15 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: Error with printk and bpf_trace_printk
-Message-ID: <20170601163515.1de24539@redhat.com>
-In-Reply-To: <CAErYV9FFf+70vzpp+0qu0G0PPN0pKd7rfu7CJZ_b-fUrtqjkCw@mail.gmail.com>
-References: <CAErYV9EJtbgaWn4KAeoADxnHgj7S+vFdHgu78Y2PxNuhpWrANw@mail.gmail.com>
-        <20170530142437.656ec63d@redhat.com>
-        <CAErYV9FFf+70vzpp+0qu0G0PPN0pKd7rfu7CJZ_b-fUrtqjkCw@mail.gmail.com>
+Received: from mail-vk0-f44.google.com ([209.85.213.44]:34305 "EHLO
+        mail-vk0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751160AbdFAPqh (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 1 Jun 2017 11:46:37 -0400
+Received: by mail-vk0-f44.google.com with SMTP id y190so27051024vkc.1
+        for <xdp-newbies@vger.kernel.org>; Thu, 01 Jun 2017 08:46:37 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <CAErYV9HG9H=62DL49qY1iewshx3NcMqAq6u3O=RsYEWdZp3Hjw@mail.gmail.com>
+References: <CAErYV9HG9H=62DL49qY1iewshx3NcMqAq6u3O=RsYEWdZp3Hjw@mail.gmail.com>
+From: Y Song <ys114321@gmail.com>
+Date: Thu, 1 Jun 2017 08:45:51 -0700
+Message-ID: <CAH3MdRXPjywy1J02tgs6daQ-NtW8k6wAmvSNYM=yB0ah6ixM_Q@mail.gmail.com>
+Subject: Re: [iovisor-dev] Running Prototype-kernel package
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: Adel Fuchs <adelfuchs@gmail.com>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "iovisor-dev@lists.iovisor.org" <iovisor-dev@lists.iovisor.org>, brouer@redhat.com
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, xdp-newbies@vger.kernel.org, Tom Herbert via iovisor-dev <iovisor-dev@lists.iovisor.org>
 
-On Thu, 1 Jun 2017 14:10:01 +0300
-Adel Fuchs <adelfuchs@gmail.com> wrote:
-
+On Thu, Jun 1, 2017 at 7:45 AM, Adel Fuchs via iovisor-dev
+<iovisor-dev@lists.iovisor.org> wrote:
 > Hi Jesper,
-> I tried adding your solution, bpf_debug,  and I'm now able to run the
-> program with no errors but the trace_pipe file stays empty.
-> I just added this to my program:
-> 
-> #ifdef DEBUG
-> /* Only use this for debug output. Notice output from bpf_trace_printk()
-> * end-up in /sys/kernel/debug/tracing/trace_pipe
-> */
-> #define bpf_debug(fmt, ...) \
-> ({ \
-> char ____fmt[] = fmt; \
-> bpf_trace_printk(____fmt, sizeof(____fmt), \
-> ##__VA_ARGS__); \
-> })
-> #else
-> #define bpf_debug(fmt, ...) { } while (0)
-> #endif
-> 
-> 
-> And added a printing command:
-> bpf_debug("hi");
-> 
-> Do you know what's the problem?
+>
+> Thank you so much for your help. I need to run an eBPF programs that
+> filters packets according to IP address or port. I'm trying to run the
+> prototype-kernel package but encounter problems.
+> I went over the "getting started" tutorial, but I couldn'f find a
+> tutorial which explains how to actually run the samples. So this is
+> what I did:
+>
+> clang -O2 -Wall -target bpf -c xdp_ddos01_blacklist_cmdline.c -o
+> xdp_ddos01_blacklist_cmdline
 
-I assume you are doing:
- sudo cat /sys/kernel/debug/tracing/trace_pipe
+Just looked at the code. This seems a control plane application.
+You should not compile with "-target bpf". You should just use the
+default host one if you are intending to run on that host.
+You can also use gcc here.
 
-The problem could be that the kernel need to be compiled with the right
-trace config options... does anybody on the list(s) know? 
+Yonghong
 
-(p.s. removed netdev list cc)
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
-
-
-
-> On Tue, May 30, 2017 at 3:24 PM, Jesper Dangaard Brouer
-> <brouer@redhat.com> wrote:
-> >
-> > Notice, there are two mailing lists (Cc'ed) that you should likely ask
-> > these kind of questions on (instead of netdev), depending on if this is
-> > mostly related to bpf (iovisor-dev@lists.iovisor.org) or somehow
-> > related to XDP (xdp-newbies@vger.kernel.org).
-> >
-> > See my answer inlined below:
-> >
-> > On Sun, 28 May 2017 17:48:20 +0300 Adel Fuchs <adelfuchs@gmail.com> wrote:
-> >  
-> >> I have a working eBPF program, and I'm trying to add outputs to it.
-> >> I'm not able to use both printk and bpf_trace_printk functions. I get
-> >> this error:
-> >>
-> >> ELF contains non-map related relo data in entry 0 pointing to section
-> >> 8! Compiler bug?!
-> >>
-> >> Prog section 'ingress' rejected: Invalid argument (22)!
-> >>  - Type:         3
-> >>  - Instructions: 16 (0 over limit)
-> >>  - License:      GPL
-> >>
-> >> Verifier analysis:
-> >>
-> >> 0: (bf) r6 = r1
-> >> 1: (18) r1 = 0x0
-> >> 3: (85) call bpf_unspec#0
-> >> unknown func bpf_unspec#0
-> >>
-> >> Error fetching program/map!
-> >> Failed to retrieve (e)BPF data!
-> >>
-> >> Are there certain "includes" that I need to add?
-> >> In addition, I'm not sure I'm using the function correctly. I just
-> >> wrote: printk("hi")  
-> >
-> > You obviously cannot call printk directly from and eBPF program.
-> > I wonder how you got this compiling...
-> >
-> > As you hinted yourself, you should be using: bpf_trace_printk().
-> > But it is actually tricky to use... and not much help is around to
-> > figure this out.
-> >
-> > First of all the output end-up in this file: /sys/kernel/debug/tracing/trace_pipe
-> > Remember to read the output use 'cat' like:
-> >
-> >  sudo cat /sys/kernel/debug/tracing/trace_pipe
-> >
-> > And only the first process to read the output gets the output...
-> >
-> >
-> > I deduct you are using the TC/iproute2 examples:
-> >  https://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git/tree/examples/bpf
-> >
-> > Next gotcha is that, you need to provide the char* string in a very
-> > special way to make this compile correctly.  The iproute2 provide a
-> > helper define called "printt()" in include/bpf_api.h for this:
-> >
-> > #ifndef printt
-> > # define printt(fmt, ...)                                               \
-> >         ({                                                              \
-> >                 char ____fmt[] = fmt;                                   \
-> >                 trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);  \
-> >         })
-> > #endif
-> >
-> > Or see my solution here:
-> > [1] https://github.com/netoptimizer/prototype-kernel/blob/master/kernel/samples/bpf/xdp_ddos01_blacklist_kern.c#L86:L99
-> >
-> >
-> > Another gotcha I've experienced is that if you format the string
-> > incorrectly, or use a modifier like %X, which bpf_trace_printk() does
-> > not seem to understand, then you "hear-nothing"...  Also experienced if
-> > using more than 3 arguments, then it fails or also go silent. Be
-> > careful when using this somewhat "flaky" debug facility.
-> >
-> > Do remember these bpf_trace_printk() should only be used for debugging,
-> > as it is very slow...
-> > --
-> > Best regards,
-> >   Jesper Dangaard Brouer
-> >   MSc.CS, Principal Kernel Engineer at Red Hat
-> >   LinkedIn: http://www.linkedin.com/in/brouer  
+>
+> First, I got an error saying:
+> ./libbpf.h:12:10: fatal error: 'bpf/bpf.h' file not found
+> #include <bpf/bpf.h>
+>
+> So I added it manually. Then I got this big error:
+>
+> fatal error: error in backend: Cannot select: 0x562f4957d270: ch,glue
+> = BPFISD::CALL 0x562f49581238,
+>       TargetExternalSymbol:i64'__divdf3', Register:i64 %R1,
+> Register:i64 %R2, 0x562f49581238:1
+>   0x562f49580bb8: i64 = TargetExternalSymbol'__divdf3'
+>   0x562f4957d618: i64 = Register %R1
+>   0x562f49581510: i64 = Register %R2
+>   0x562f49581238: ch,glue = CopyToReg 0x562f495816b0, Register:i64
+> %R2, 0x562f49580f60, 0x562f495816b0:1
+>     0x562f49581510: i64 = Register %R2
+>     0x562f49580f60: i64,ch,glue = CopyFromReg 0x562f49581578,
+> Register:i64 %R0, 0x562f49581578:1
+>       0x562f4957da90: i64 = Register %R0
+>       0x562f49581578: ch,glue = callseq_end 0x562f4957db60,
+> TargetConstant:i64<0>, TargetConstant:i64<0>, 0x562f4957db60:1
+>         0x562f4957d6e8: i64 = TargetConstant<0>
+>         0x562f4957d6e8: i64 = TargetConstant<0>
+>         0x562f4957db60: ch,glue = BPFISD::CALL 0x562f4957d750,
+> TargetExternalSymbol:i64'__divdf3', Register:i64 %R1, Register:i64
+> %R2, 0x562f4957d750:1
+>           0x562f49580bb8: i64 = TargetExternalSymbol'__divdf3'
+>           0x562f4957d618: i64 = Register %R1
+>           0x562f49581510: i64 = Register %R2
+>           0x562f4957d750: ch,glue = CopyToReg 0x562f49581648,
+> Register:i64 %R2, Constant:i64<4741671816366391296>, 0x562f49581648:1
+>             0x562f49581510: i64 = Register %R2
+>             0x562f49580ef8: i64 = Constant<4741671816366391296>
+>             0x562f49581648: ch,glue = CopyToReg 0x562f495808e0,
+> Register:i64 %R1, 0x562f4957d478
+>               0x562f4957d618: i64 = Register %R1
+>               0x562f4957d478: i64,ch,glue = CopyFromReg
+> 0x562f49581370, Register:i64 %R0, 0x562f49581370:1
+>                 0x562f4957da90: i64 = Register %R0
+>                 0x562f49581370: ch,glue = callseq_end 0x562f49580c88,
+> TargetConstant:i64<0>, TargetConstant:i64<0>, 0x562f49580c88:1
+>                   0x562f4957d6e8: i64 = TargetConstant<0>
+>                   0x562f4957d6e8: i64 = TargetConstant<0>
+>                   0x562f49580c88: ch,glue = BPFISD::CALL
+> 0x562f49581030, TargetExternalSymbol:i64'__floatundidf', Register:i64
+> %R1, 0x562f49581030:1
+>
+>
+>
+>     0x562f495816b0: ch,glue = CopyToReg 0x562f4957dd00, Register:i64
+> %R1, 0x562f4957dd68
+>       0x562f4957d618: i64 = Register %R1
+>       0x562f4957dd68: i64,ch,glue = CopyFromReg 0x562f4957d7b8,
+> Register:i64 %R0, 0x562f4957d7b8:1
+>         0x562f4957da90: i64 = Register %R0
+>         0x562f4957d7b8: ch,glue = callseq_end 0x562f49580e28,
+> TargetConstant:i64<0>, TargetConstant:i64<0>, 0x562f49580e28:1
+>           0x562f4957d6e8: i64 = TargetConstant<0>
+>           0x562f4957d6e8: i64 = TargetConstant<0>
+>           0x562f49580e28: ch,glue = BPFISD::CALL 0x562f4957da28,
+> TargetExternalSymbol:i64'__floatundidf', Register:i64 %R1,
+> 0x562f4957da28:1
+>             0x562f4957d410: i64 = TargetExternalSymbol'__floatundidf'
+>             0x562f4957d618: i64 = Register %R1
+>             0x562f4957da28: ch,glue = CopyToReg 0x562f49580e90,
+> Register:i64 %R1, 0x562f4957d680
+>               0x562f4957d618: i64 = Register %R1
+>               0x562f4957d680: i64 = sub 0x562f49580a80, 0x562f49580dc0
+>                 0x562f49580a80: i64,ch = CopyFromReg 0x562f494f79b0,
+> Register:i64 %vreg50
+>                   0x562f49581718: i64 = Register %vreg50
+>                 0x562f49580dc0: i64,ch = CopyFromReg 0x562f494f79b0,
+> Register:i64 %vreg48
+>                   0x562f49581440: i64 = Register %vreg48
+> In function: main
+> clang: error: clang frontend command failed with exit code 70 (use -v
+> to see invocation)
+> clang version 4.0.0-1ubuntu1 (tags/RELEASE_400/rc1)
+> Target: bpf
+> Thread model: posix
+> InstalledDir: /usr/bin
+> clang: note: diagnostic msg: PLEASE submit a bug report to
+> http://llvm.org/bugs/ and include the crash backtrace, preprocessed
+> source, and associated run script.
+> clang: note: diagnostic msg:
+> ********************
+>
+> PLEASE ATTACH THE FOLLOWING FILES TO THE BUG REPORT:
+> Preprocessed source(s) and associated run script(s) are located at:
+> clang: note: diagnostic msg: /tmp/xdp_ddos01_blacklist_cmdline-80c621.c
+> clang: note: diagnostic msg: /tmp/xdp_ddos01_blacklist_cmdline-80c621.sh
+> clang: note: diagnostic msg:
+>
+> ********************
+>
+> Could you please help me run these samples? Could you please guide me
+> to the right sample that I need and tell me how to run it?
+> Note that I was able to run a simple XDP program on this computer, so
+> I think that it is configured all right...
+>
+> Thanks a lot
+> Adel
+>
+> _______________________________________________
+> iovisor-dev mailing list
+> iovisor-dev@lists.iovisor.org
+> https://lists.iovisor.org/mailman/listinfo/iovisor-dev
+>
