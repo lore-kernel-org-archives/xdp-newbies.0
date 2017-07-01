@@ -1,28 +1,49 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-vk0-f47.google.com ([209.85.213.47]:34817 "EHLO
-        mail-vk0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751233AbdGAFyB (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Sat, 1 Jul 2017 01:54:01 -0400
-Received: by mail-vk0-f47.google.com with SMTP id 191so75584514vko.2
-        for <xdp-newbies@vger.kernel.org>; Fri, 30 Jun 2017 22:54:01 -0700 (PDT)
+Received: from mail-pg0-f50.google.com ([74.125.83.50]:36341 "EHLO
+        mail-pg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751911AbdGAUIw (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Sat, 1 Jul 2017 16:08:52 -0400
+Received: by mail-pg0-f50.google.com with SMTP id u62so77896870pgb.3
+        for <xdp-newbies@vger.kernel.org>; Sat, 01 Jul 2017 13:08:51 -0700 (PDT)
 MIME-Version: 1.0
 In-Reply-To: <CAH3MdRV8aH-p1C01UGaCupgyWgpY7U6rZfwC+u8-WZdfsS=M_w@mail.gmail.com>
 References: <CAM7NYThuodV+4DE9XUh_xVNyoAWRvqsY9E-gnFhqZ6qUQMLRow@mail.gmail.com>
  <CAH3MdRVnOO9gcjzC3+KpNCePox+xdOaG1tNpX_zdrDLG0jtRwg@mail.gmail.com>
  <CAM7NYTj3EQPAG49+mvAEn9ffnwJRGvbnnAvcmRWsk5KXS=KUew@mail.gmail.com> <CAH3MdRV8aH-p1C01UGaCupgyWgpY7U6rZfwC+u8-WZdfsS=M_w@mail.gmail.com>
-From: Y Song <ys114321@gmail.com>
-Date: Fri, 30 Jun 2017 22:53:20 -0700
-Message-ID: <CAH3MdRWg=1zd_AyixM7Cde9e=giG0BrXO1xzVkxeOPutgV421w@mail.gmail.com>
+From: "MD I. Islam" <tamim@csebuet.org>
+Date: Sat, 1 Jul 2017 16:08:30 -0400
+Message-ID: <CAM7NYTj2fOXxW+YLtCsQtae7zLvc4x7krQbq1iHxLk2VTEskcw@mail.gmail.com>
 Subject: Re: bpf_trace_printk isn't working
 Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: "MD I. Islam" <tamim@csebuet.org>
+To: Y Song <ys114321@gmail.com>, Brenden Blanco <bblanco@gmail.com>
 Cc: xdp-newbies@vger.kernel.org
 
-I tested on latest net-next 4.12.0-rc6+ which is also fine.
+Thank you Song and Brenden! Apparently I do need to check the
+data_end. Is there a reason why it was silently ignoring the
+print_trace? I also got following warning;
 
-On Fri, Jun 30, 2017 at 9:26 PM, Y Song <ys114321@gmail.com> wrote:
+clang  -nostdinc -isystem /usr/lib/gcc/x86_64-linux-gnu/5/include
+-I./arch/x86/include -I./arch/x86/include/generated/uapi
+-I./arch/x86/include/generated  -I./include -I./arch/x86/include/uapi
+-I./include/uapi -I./include/generated/uapi -include
+./include/linux/kconfig.h  \
+-D__KERNEL__ -D__ASM_SYSREG_H -Wno-unused-value -Wno-pointer-sign \
+-Wno-compare-distinct-pointer-types \
+-Wno-gnu-variable-sized-type-not-at-end \
+-Wno-address-of-packed-member -Wno-tautological-compare \
+-O2 -emit-llvm -c samples/bpf/parse_simple.c -o -| llc -march=bpf
+-filetype=obj -o samples/bpf/parse_simple.o
+warning: unknown warning option '-Wno-address-of-packed-member'
+      [-Wunknown-warning-option]
+
+Does it have anything to do with the problem?
+
+Many thanks
+Tamim
+
+On Sat, Jul 1, 2017 at 12:26 AM, Y Song <ys114321@gmail.com> wrote:
 > I created a test case on fc25 (kernel 4.8.6) like below and it works
 > fine for me.
 >
