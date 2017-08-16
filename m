@@ -1,45 +1,30 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg0-f43.google.com ([74.125.83.43]:35580 "EHLO
-        mail-pg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752030AbdHHOxc (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 8 Aug 2017 10:53:32 -0400
-Received: by mail-pg0-f43.google.com with SMTP id v189so15785841pgd.2
-        for <xdp-newbies@vger.kernel.org>; Tue, 08 Aug 2017 07:53:32 -0700 (PDT)
+Received: from rs224.mailgun.us ([209.61.151.224]:19333 "EHLO rs224.mailgun.us"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751637AbdHPOTW (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 16 Aug 2017 10:19:22 -0400
+Date: Wed, 16 Aug 2017 16:13:39 +0200
+From: Alexander Alemayhu <alexander@alemayhu.com>
+Subject: BPF updates 09
+Message-ID: <20170816141339.GA17590@gmail.com>
 MIME-Version: 1.0
-From: "S.Y. Park" <sypeattle@gmail.com>
-Date: Tue, 8 Aug 2017 07:53:31 -0700
-Message-ID: <CAOsVQT4imuoU227_AAwU4t+b+fGPaMJVYjo96Y0ozFGdnAdC=Q@mail.gmail.com>
-Subject: XDP Workshop (Reprise of "XDP for the Rest of Us") at NetDev 2.2 Announced
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: xdp-newbies@vger.kernel.org
-Cc: David Miller <davem@davemloft.net>, Jamal Hadi Salam <jhs@mojatatu.com>
 
-Hi All,
+Hei everyone,
 
-NetDev 2.2 is excited to announce that Andy and Jesper will return
-with another installment of XDP
-workshop(http://www.netdevconf.org/2.2/session.html?gospodarek-xdp-workshop)
-similar to the tutorial at the NetDev 2.1 in Montreal.
+The 9th edition of BPF updates is available at
+https://www.cilium.io/blog/2017/8/15/bpf-updates-09
 
-Those with questions on the workshop details, contact Andy & Jesper
-directly or follow up on g+
-(https://plus.google.com/u/2/communities/117206553016528367120),
-facebook(https://www.facebook.com/netdevconf/) and
-twitter(https://twitter.com/netdev01).
+If you have any feedback, that is very welcome.
 
-We look forward to receiving more XDP related workshop, talk, tutorial
-and BoF proposals.
+Thanks.
 
-Feel free to contact info@netdevconf.org if you have any sessions
-and/or social event suggestions revolving the XDP discussions at the
-NetDev 2.2
+-- 
+Mit freundlichen Grüßen
 
-Thank you for your attention.
-
-Sincerely,
-
-Soyoung Park
-Executive Director
-The NetDev Society
+Alexander Alemayhu
