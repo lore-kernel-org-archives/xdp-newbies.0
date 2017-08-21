@@ -1,72 +1,118 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50786 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33830 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751251AbdHUIQH (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 21 Aug 2017 04:16:07 -0400
-Date: Mon, 21 Aug 2017 10:16:00 +0200
+        id S1753222AbdHUTZO (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 21 Aug 2017 15:25:14 -0400
+Date: Mon, 21 Aug 2017 21:25:06 +0200
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: What library to use ?
-Message-ID: <20170821101600.4e769785@redhat.com>
-In-Reply-To: <599A11B8.9030906@iogearbox.net>
-References: <1503234237.13034.9.camel@regit.org>
-        <599A11B8.9030906@iogearbox.net>
+Subject: XDP redirect measurements, gotchas and tracepoints
+Message-ID: <20170821212506.1cb0d5d6@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>
-Cc: Eric Leblond <eric@regit.org>, xdp-newbies@vger.kernel.org, brouer@redhat.com, pavel.odintsov@gmail.com
+To: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+Cc: brouer@redhat.com, John Fastabend <john.fastabend@gmail.com>, Daniel Borkmann <borkmann@iogearbox.net>, Andy Gospodarek <andy@greyhouse.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, =?UTF-8?B?UGF3ZcWC?= Staszewski <pstaszewski@itcare.pl>
 
 
-On Mon, 21 Aug 2017 00:48:24 +0200 Daniel Borkmann <daniel@iogearbox.net> wrote:
+I'be been playing with the latest XDP_REDIRECT feature, that was
+accepted in net-next (for ixgbe), see merge commit[1].
+ [1] https://git.kernel.org/davem/net-next/c/6093ec2dc31
 
-> On 08/20/2017 03:03 PM, Eric Leblond wrote:
-> [...]
-> > I've just started to work again on eBPF and XDP. My target it to work
-> > on XDP support for Suricata (Daniel if you read me, yes finally ;)
-> > Target is to be able to start Suricata with --xdp eth5 and get
-> > everything setup by Suricata to get a working capture.  
-> 
-> Great, finally! ;)
+At a first glance the performance looks awesome, and it is(!) when
+your system is tuned for this workload. When perfectly tuned I can
+show 13,096,427 pps forwarding, which is very close to 10Gbit/s
+wirespeed at 64bytes (14.88Mpps).  Using only a single CPU (E5-1650 v4
+@3.60GHz) core.
 
-This is really great to hear! I would very much like to cooperate in
-this area.
+First gotcha(1): be aware of what you measure.  The reported numbers from
+xdp_redirect_map is how many packets the XDP program received.  It
+have no info whether the packet was actually transmitted out.  This
+info is avail via TX counters[2] or an xdp tracepoint.
 
-I assume that the (currently) recommended interface for transferring
-raw XDP packets to userspace is the perf ring buffer via
-bpf_perf_event_output() interface?
+[2] ethtool_stats:
+    https://github.com/netoptimizer/network-testing/blob/master/bin/ethtool_stats.pl
 
-I want to code-up some benchmarks to establish a baseline of
-the expected performance that can be achieved via the perf ring buffer
-interface.
+Second gotcha(2): you cannot TX out a device, unless it also have a
+xdp bpf program attached. (This is an implicit dependency, as the
+driver code need to setup XDP resources before it can ndo_xdp_xmit).
 
-Can someone point me to some eBPF+perf-ring example code / docs?
+Third gotcha(3): You got this far, loaded xdp on both interfaces, and
+notice now that (with default setup) you can RX with 14Mpps but only
+TX with 6.9Mpps (and might have 5% idle cycles).  I debugged this via
+perf tracepoint event xdp:xdp_redirect, and found this was due to
+overrunning the xdp TX ring-queue size.
 
-I have noticed that samples/bpf/trace_output_*.c [1][2] contains
-something... but I'm hoping someone else have some examples?
- [1] https://github.com/torvalds/linux/blob/master/samples/bpf/trace_output_kern.c
- [2] https://github.com/torvalds/linux/blob/master/samples/bpf/trace_output_user.c
+ Thus, for this workload, we need to adjust either the TX ring-queue
+size (ethtool -G) or the DMA completion interval (ethtool -C rx-usecs).
+See tuning and measurements below signature.
 
+Fourth gotcha(4): Monitoring XDP redirect performance via the
+tracepoint xdp:xdp_redirect, is too slow, and affect the measurements
+themselves.  I'm working on optimizing these tracepoints, and will
+share results tomorrow.
 
-> > I've done one year ago an implementation of eBPF support in Suricata
-> > using the library in tools/lib/bpf. One year later is using this
-> > library the way to go or is there another library ?  
-> 
-> Yep, the lib in tools/lib/bpf would be recommended (also used in
-> tools/testing/selftests/bpf/ for some of the networking selftests
-> these days, incl. XDP).
-> 
-> Anyway, patches welcome just in case. ;)
-
-I've been baseing my examples[3] on samples/bpf/bpf_load.c, but I would
-very much like to move away from this approach, and instead use
-tools/lib/bpf/.  Maybe we can do a joined effort and bring
-tools/lib/bpf/ into shape?
-
-[3] https://github.com/netoptimizer/prototype-kernel/tree/master/kernel/samples/bpf
 -- 
 Best regards,
   Jesper Dangaard Brouer
   MSc.CS, Principal Kernel Engineer at Red Hat
   LinkedIn: http://www.linkedin.com/in/brouer
+
+
+No-tuning (default auto-tuning rx-usecs 1):
+ Notice tx_packets is too low compared to RX
+
+Show adapter(s) (ixgbe1 ixgbe2) statistics (ONLY that changed!)
+Ethtool(ixgbe1  ) stat:     14720134 (     14,720,134) <= fdir_miss /sec
+Ethtool(ixgbe1  ) stat:    874951205 (    874,951,205) <= rx_bytes /sec
+Ethtool(ixgbe1  ) stat:    952434290 (    952,434,290) <= rx_bytes_nic /sec
+Ethtool(ixgbe1  ) stat:       271737 (        271,737) <= rx_missed_errors /sec
+Ethtool(ixgbe1  ) stat:        27631 (         27,631) <= rx_no_dma_resources /sec
+Ethtool(ixgbe1  ) stat:     14582520 (     14,582,520) <= rx_packets /sec
+Ethtool(ixgbe1  ) stat:     14610072 (     14,610,072) <= rx_pkts_nic /sec
+Ethtool(ixgbe1  ) stat:    874947566 (    874,947,566) <= rx_queue_2_bytes /sec
+Ethtool(ixgbe1  ) stat:     14582459 (     14,582,459) <= rx_queue_2_packets /sec
+Ethtool(ixgbe2  ) stat:    417934735 (    417,934,735) <= tx_bytes /sec
+Ethtool(ixgbe2  ) stat:    445801114 (    445,801,114) <= tx_bytes_nic /sec
+Ethtool(ixgbe2  ) stat:      6965579 (      6,965,579) <= tx_packets /sec
+Ethtool(ixgbe2  ) stat:      6965771 (      6,965,771) <= tx_pkts_nic /sec
+
+
+Tuned with rx-usecs 25:
+ ethtool -C ixgbe1 rx-usecs 25 ;\
+ ethtool -C ixgbe2 rx-usecs 25
+
+Show adapter(s) (ixgbe1 ixgbe2) statistics (ONLY that changed!)
+Ethtool(ixgbe1  ) stat:     14123764 (     14,123,764) <= fdir_miss /sec
+Ethtool(ixgbe1  ) stat:    786101618 (    786,101,618) <= rx_bytes /sec
+Ethtool(ixgbe1  ) stat:    952807289 (    952,807,289) <= rx_bytes_nic /sec
+Ethtool(ixgbe1  ) stat:      1047989 (      1,047,989) <= rx_missed_errors /sec
+Ethtool(ixgbe1  ) stat:       737938 (        737,938) <= rx_no_dma_resources /sec
+Ethtool(ixgbe1  ) stat:     13101694 (     13,101,694) <= rx_packets /sec
+Ethtool(ixgbe1  ) stat:     13839620 (     13,839,620) <= rx_pkts_nic /sec
+Ethtool(ixgbe1  ) stat:    786101618 (    786,101,618) <= rx_queue_2_bytes /sec
+Ethtool(ixgbe1  ) stat:     13101694 (     13,101,694) <= rx_queue_2_packets /sec
+Ethtool(ixgbe2  ) stat:    785785590 (    785,785,590) <= tx_bytes /sec
+Ethtool(ixgbe2  ) stat:    838179358 (    838,179,358) <= tx_bytes_nic /sec
+Ethtool(ixgbe2  ) stat:     13096427 (     13,096,427) <= tx_packets /sec
+Ethtool(ixgbe2  ) stat:     13096519 (     13,096,519) <= tx_pkts_nic /
+
+Tuned with adjusting ring-queue sizes:
+ ethtool -G ixgbe1 rx 1024 tx 1024 ;\
+ ethtool -G ixgbe2 rx 1024 tx 1024
+
+Show adapter(s) (ixgbe1 ixgbe2) statistics (ONLY that changed!)
+Ethtool(ixgbe1  ) stat:     14169252 (     14,169,252) <= fdir_miss /sec
+Ethtool(ixgbe1  ) stat:    783666937 (    783,666,937) <= rx_bytes /sec
+Ethtool(ixgbe1  ) stat:    957332815 (    957,332,815) <= rx_bytes_nic /sec
+Ethtool(ixgbe1  ) stat:      1053052 (      1,053,052) <= rx_missed_errors /sec
+Ethtool(ixgbe1  ) stat:       844113 (        844,113) <= rx_no_dma_resources /sec
+Ethtool(ixgbe1  ) stat:     13061116 (     13,061,116) <= rx_packets /sec
+Ethtool(ixgbe1  ) stat:     13905221 (     13,905,221) <= rx_pkts_nic /sec
+Ethtool(ixgbe1  ) stat:    783666937 (    783,666,937) <= rx_queue_2_bytes /sec
+Ethtool(ixgbe1  ) stat:     13061116 (     13,061,116) <= rx_queue_2_packets /sec
+Ethtool(ixgbe2  ) stat:    783312119 (    783,312,119) <= tx_bytes /sec
+Ethtool(ixgbe2  ) stat:    835526092 (    835,526,092) <= tx_bytes_nic /sec
+Ethtool(ixgbe2  ) stat:     13055202 (     13,055,202) <= tx_packets /sec
+Ethtool(ixgbe2  ) stat:     13055093 (     13,055,093) <= tx_pkts_nic /sec
