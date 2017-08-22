@@ -1,64 +1,50 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35570 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752736AbdHVGhS (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 22 Aug 2017 02:37:18 -0400
-Date: Tue, 22 Aug 2017 08:37:10 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+Received: from mail-pf0-f171.google.com ([209.85.192.171]:36581 "EHLO
+        mail-pf0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751754AbdHVRJS (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 22 Aug 2017 13:09:18 -0400
+Date: Tue, 22 Aug 2017 10:09:15 -0700
+From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
 Subject: Re: XDP redirect measurements, gotchas and tracepoints
-Message-ID: <20170822083710.47a182a2@redhat.com>
-In-Reply-To: <20170821223540.atktdricmks26c27@ast-mbp>
+Message-ID: <20170822170913.35umf4j6hlmcnwtm@ast-mbp>
 References: <20170821212506.1cb0d5d6@redhat.com>
-        <20170821223540.atktdricmks26c27@ast-mbp>
+ <20170821223540.atktdricmks26c27@ast-mbp>
+ <20170822083710.47a182a2@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20170822083710.47a182a2@redhat.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>, Daniel Borkmann <borkmann@iogearbox.net>, Andy Gospodarek <andy@greyhouse.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, =?UTF-8?B?UGF3ZcWC?= Staszewski <pstaszewski@itcare.pl>, brouer@redhat.com
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, John Fastabend <john.fastabend@gmail.com>, Daniel Borkmann <borkmann@iogearbox.net>, Andy Gospodarek <andy@greyhouse.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, =?utf-8?B?UGF3ZcWC?= Staszewski <pstaszewski@itcare.pl>
 
-On Mon, 21 Aug 2017 15:35:42 -0700
-Alexei Starovoitov <alexei.starovoitov@gmail.com> wrote:
-
-> On Mon, Aug 21, 2017 at 09:25:06PM +0200, Jesper Dangaard Brouer wrote:
-> > 
-> > Third gotcha(3): You got this far, loaded xdp on both interfaces, and
-> > notice now that (with default setup) you can RX with 14Mpps but only
-> > TX with 6.9Mpps (and might have 5% idle cycles).  I debugged this via
-> > perf tracepoint event xdp:xdp_redirect, and found this was due to
-> > overrunning the xdp TX ring-queue size.  
+On Tue, Aug 22, 2017 at 08:37:10AM +0200, Jesper Dangaard Brouer wrote:
 > 
-> we should probably fix this somehow.
+> 
+> > Once tx-ing netdev added to devmap we can enable xdp on it automatically?
+> 
+> I think you are referring to Gotcha-2 here:
 
-Gotcha-3 (quoted above) is an interesting problem.  At first it looks
-like a driver tuning problem. But it is actually an inherent property
-of XDP, as there is no-queue or push-back flow control with XDP, there
-is no way to handle TX queue overrun.
- My proposed solution: I want to provide a facility for userspace to
-load another eBPF program (at the tracepoint xdp_redirect), which can
-"see" the issue occurring.  This allows a XDP/BPF developer to
-implement their own reaction/mitigation flow-control (e.g. via a map
-shared with the XDP program).
+oops. yes :)
 
+> 
+>   Second gotcha(2): you cannot TX out a device, unless it also have a
+>   xdp bpf program attached. (This is an implicit dependency, as the
+>   driver code need to setup XDP resources before it can ndo_xdp_xmit).
+> 
+> Yes, we should work on improving this situation.  Auto enabling XDP
+> when a netdev is added to a devmap is a good solution.  Currently this
+> is tied to loading an XDP bpf_prog.  Do you propose loading a dummy
+> bpf_prog on the netdev? (then we need to handle 1. not replacing
+> existing bpf_prog, 2. on take-down don't remove "later" loaded
+> bpf_prog).
 
-> Once tx-ing netdev added to devmap we can enable xdp on it automatically?
-
-I think you are referring to Gotcha-2 here:
-
-  Second gotcha(2): you cannot TX out a device, unless it also have a
-  xdp bpf program attached. (This is an implicit dependency, as the
-  driver code need to setup XDP resources before it can ndo_xdp_xmit).
-
-Yes, we should work on improving this situation.  Auto enabling XDP
-when a netdev is added to a devmap is a good solution.  Currently this
-is tied to loading an XDP bpf_prog.  Do you propose loading a dummy
-bpf_prog on the netdev? (then we need to handle 1. not replacing
-existing bpf_prog, 2. on take-down don't remove "later" loaded
-bpf_prog).
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+right. these things need to be taken care of.
+Technically for ndo_xdp_xmit to work the program doesn't need
+to be attached, but the device needs to be in xdp mode with
+configured xdp tx rings.
+The easiest, of course, is just to document it :)
+and may be add some sort of warning that if netdev is added
+to devmap and it's not in xdp mode, return warning or error.
