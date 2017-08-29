@@ -1,98 +1,154 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt0-f175.google.com ([209.85.216.175]:34474 "EHLO
-        mail-qt0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750822AbdH2Twv (ORCPT
+Received: from mail-ua0-f177.google.com ([209.85.217.177]:38086 "EHLO
+        mail-ua0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751512AbdH2V4t (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 29 Aug 2017 15:52:51 -0400
+        Tue, 29 Aug 2017 17:56:49 -0400
+Received: by mail-ua0-f177.google.com with SMTP id j46so14133666uag.5
+        for <xdp-newbies@vger.kernel.org>; Tue, 29 Aug 2017 14:56:49 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20170829190253.GA77682@C02RW35GFVH8.dhcp.broadcom.net>
-References: <CACKFLinJ0N7b8Xhq4ZoHdB80uXp_MU_vVyzZa7Dq11XrXsvDbw@mail.gmail.com>
- <20170823102937.79a9c4ed@redhat.com> <CACKFLinGuaDLxYRd=vC99DL5n0mf0rDbPRaDg4ctev=DEAhRSQ@mail.gmail.com>
- <20170825144513.1ee9fbb1@redhat.com> <59A03DF5.7070806@gmail.com>
- <CACKFLin-sZEkkCxE2iZRHjgG=K36OJ65B-xrEYVCCSQqhYsH-g@mail.gmail.com>
- <20170828160237.GA70910@C02RW35GFVH8.dhcp.broadcom.net> <CAKgT0UeZ5Wn+8qY8kbBef5weORwGAXjq6Qp7jtB1bscmjY_oYw@mail.gmail.com>
- <20170829152601.02fdb8a3@redhat.com> <CAKgT0Uebz0dX9wotygOo59UTKt-bQ29Oyd6=MkJYE0a+y2dR2A@mail.gmail.com>
- <20170829190253.GA77682@C02RW35GFVH8.dhcp.broadcom.net>
-From: Alexander Duyck <alexander.duyck@gmail.com>
-Date: Tue, 29 Aug 2017 12:52:49 -0700
-Message-ID: <CAKgT0Ue3G-bs=YQK5Ab3o7EtL8hsjcUzqpKbceaGc3Ki06mmnQ@mail.gmail.com>
-Subject: Re: XDP redirect measurements, gotchas and tracepoints
+In-Reply-To: <CAC1LvL0fWaQy0Roo_SH_c1L2X+-3Bi9pjTYzTKJQaa8GGoormA@mail.gmail.com>
+References: <CAC1LvL0WgC0bqEuGHp+LepyajskFdAkPruKY-9F6rL=zf49RKw@mail.gmail.com>
+ <CAH3MdRWk5R1DtUcPBbpNSv3kB-jJjP6RFUccRvqFS_7SZLnwzA@mail.gmail.com>
+ <CAC1LvL0Nc7dKdbmH+FbURycGpyrWar9emmbyReSOrVobdbGJhw@mail.gmail.com>
+ <CAH3MdRW8C=rSPCeoCix1hbM-E1mkhC1DcRoMy_+s8dqNvz=nNQ@mail.gmail.com> <CAC1LvL0fWaQy0Roo_SH_c1L2X+-3Bi9pjTYzTKJQaa8GGoormA@mail.gmail.com>
+From: Y Song <ys114321@gmail.com>
+Date: Tue, 29 Aug 2017 14:56:08 -0700
+Message-ID: <CAH3MdRV7ciyfAy9nB2jLpSX0Qb-W8hDK2nCNykkVRyX8mS2mBQ@mail.gmail.com>
+Subject: Re: Issues with bpf_trace_printk
 Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Andy Gospodarek <andy@greyhouse.net>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Michael Chan <michael.chan@broadcom.com>, John Fastabend <john.fastabend@gmail.com>, "Duyck, Alexander H" <alexander.h.duyck@intel.com>, "pstaszewski@itcare.pl" <pstaszewski@itcare.pl>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "borkmann@iogearbox.net" <borkmann@iogearbox.net>
+To: Zvi Effron <zeffron@riotgames.com>
+Cc: xdp-newbies@vger.kernel.org
 
-On Tue, Aug 29, 2017 at 12:02 PM, Andy Gospodarek <andy@greyhouse.net> wrote:
-> On Tue, Aug 29, 2017 at 09:23:49AM -0700, Alexander Duyck wrote:
->> On Tue, Aug 29, 2017 at 6:26 AM, Jesper Dangaard Brouer
->> <brouer@redhat.com> wrote:
->> >
->> > On Mon, 28 Aug 2017 09:11:25 -0700 Alexander Duyck <alexander.duyck@gmail.com> wrote:
->> >
->> >> My advice would be to not over complicate this. My big concern with
->> >> all this buffer recycling is what happens the first time somebody
->> >> introduces something like mirroring? Are you going to copy the data to
->> >> a new page which would be quite expensive or just have to introduce
->> >> reference counts? You are going to have to deal with stuff like
->> >> reference counts eventually so you might as well bite that bullet now.
->> >> My advice would be to not bother with optimizing for performance right
->> >> now and instead focus on just getting functionality. The approach we
->> >> took in ixgbe for the transmit path should work for almost any other
->> >> driver since all you are looking at is having to free the page
->> >> reference which takes care of reference counting already.
->> >
->> > This return API is not about optimizing performance right now.  It is
->> > actually about allowing us to change the underlying memory model per RX
->> > queue for XDP.
->>
->>  I would disagree. To me this is a obvious case of premature optimization.
->>
->
-> I'm with Jesper on this.  Though it may seem to you that this is an
-> optimization that is not a goal.
->
->> > If a RX-ring is use for both SKBs and XDP, then the refcnt model is
->> > still enforced.  Although a driver using the 1-packet-per-page model,
->> > should be able to reuse refcnt==1 pages when returned from XDP.
->>
->> Isn't this the case for all Rx on XDP enabled rings. Last I knew there
->> was an option to pass packets up via an SKB if XDP_PASS is returned.
->> Are you saying we need to do a special allocation path if an XDP
->> program doesn't make use of XDP_PASS?
->
-> I am not proposing that a special allocation path is needed depending on the
-> return code from the XDP program.  I'm proposing that in a case where
-> the return code is XDP_REDIRECT (or really anytime the ndo_xdp_xmit
-> operation is called), that there should be:
->
-> (1) notification back to the driver/resource/etc that allocated the page
-> that resources are no longer in use.
->
-> or
->
-> (2) common alloc/free framework used by drivers that operate on
-> xdp->data so that framework takes care of refcounting, etc.
->
-> My preference is (1) since it provides drivers the most flexibility in
-> the event that some hardware resource (rx ring buffer pointer) or
-> software resource (page or other chunk of memory) can be freed.
+I tried the test with the following:
+   . fc25 env but booted with latest net-next kernel (my developer env)
+   . clang/llvm 5.0 (build from source)
+   . latest iproute2 (build from source)
+and it works fine.
 
-So my preference would be (2) rather than (1). The simple reason being
-that I would prefer it if we didn't have every driver doing their own
-memory management API. With that said though I realize we need to have
-a solid proof-of-concept before we can get there so I am okay with
-each driver doing their own thing until we have a clear winner of some
-sort in all these discussions.
+I suggest you migrate to the latest (or above) environment and it should work.
+Otherwise, you could bisect and debug to see which component may have issues.
 
-The biggest issue I see with (1) is that it assumes that the Tx should
-somehow be responsible for the recycling. The whole thing ends up
-being way too racy. The problem is you will have two drivers sharing a
-region of memory and each will have to do some sort of additional
-reference counting if not using the existing page count. The result is
-you can have either the Rx device needing to free resources which will
-have to somehow be tracked from the Rx side, and the Tx side will have
-to handle the freeing and dumping the packet back into the Rx pool if
-it is the Tx that needs to free the resources. The standard case in
-this gets messy, but the exception cases such as removing or resetting
-a driver can get messy quickly.
+On Mon, Aug 28, 2017 at 10:53 PM, Zvi Effron <zeffron@riotgames.com> wrote:
+> Generic XDP driver was introduced in the 4.12 kernel.
+> https://kernelnewbies.org/Linux_4.12#head-9f96b5e8262772d5e1908bf335fd25f4c3eec15a
+> If you run dnf update, it should pull down the 4.12 kernel on Fedora 26.
+>
+> --Zvi
+>
+> On Mon, Aug 28, 2017 at 10:39 PM, Y Song <ys114321@gmail.com> wrote:
+>> I tried on my FC26 VM. I actually got permission denied.
+>> I tried to attach the main interface enp0s3 (acting as eth0).
+>>
+>> The kernel is 4.11. I think generic xdp support is not there.
+>> Otherwise people can confirm?
+>> The VM interface enp0s3 (or eth0) may not have driver support for XDP.
+>>
+>> On Mon, Aug 28, 2017 at 3:12 PM, Zvi Effron <zeffron@riotgames.com> wrote:
+>>> Full reproduction instructions:
+>>>
+>>> 1) Install Fedora 26 server. I chose all of the default options,
+>>> except I chose to install latest packages from the network. Otherwise,
+>>> just run a dnf update after install. I installed into a VM running on
+>>> HyperV
+>>> 2) Install clang, llvm, and kernel-devel:
+>>>     dnf install -y clang llvm kernel-devel
+>>> 3) Copy the program to xdp_test_kern.c
+>>> 4) Compile the program into an elf object file:
+>>>     clang -S -O2 -Wall -Werror -nostdinc -isystem $(clang
+>>> -print-file-name=include) -I /lib/modules/$(uname
+>>> -r)/build/arch/x86/include  -I /lib/modules/$(uname
+>>> -r)/build/arch/x86/include/generated/uapi  -I /lib/modules/$(uname
+>>> -r)/build/arch/x86/include/generated  -I /lib/modules/$(uname
+>>> -r)/build/include  -I /lib/modules/$(uname
+>>> -r)/build/arch/x86/include/uapi  -I /lib/modules/$(uname
+>>> -r)/build/include/uapi  -I /lib/modules/$(uname
+>>> -r)/build/include/generated/uapi -include  /lib/modules/$(uname
+>>> -r)/build/include/linux/kconfig.h -D __KERNEL__ -c -emit-llvm -o
+>>> xdp_test_kern.ll xdp_test_kern.c
+>>>     llc -march bpf -filetype obj -o xdp_test_kern.o xdp_test_kern.ll
+>>> 5) Attach the program to eth0:
+>>>     ip link set dev eth0 xdp object xdp_test_kern.o section .text verbose
+>>> 6) Notice only 0s being printed for data in /sys/kernel/debug/tracing/trace_pipe
+>>>
+>>> As near as I can tell, the driver being used for eth0 is hv_netvsc, in
+>>> case it's an issue with the driver.
+>>>
+>>> Thanks!
+>>> --Zvi
+>>>
+>>> On Mon, Aug 28, 2017 at 2:16 PM, Y Song <ys114321@gmail.com> wrote:
+>>>> bpf program itself is okay.
+>>>> I replaced linux:samples/bpf/xdp1_kern.c with this program and the
+>>>> bpf_trace_printk works fine.
+>>>> It could be some setup issue. But in any case, data start and data end
+>>>> are suspicious.
+>>>> It would be good you list all steps which can reproduce the issue.
+>>>>
+>>>> On Mon, Aug 28, 2017 at 10:20 AM, Zvi Effron <zeffron@riotgames.com> wrote:
+>>>>> Hello,
+>>>>>
+>>>>> I'm having an issue where bpf_trace_printk seems to always print 0 for
+>>>>> values. I'm running the following xdp program:
+>>>>>
+>>>>>
+>>>>> #include <uapi/linux/bpf.h>
+>>>>>
+>>>>> static int (*bpf_trace_printk)(const char *fmt, int fmt_size, ...) =
+>>>>> (void *) BPF_FUNC_trace_printk;
+>>>>>
+>>>>> int xdp(struct xdp_md *ctx) {
+>>>>>     char format_string[] = "Data start: %x\tData end: %x\n";
+>>>>>     bpf_trace_printk(format_string, sizeof(format_string), ctx->data,
+>>>>> ctx->data_end);
+>>>>>
+>>>>>     {
+>>>>>         char format_string[] = "Constant: %x\n";
+>>>>>         bpf_trace_printk(format_string, sizeof(format_string), 1);
+>>>>>     }
+>>>>>
+>>>>>     if (ctx->data == 0) {
+>>>>>         char format_string[] = "Data starts at offset 0";
+>>>>>         bpf_trace_printk(format_string, sizeof(format_string));
+>>>>>     }
+>>>>>     if (ctx->data_end == 0) {
+>>>>>         char format_string[] = "Data ends at offset 0";
+>>>>>         bpf_trace_printk(format_string, sizeof(format_string));
+>>>>>     }
+>>>>>     return XDP_PASS;
+>>>>> }
+>>>>>
+>>>>> char __attribute__((section("license"), used)) license[] = "GPL";
+>>>>>
+>>>>>
+>>>>> and I get the following output in /sys/kernel/debug/tracing/trace_pipe
+>>>>>
+>>>>>
+>>>>>             sshd-4824  [000] ..s1 67372.673714: : Data start: 0 Data end: 0
+>>>>>             sshd-4824  [000] ..s1 67372.673720: : Constant: 0
+>>>>>           <idle>-0     [000] ..s. 67372.675062: : Data start: 0 Data end: 0
+>>>>>           <idle>-0     [000] .Ns. 67372.675090: : Constant: 0
+>>>>>           <idle>-0     [000] .Ns. 67372.675116: : Data start: 0 Data end: 0
+>>>>>           <idle>-0     [000] .Ns. 67372.675117: : Constant: 0
+>>>>>           <idle>-0     [000] .Ns. 67372.675129: : Data start: 0 Data end: 0
+>>>>>           <idle>-0     [000] .Ns. 67372.675130: : Constant: 0
+>>>>>           <idle>-0     [000] .Ns. 67372.675136: : Data start: 0 Data end: 0
+>>>>>           <idle>-0     [000] .Ns. 67372.675137: : Constant: 0
+>>>>>           <idle>-0     [000] .Ns. 67372.675142: : Data start: 0 Data end: 0
+>>>>>           <idle>-0     [000] .Ns. 67372.675143: : Constant: 0
+>>>>>               ip-6458  [000] ..s. 67372.676083: : Data start: 0 Data end: 0
+>>>>>               ip-6458  [000] ..s. 67372.676084: : Constant: 0
+>>>>>               ip-6458  [000] ..s. 67372.676093: : Data start: 0 Data end: 0
+>>>>>               ip-6458  [000] ..s. 67372.676094: : Constant: 0
+>>>>>
+>>>>>
+>>>>> It looks like ctx->data and ctx->data_end are not 0, because the calls
+>>>>> to bpf_trace_printk in those ifs aren't being called, and the constant
+>>>>> is definitely not 0.
+>>>>>
+>>>>> What might I be missing or doing incorrectly?
+>>>>>
+>>>>> Thank you!
+>>>>> --Zvi
