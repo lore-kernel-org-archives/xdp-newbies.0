@@ -1,143 +1,102 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf0-f181.google.com ([209.85.192.181]:35129 "EHLO
-        mail-pf0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750758AbdH2Fx7 (ORCPT
+Received: from mail-qt0-f176.google.com ([209.85.216.176]:38560 "EHLO
+        mail-qt0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751218AbdH2QXv (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 29 Aug 2017 01:53:59 -0400
-Received: by mail-pf0-f181.google.com with SMTP id g13so7575551pfm.2
-        for <xdp-newbies@vger.kernel.org>; Mon, 28 Aug 2017 22:53:58 -0700 (PDT)
+        Tue, 29 Aug 2017 12:23:51 -0400
 MIME-Version: 1.0
-In-Reply-To: <CAH3MdRW8C=rSPCeoCix1hbM-E1mkhC1DcRoMy_+s8dqNvz=nNQ@mail.gmail.com>
-References: <CAC1LvL0WgC0bqEuGHp+LepyajskFdAkPruKY-9F6rL=zf49RKw@mail.gmail.com>
- <CAH3MdRWk5R1DtUcPBbpNSv3kB-jJjP6RFUccRvqFS_7SZLnwzA@mail.gmail.com>
- <CAC1LvL0Nc7dKdbmH+FbURycGpyrWar9emmbyReSOrVobdbGJhw@mail.gmail.com> <CAH3MdRW8C=rSPCeoCix1hbM-E1mkhC1DcRoMy_+s8dqNvz=nNQ@mail.gmail.com>
-From: Zvi Effron <zeffron@riotgames.com>
-Date: Mon, 28 Aug 2017 22:53:57 -0700
-Message-ID: <CAC1LvL0fWaQy0Roo_SH_c1L2X+-3Bi9pjTYzTKJQaa8GGoormA@mail.gmail.com>
-Subject: Re: Issues with bpf_trace_printk
+In-Reply-To: <20170829152601.02fdb8a3@redhat.com>
+References: <599C7530.2010405@gmail.com> <1503426617.2434.5.camel@intel.com>
+ <CACKFLimMWLto4FRxNE3tzrO5MU+p67J7wu=n1nmg0t8QGYjgrA@mail.gmail.com>
+ <CAKgT0Uf=ZfVeK-wtvNxSyGEVZ3UseUOHiP3ZOg-SrzmqsR=LtQ@mail.gmail.com>
+ <CACKFLinJ0N7b8Xhq4ZoHdB80uXp_MU_vVyzZa7Dq11XrXsvDbw@mail.gmail.com>
+ <20170823102937.79a9c4ed@redhat.com> <CACKFLinGuaDLxYRd=vC99DL5n0mf0rDbPRaDg4ctev=DEAhRSQ@mail.gmail.com>
+ <20170825144513.1ee9fbb1@redhat.com> <59A03DF5.7070806@gmail.com>
+ <CACKFLin-sZEkkCxE2iZRHjgG=K36OJ65B-xrEYVCCSQqhYsH-g@mail.gmail.com>
+ <20170828160237.GA70910@C02RW35GFVH8.dhcp.broadcom.net> <CAKgT0UeZ5Wn+8qY8kbBef5weORwGAXjq6Qp7jtB1bscmjY_oYw@mail.gmail.com>
+ <20170829152601.02fdb8a3@redhat.com>
+From: Alexander Duyck <alexander.duyck@gmail.com>
+Date: Tue, 29 Aug 2017 09:23:49 -0700
+Message-ID: <CAKgT0Uebz0dX9wotygOo59UTKt-bQ29Oyd6=MkJYE0a+y2dR2A@mail.gmail.com>
+Subject: Re: XDP redirect measurements, gotchas and tracepoints
 Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Y Song <ys114321@gmail.com>
-Cc: xdp-newbies@vger.kernel.org
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: Andy Gospodarek <andy@greyhouse.net>, Michael Chan <michael.chan@broadcom.com>, John Fastabend <john.fastabend@gmail.com>, "Duyck, Alexander H" <alexander.h.duyck@intel.com>, "pstaszewski@itcare.pl" <pstaszewski@itcare.pl>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "borkmann@iogearbox.net" <borkmann@iogearbox.net>
 
-Generic XDP driver was introduced in the 4.12 kernel.
-https://kernelnewbies.org/Linux_4.12#head-9f96b5e8262772d5e1908bf335fd25f4c3eec15a
-If you run dnf update, it should pull down the 4.12 kernel on Fedora 26.
-
---Zvi
-
-On Mon, Aug 28, 2017 at 10:39 PM, Y Song <ys114321@gmail.com> wrote:
-> I tried on my FC26 VM. I actually got permission denied.
-> I tried to attach the main interface enp0s3 (acting as eth0).
+On Tue, Aug 29, 2017 at 6:26 AM, Jesper Dangaard Brouer
+<brouer@redhat.com> wrote:
 >
-> The kernel is 4.11. I think generic xdp support is not there.
-> Otherwise people can confirm?
-> The VM interface enp0s3 (or eth0) may not have driver support for XDP.
+> On Mon, 28 Aug 2017 09:11:25 -0700 Alexander Duyck <alexander.duyck@gmail.com> wrote:
 >
-> On Mon, Aug 28, 2017 at 3:12 PM, Zvi Effron <zeffron@riotgames.com> wrote:
->> Full reproduction instructions:
->>
->> 1) Install Fedora 26 server. I chose all of the default options,
->> except I chose to install latest packages from the network. Otherwise,
->> just run a dnf update after install. I installed into a VM running on
->> HyperV
->> 2) Install clang, llvm, and kernel-devel:
->>     dnf install -y clang llvm kernel-devel
->> 3) Copy the program to xdp_test_kern.c
->> 4) Compile the program into an elf object file:
->>     clang -S -O2 -Wall -Werror -nostdinc -isystem $(clang
->> -print-file-name=include) -I /lib/modules/$(uname
->> -r)/build/arch/x86/include  -I /lib/modules/$(uname
->> -r)/build/arch/x86/include/generated/uapi  -I /lib/modules/$(uname
->> -r)/build/arch/x86/include/generated  -I /lib/modules/$(uname
->> -r)/build/include  -I /lib/modules/$(uname
->> -r)/build/arch/x86/include/uapi  -I /lib/modules/$(uname
->> -r)/build/include/uapi  -I /lib/modules/$(uname
->> -r)/build/include/generated/uapi -include  /lib/modules/$(uname
->> -r)/build/include/linux/kconfig.h -D __KERNEL__ -c -emit-llvm -o
->> xdp_test_kern.ll xdp_test_kern.c
->>     llc -march bpf -filetype obj -o xdp_test_kern.o xdp_test_kern.ll
->> 5) Attach the program to eth0:
->>     ip link set dev eth0 xdp object xdp_test_kern.o section .text verbose
->> 6) Notice only 0s being printed for data in /sys/kernel/debug/tracing/trace_pipe
->>
->> As near as I can tell, the driver being used for eth0 is hv_netvsc, in
->> case it's an issue with the driver.
->>
->> Thanks!
->> --Zvi
->>
->> On Mon, Aug 28, 2017 at 2:16 PM, Y Song <ys114321@gmail.com> wrote:
->>> bpf program itself is okay.
->>> I replaced linux:samples/bpf/xdp1_kern.c with this program and the
->>> bpf_trace_printk works fine.
->>> It could be some setup issue. But in any case, data start and data end
->>> are suspicious.
->>> It would be good you list all steps which can reproduce the issue.
->>>
->>> On Mon, Aug 28, 2017 at 10:20 AM, Zvi Effron <zeffron@riotgames.com> wrote:
->>>> Hello,
->>>>
->>>> I'm having an issue where bpf_trace_printk seems to always print 0 for
->>>> values. I'm running the following xdp program:
->>>>
->>>>
->>>> #include <uapi/linux/bpf.h>
->>>>
->>>> static int (*bpf_trace_printk)(const char *fmt, int fmt_size, ...) =
->>>> (void *) BPF_FUNC_trace_printk;
->>>>
->>>> int xdp(struct xdp_md *ctx) {
->>>>     char format_string[] = "Data start: %x\tData end: %x\n";
->>>>     bpf_trace_printk(format_string, sizeof(format_string), ctx->data,
->>>> ctx->data_end);
->>>>
->>>>     {
->>>>         char format_string[] = "Constant: %x\n";
->>>>         bpf_trace_printk(format_string, sizeof(format_string), 1);
->>>>     }
->>>>
->>>>     if (ctx->data == 0) {
->>>>         char format_string[] = "Data starts at offset 0";
->>>>         bpf_trace_printk(format_string, sizeof(format_string));
->>>>     }
->>>>     if (ctx->data_end == 0) {
->>>>         char format_string[] = "Data ends at offset 0";
->>>>         bpf_trace_printk(format_string, sizeof(format_string));
->>>>     }
->>>>     return XDP_PASS;
->>>> }
->>>>
->>>> char __attribute__((section("license"), used)) license[] = "GPL";
->>>>
->>>>
->>>> and I get the following output in /sys/kernel/debug/tracing/trace_pipe
->>>>
->>>>
->>>>             sshd-4824  [000] ..s1 67372.673714: : Data start: 0 Data end: 0
->>>>             sshd-4824  [000] ..s1 67372.673720: : Constant: 0
->>>>           <idle>-0     [000] ..s. 67372.675062: : Data start: 0 Data end: 0
->>>>           <idle>-0     [000] .Ns. 67372.675090: : Constant: 0
->>>>           <idle>-0     [000] .Ns. 67372.675116: : Data start: 0 Data end: 0
->>>>           <idle>-0     [000] .Ns. 67372.675117: : Constant: 0
->>>>           <idle>-0     [000] .Ns. 67372.675129: : Data start: 0 Data end: 0
->>>>           <idle>-0     [000] .Ns. 67372.675130: : Constant: 0
->>>>           <idle>-0     [000] .Ns. 67372.675136: : Data start: 0 Data end: 0
->>>>           <idle>-0     [000] .Ns. 67372.675137: : Constant: 0
->>>>           <idle>-0     [000] .Ns. 67372.675142: : Data start: 0 Data end: 0
->>>>           <idle>-0     [000] .Ns. 67372.675143: : Constant: 0
->>>>               ip-6458  [000] ..s. 67372.676083: : Data start: 0 Data end: 0
->>>>               ip-6458  [000] ..s. 67372.676084: : Constant: 0
->>>>               ip-6458  [000] ..s. 67372.676093: : Data start: 0 Data end: 0
->>>>               ip-6458  [000] ..s. 67372.676094: : Constant: 0
->>>>
->>>>
->>>> It looks like ctx->data and ctx->data_end are not 0, because the calls
->>>> to bpf_trace_printk in those ifs aren't being called, and the constant
->>>> is definitely not 0.
->>>>
->>>> What might I be missing or doing incorrectly?
->>>>
->>>> Thank you!
->>>> --Zvi
+>> My advice would be to not over complicate this. My big concern with
+>> all this buffer recycling is what happens the first time somebody
+>> introduces something like mirroring? Are you going to copy the data to
+>> a new page which would be quite expensive or just have to introduce
+>> reference counts? You are going to have to deal with stuff like
+>> reference counts eventually so you might as well bite that bullet now.
+>> My advice would be to not bother with optimizing for performance right
+>> now and instead focus on just getting functionality. The approach we
+>> took in ixgbe for the transmit path should work for almost any other
+>> driver since all you are looking at is having to free the page
+>> reference which takes care of reference counting already.
+>
+> This return API is not about optimizing performance right now.  It is
+> actually about allowing us to change the underlying memory model per RX
+> queue for XDP.
+
+ I would disagree. To me this is a obvious case of premature optimization.
+
+> If a RX-ring is use for both SKBs and XDP, then the refcnt model is
+> still enforced.  Although a driver using the 1-packet-per-page model,
+> should be able to reuse refcnt==1 pages when returned from XDP.
+
+Isn't this the case for all Rx on XDP enabled rings. Last I knew there
+was an option to pass packets up via an SKB if XDP_PASS is returned.
+Are you saying we need to do a special allocation path if an XDP
+program doesn't make use of XDP_PASS?
+
+> If a RX-ring is _ONLY_ used for XDP, then the driver have freedom to
+> implement another memory model, with the return-API.  We need to
+> experiment with the most optimal memory model.  The 1-packet-per-page
+> model is actually not the fastest, because of PCI-e bottlenecks.  With
+> HW support for packing descriptors and packets over the PCI-e bus, much
+> higher rates can be achieved.  Mellanox mlx5-Lx already have the needed HW
+> support.  And companies like NetCope also have 100G HW that does
+> similar tricks, and they even have a whitepaper[1][2] how they are
+> faster than DPDK with their NDP (Netcope Data Plane) API.
+>
+> We do need the ability/flexibility to change the RX memory model, to
+> take advantage of this new NIC hardware.
+
+Looking over the white paper I see nothing that prevents us from using
+the same memory model we do with the Intel NICs. If anything I think
+the Intel drivers in "legacy-rx" mode could support something like
+this now, even if the hardware doesn't simply because we can get away
+with keeping the memory pseudo-pinned. My bigger concern is that we
+keep coming back to this idea that we need to have the network stack
+taking care of the 1 page per packet recycling when I really think it
+has no business being there. We either need to look at implementing
+this in the way we did in the Intel drivers where we use the reference
+counts or implement our own memory handling API like SLUB or something
+similar based on compound page destructors. I would much rather see us
+focus on getting this going with an agnostic memory model where we
+don't have to make the stack aware of where the memory came from or
+where it has to be returned to.
+
+> [1] https://www.netcope.com/en/resources/improving-dpdk-performance
+> [2] https://www.netcope.com/en/company/press-center/press-releases/read-new-netcope-whitepaper-on-dpdk-acceleration
+
+My only concern with something like this is the fact that it is
+optimized for a setup where the data is left in place and nothing
+extra is added. Trying to work with something like this gets more
+expensive when you have to deal with the full stack as you have to
+copy out the headers and still deal with all the skb metadata. I fully
+agree with the basic premise that writing in large blocks provides
+significant gains in throughput, specifically with small packets. The
+only gotcha you would have to deal with is SKB allocation and data
+copying overhead to make room and fill in metadata for the frame and
+any extra headers needed.
+
+- Alex
