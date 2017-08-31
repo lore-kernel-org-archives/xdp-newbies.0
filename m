@@ -1,34 +1,52 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:41806 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750973AbdHaE6X (ORCPT
+Received: from mail-ua0-f173.google.com ([209.85.217.173]:38015 "EHLO
+        mail-ua0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751397AbdHaFct (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 31 Aug 2017 00:58:23 -0400
-Date: Wed, 30 Aug 2017 21:58:22 -0700 (PDT)
-Message-Id: <20170830.215822.864489286642298311.davem@davemloft.net>
+        Thu, 31 Aug 2017 01:32:49 -0400
+Received: by mail-ua0-f173.google.com with SMTP id j46so24626827uag.5
+        for <xdp-newbies@vger.kernel.org>; Wed, 30 Aug 2017 22:32:48 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAADnVQKuZSc3bzMSmsCZB1FLnmywOEhMECSu_yruCD+exq81Sw@mail.gmail.com>
+References: <CAADnVQKuZSc3bzMSmsCZB1FLnmywOEhMECSu_yruCD+exq81Sw@mail.gmail.com>
+From: Y Song <ys114321@gmail.com>
+Date: Wed, 30 Aug 2017 22:32:08 -0700
+Message-ID: <CAH3MdRUemaGqwMJ6oK=z+4x=+HSs6CptK91=duyV1fuYFVwuZw@mail.gmail.com>
 Subject: Re: BPF assembler?
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <CAADnVQ+O=a7Q5cxOxkkrVi09VyF+4u+ScV7F8TtZ2qAEL1a2aA@mail.gmail.com>
-References: <20170830210619.6a97c0d0@cakuba.netronome.com>
-        <CAADnVQ+O=a7Q5cxOxkkrVi09VyF+4u+ScV7F8TtZ2qAEL1a2aA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: alexei.starovoitov@gmail.com
-Cc: kubakici@wp.pl, xdp-newbies@vger.kernel.org
+To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Cc: Jakub Kicinski <kubakici@wp.pl>, xdp-newbies@vger.kernel.org, Yonghong Song <yhs@fb.com>
 
-From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Date: Wed, 30 Aug 2017 21:14:33 -0700
+Jakub,
 
-> On Wed, Aug 30, 2017 at 9:06 PM, Jakub Kicinski <kubakici@wp.pl> wrote:
->> Hi!
+Let me know if you need additional help on this. I think this
+assembler->obj in llvm is the last
+major piece for a complete toolchain for clang/llvm.
+
+Thanks,
+
+Yonghong
+
+On Wed, Aug 30, 2017 at 9:37 PM, Alexei Starovoitov
+<alexei.starovoitov@gmail.com> wrote:
+> On Wed, Aug 30, 2017 at 9:24 PM, Jakub Kicinski <kubakici@wp.pl> wrote:
 >>
->> Is there any way to write eBPF programs in some form of an assembly
->> language?
-> 
-> was Dave's gnu asm upstreamed? I lost the track while away...
-> llvm assembler is almost there too, but it needs some work.
-
-No, I never was able to move forward on that unfortunately.
+>>> llvm assembler is almost there too, but it needs some work.
+>>
+>> Does it use the "verifier instruction format"?  Is it available
+>> somewhere to look at?
+>
+> yes. you can use verifier instruction format.
+> That was the goal for llvm to be as close as possible to
+> kernel verifier syntax.
+> But, I think, it's fine to deviate if it makes asm code easier to read.
+> What is missing is AsmParser directory in
+> llvm/lib/Target/BPF
+> disassembler, elf tools, codegen are all there.
+> Most of the core backend components are shared in the llvm,
+> so it's only missing text parser.
+> Most backends already have assemblers:
+> ls -d lib/Target/*/AsmParser
+> To make one for BPF requires a lot of copy-paste from others ;)
