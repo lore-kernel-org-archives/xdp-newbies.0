@@ -1,65 +1,66 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:48297 "EHLO
-        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755564AbdIHPf2 (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 8 Sep 2017 11:35:28 -0400
-Message-ID: <59B2B8BB.4050302@iogearbox.net>
-Date: Fri, 08 Sep 2017 17:35:23 +0200
-From: Daniel Borkmann <daniel@iogearbox.net>
+Received: from mail-oi0-f49.google.com ([209.85.218.49]:36468 "EHLO
+        mail-oi0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753545AbdIHQma (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 8 Sep 2017 12:42:30 -0400
+Received: by mail-oi0-f49.google.com with SMTP id x190so17719472oix.3
+        for <xdp-newbies@vger.kernel.org>; Fri, 08 Sep 2017 09:42:30 -0700 (PDT)
 MIME-Version: 1.0
-Subject: Re: Accessing userspace created persistent eBPF maps from kernel
- bpf restricted C
-References: <CABUc5FF3Lx=7ECCT_bzxcbKHkXX1Vs66KJHabJExqTJ8Bz0VgA@mail.gmail.com> <CAC1LvL0kQqKJtqo-ea1qonvKVbKaUkhk=QUSBZCVhmoC+tbCZQ@mail.gmail.com> <CABUc5FHPNjdauR-0OuK=P=Uvx81puBZ+cjnX6sMXDZQguCaAiw@mail.gmail.com> <20170907.191216.97579557710446095.davem@davemloft.net> <CABUc5FG9rfn2RYvp4Y12407PGMXPgA-XzibyTn5zqW4O2oSsOA@mail.gmail.com>
-In-Reply-To: <CABUc5FG9rfn2RYvp4Y12407PGMXPgA-XzibyTn5zqW4O2oSsOA@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <CAC1LvL08Jgn839KPvfPqzyuJbVQTosiUsvuFqtCey=oKzef1PQ@mail.gmail.com>
+References: <CABUc5FF3Lx=7ECCT_bzxcbKHkXX1Vs66KJHabJExqTJ8Bz0VgA@mail.gmail.com>
+ <CAC1LvL0kQqKJtqo-ea1qonvKVbKaUkhk=QUSBZCVhmoC+tbCZQ@mail.gmail.com>
+ <CABUc5FHPNjdauR-0OuK=P=Uvx81puBZ+cjnX6sMXDZQguCaAiw@mail.gmail.com>
+ <20170907.191216.97579557710446095.davem@davemloft.net> <CABUc5FG9rfn2RYvp4Y12407PGMXPgA-XzibyTn5zqW4O2oSsOA@mail.gmail.com>
+ <CAC1LvL08Jgn839KPvfPqzyuJbVQTosiUsvuFqtCey=oKzef1PQ@mail.gmail.com>
+From: Kiran T <kiran.lkml@gmail.com>
+Date: Fri, 8 Sep 2017 09:42:29 -0700
+Message-ID: <CABUc5FEhfB1XwdLh+i3oF2HJLOxaGhEckfRgVA=sHmyfzidYWg@mail.gmail.com>
+Subject: Re: Accessing userspace created persistent eBPF maps from kernel bpf
+ restricted C
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Kiran T <kiran.lkml@gmail.com>, David Miller <davem@davemloft.net>
-Cc: Zvi Effron <zeffron@riotgames.com>, xdp-newbies@vger.kernel.org
+To: Zvi Effron <zeffron@riotgames.com>, daniel@iogearbox.net, brouer@redhat.com
+Cc: David Miller <davem@davemloft.net>, xdp-newbies@vger.kernel.org
 
-On 09/08/2017 07:28 AM, Kiran T wrote:
-> On Thu, Sep 7, 2017 at 7:12 PM, David Miller <davem@davemloft.net> wrote:
-> ...
->>
->> Pinning is so that an unload of a BPF program doesn't cause it's maps
->> to go away.
->>
->> It's designed so that things like statistics can be persistent across
->> BPF program loads.
->>
->> So you can load and unload a BPF program multiple times, and you won't
->> lose the statistic increments done by earlier instances.
+On Thu, Sep 7, 2017 at 11:34 PM, Zvi Effron <zeffron@riotgames.com> wrote:
+...
 >
-> I understand.
-> However, I have a use case where  data used to filter perf events can
-> change and can
-> be loaded as a full map,  much after the bpf program is loaded.  The
-> map will be pinned,
+> I'm not sure entirely how, since I have only just started playing with
+> this map type, but I suspect a workaround is possible with
+> BPF_TYPE_ARRAY_OF_MAPS. My suspicion is that you could store the map
+> you want to replace at index 0 in a pinned array of maps. The XDP
+> program would load the map out of the array to use it.
+>
+> To change the map, have a userspace program load the new map, then set
+> it as index 0 in the pinned array of maps. The next time the XDP
+> program runs, it will pull the new map from index 0.
+>
 
-If I understand you correctly, you have a map that contains some
-kind of filter policy that you check before proceeding. The map
-that contains this data is pinned in user space, but not immediately
-available at load time, and you want to be able to insert or also
-potentially replace this map with a different map when you need to
-change the policy. Is the assumption correct that the key/value
-format of the policy would be the same and known a-priori, plus the
-map types will also be the same?
+Well, I have to switch between maps based on an "entity switch" in the
+producing the event.
+The map type and format is fixed and pinned.  Say it could be one per
+pid, if pid is the entity
+switch.  /sys/bpf/pidno could be the pinned location.  Based on the
+pid at the time of event,
+I want to consult the map of that pid so I can
+filter/aggregate/histogram events sent to user space.
+The "entity switch" could be  major:minor:inode, or other such as well
+(not easy to get from bpf now, but
+you get the idea).  I can't have one or just a few maps because the
+key value pairs will be
+different for different entity switches.  I might not filter if
+/sys/pid/pidno map is not present.
 
-If I didn't get this wrong, then just use a map in map that was
-suggested earlier. So you have a BPF_TYPE_ARRAY_OF_MAPS that is
-pinned as well, and when you need to replace the maps at runtime,
-then you fetch the fd of the pinned BPF_TYPE_ARRAY_OF_MAPS map
-and update it with the inner fd of the pinned map containing the
-new policy data. That way, you don't need to reload the BPF program
-(which would be atomic as well, though).
+I guess this is not easy right now because of the way maps are
+implemented right now,
+with the verifier doing the magic fixup at the load time.  But as BPF
+usage increases, these
+kind of use cases will start popping up :)
 
-In the case where the map could change also in terms of format,
-then probably best would be (if you don't want to reload the whole
-program and have all contained in it) that you make a tail call
-from the main program to a program that processes this specific
-map and that program makes another tail call to a different program
-that continues processing. So you have a flow where prog A calls
-prog B which calls prog C, and prog B is replaceable atomically
-during runtime. If there is some need to pass data from A to B
-or B to C, then just use a per CPU map as a scratch buffer.
+Thanks for your suggestion (Zvi and Daniel).  I will explore
+BPF_TYPE_ARRAY_OF_MAPS  if it
+can fit this case.
+
+Thanks,
+Kiran
