@@ -1,43 +1,50 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf0-f182.google.com ([209.85.192.182]:35747 "EHLO
-        mail-pf0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753206AbdIHGeo (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 8 Sep 2017 02:34:44 -0400
-Received: by mail-pf0-f182.google.com with SMTP id g13so3187736pfm.2
-        for <xdp-newbies@vger.kernel.org>; Thu, 07 Sep 2017 23:34:44 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CABUc5FG9rfn2RYvp4Y12407PGMXPgA-XzibyTn5zqW4O2oSsOA@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:53792 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932289AbdIHHpb (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 8 Sep 2017 03:45:31 -0400
+Date: Fri, 8 Sep 2017 09:45:25 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: Accessing userspace created persistent eBPF maps from kernel
+ bpf restricted C
+Message-ID: <20170908094525.7b05dcf9@redhat.com>
+In-Reply-To: <CABUc5FF3Lx=7ECCT_bzxcbKHkXX1Vs66KJHabJExqTJ8Bz0VgA@mail.gmail.com>
 References: <CABUc5FF3Lx=7ECCT_bzxcbKHkXX1Vs66KJHabJExqTJ8Bz0VgA@mail.gmail.com>
- <CAC1LvL0kQqKJtqo-ea1qonvKVbKaUkhk=QUSBZCVhmoC+tbCZQ@mail.gmail.com>
- <CABUc5FHPNjdauR-0OuK=P=Uvx81puBZ+cjnX6sMXDZQguCaAiw@mail.gmail.com>
- <20170907.191216.97579557710446095.davem@davemloft.net> <CABUc5FG9rfn2RYvp4Y12407PGMXPgA-XzibyTn5zqW4O2oSsOA@mail.gmail.com>
-From: Zvi Effron <zeffron@riotgames.com>
-Date: Thu, 7 Sep 2017 23:34:43 -0700
-Message-ID: <CAC1LvL08Jgn839KPvfPqzyuJbVQTosiUsvuFqtCey=oKzef1PQ@mail.gmail.com>
-Subject: Re: Accessing userspace created persistent eBPF maps from kernel bpf
- restricted C
-Content-Type: text/plain; charset="UTF-8"
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: Kiran T <kiran.lkml@gmail.com>
-Cc: David Miller <davem@davemloft.net>, xdp-newbies@vger.kernel.org
+Cc: xdp-newbies@vger.kernel.org, brouer@redhat.com
 
-> However, I have a use case where  data used to filter perf events can
-> change and can
-> be loaded as a full map,  much after the bpf program is loaded.  The
-> map will be pinned,
-> but the bpf program currently has no way to access this map. Can this use case
-> be addressed?
+On Thu, 7 Sep 2017 14:37:42 -0700 Kiran T <kiran.lkml@gmail.com> wrote:
 
-I'm not sure entirely how, since I have only just started playing with
-this map type, but I suspect a workaround is possible with
-BPF_TYPE_ARRAY_OF_MAPS. My suspicion is that you could store the map
-you want to replace at index 0 in a pinned array of maps. The XDP
-program would load the map out of the array to use it.
+> The samples and test cases have examples showing how user space
+> programs can pin maps and get pinned maps as FDs.  However, how would
+> one access a user-space created pinned map from kernel space, without
+> having to statically have a 'maps' section defined (and depend on the
+> elf loader)?
 
-To change the map, have a userspace program load the new map, then set
-it as index 0 in the pinned array of maps. The next time the XDP
-program runs, it will pull the new map from index 0.
+Reading further in the thread, I do realize that you have special or
+strange use case that is hard/impossible with bpf, as the map type is
+needed at bpf load/verifier time.
 
-Maybe that will work for you?
---Zvi
+(IMHO) A more common issue is: asking how can I change/update an
+BPF-elf-object-file to use another bpf-map at load-time?
+
+The use-case behind this question is:  I have pinned bpf-map accessible
+via the filesystem (bpffs), and I want several BPF programs to
+share-and-use this map (on the kernel side).
+
+This is what I'm doing in my xdp_ddos01 example[1].  You can load
+xdp_ddos01 on several NICs and they will all share and use the same
+blacklist-maps. I've highlighted the code here[1]:
+
+[1] https://github.com/netoptimizer/prototype-kernel/blob/master/kernel/samples/bpf/xdp_ddos01_blacklist_user.c#L186-L218
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
