@@ -1,41 +1,27 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:44538 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752762AbdIHGLg (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 8 Sep 2017 02:11:36 -0400
-Date: Thu, 07 Sep 2017 23:11:30 -0700 (PDT)
-Message-Id: <20170907.231130.1212330819578021120.davem@davemloft.net>
-Subject: Re: Accessing userspace created persistent eBPF maps from kernel
- bpf restricted C
-From: David Miller <davem@davemloft.net>
+Received: from mail-pf0-f182.google.com ([209.85.192.182]:35747 "EHLO
+        mail-pf0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753206AbdIHGeo (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 8 Sep 2017 02:34:44 -0400
+Received: by mail-pf0-f182.google.com with SMTP id g13so3187736pfm.2
+        for <xdp-newbies@vger.kernel.org>; Thu, 07 Sep 2017 23:34:44 -0700 (PDT)
+MIME-Version: 1.0
 In-Reply-To: <CABUc5FG9rfn2RYvp4Y12407PGMXPgA-XzibyTn5zqW4O2oSsOA@mail.gmail.com>
-References: <CABUc5FHPNjdauR-0OuK=P=Uvx81puBZ+cjnX6sMXDZQguCaAiw@mail.gmail.com>
-        <20170907.191216.97579557710446095.davem@davemloft.net>
-        <CABUc5FG9rfn2RYvp4Y12407PGMXPgA-XzibyTn5zqW4O2oSsOA@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+References: <CABUc5FF3Lx=7ECCT_bzxcbKHkXX1Vs66KJHabJExqTJ8Bz0VgA@mail.gmail.com>
+ <CAC1LvL0kQqKJtqo-ea1qonvKVbKaUkhk=QUSBZCVhmoC+tbCZQ@mail.gmail.com>
+ <CABUc5FHPNjdauR-0OuK=P=Uvx81puBZ+cjnX6sMXDZQguCaAiw@mail.gmail.com>
+ <20170907.191216.97579557710446095.davem@davemloft.net> <CABUc5FG9rfn2RYvp4Y12407PGMXPgA-XzibyTn5zqW4O2oSsOA@mail.gmail.com>
+From: Zvi Effron <zeffron@riotgames.com>
+Date: Thu, 7 Sep 2017 23:34:43 -0700
+Message-ID: <CAC1LvL08Jgn839KPvfPqzyuJbVQTosiUsvuFqtCey=oKzef1PQ@mail.gmail.com>
+Subject: Re: Accessing userspace created persistent eBPF maps from kernel bpf
+ restricted C
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: kiran.lkml@gmail.com
-Cc: zeffron@riotgames.com, xdp-newbies@vger.kernel.org
+To: Kiran T <kiran.lkml@gmail.com>
+Cc: David Miller <davem@davemloft.net>, xdp-newbies@vger.kernel.org
 
-From: Kiran T <kiran.lkml@gmail.com>
-Date: Thu, 7 Sep 2017 22:28:32 -0700
-
-> On Thu, Sep 7, 2017 at 7:12 PM, David Miller <davem@davemloft.net> wrote:
-> ...
->>
->> Pinning is so that an unload of a BPF program doesn't cause it's maps
->> to go away.
->>
->> It's designed so that things like statistics can be persistent across
->> BPF program loads.
->>
->> So you can load and unload a BPF program multiple times, and you won't
->> lose the statistic increments done by earlier instances.
-> 
-> I understand.
 > However, I have a use case where  data used to filter perf events can
 > change and can
 > be loaded as a full map,  much after the bpf program is loaded.  The
@@ -43,6 +29,15 @@ Date: Thu, 7 Sep 2017 22:28:32 -0700
 > but the bpf program currently has no way to access this map. Can this use case
 > be addressed?
 
-The BPF program has to know the type of the map and what it looks
-like at compile time.  So what you are suggesting seems to be
-impossible.
+I'm not sure entirely how, since I have only just started playing with
+this map type, but I suspect a workaround is possible with
+BPF_TYPE_ARRAY_OF_MAPS. My suspicion is that you could store the map
+you want to replace at index 0 in a pinned array of maps. The XDP
+program would load the map out of the array to use it.
+
+To change the map, have a userspace program load the new map, then set
+it as index 0 in the pinned array of maps. The next time the XDP
+program runs, it will pull the new map from index 0.
+
+Maybe that will work for you?
+--Zvi
