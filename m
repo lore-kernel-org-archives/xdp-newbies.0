@@ -1,67 +1,131 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-vk0-f41.google.com ([209.85.213.41]:34893 "EHLO
-        mail-vk0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756210AbdIHSDN (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 8 Sep 2017 14:03:13 -0400
-Received: by mail-vk0-f41.google.com with SMTP id m142so4222306vkf.2
-        for <xdp-newbies@vger.kernel.org>; Fri, 08 Sep 2017 11:03:12 -0700 (PDT)
+Received: from mail-wr0-f170.google.com ([209.85.128.170]:33149 "EHLO
+        mail-wr0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756993AbdIHUAv (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 8 Sep 2017 16:00:51 -0400
+Received: by mail-wr0-f170.google.com with SMTP id a43so6344787wrc.0
+        for <xdp-newbies@vger.kernel.org>; Fri, 08 Sep 2017 13:00:50 -0700 (PDT)
+Subject: Re: [iovisor-dev] [PATCH RFC] Add BPF AsmParser support in LLVM
+References: <9c6783db-25ac-2854-142a-b44b72cfdc9a@netronome.com>
+ <CAH3MdRVUmUbT4295RBr2EyoNJHTGHgvxo8c-wG3e2bJr0DiA4Q@mail.gmail.com>
+From: Jiong Wang <jiong.wang@netronome.com>
+Message-ID: <ed89863b-97b6-ecaf-e710-e2cafab30325@netronome.com>
+Date: Fri, 8 Sep 2017 21:00:47 +0100
 MIME-Version: 1.0
-In-Reply-To: <CAC1LvL2q6JNGaLH3oLTtBvz9S7482xsOECExPp-R1Kt0NNrPbg@mail.gmail.com>
-References: <CABUc5FF3Lx=7ECCT_bzxcbKHkXX1Vs66KJHabJExqTJ8Bz0VgA@mail.gmail.com>
- <CAC1LvL0kQqKJtqo-ea1qonvKVbKaUkhk=QUSBZCVhmoC+tbCZQ@mail.gmail.com>
- <CABUc5FHPNjdauR-0OuK=P=Uvx81puBZ+cjnX6sMXDZQguCaAiw@mail.gmail.com>
- <20170907.191216.97579557710446095.davem@davemloft.net> <CABUc5FG9rfn2RYvp4Y12407PGMXPgA-XzibyTn5zqW4O2oSsOA@mail.gmail.com>
- <CAC1LvL08Jgn839KPvfPqzyuJbVQTosiUsvuFqtCey=oKzef1PQ@mail.gmail.com>
- <CABUc5FEhfB1XwdLh+i3oF2HJLOxaGhEckfRgVA=sHmyfzidYWg@mail.gmail.com> <CAC1LvL2q6JNGaLH3oLTtBvz9S7482xsOECExPp-R1Kt0NNrPbg@mail.gmail.com>
-From: Y Song <ys114321@gmail.com>
-Date: Fri, 8 Sep 2017 11:02:31 -0700
-Message-ID: <CAH3MdRWQih44CybcPj7L9=RR-cQPV2LskeAv29+UXvg9oAGfXA@mail.gmail.com>
-Subject: Re: Accessing userspace created persistent eBPF maps from kernel bpf
- restricted C
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <CAH3MdRVUmUbT4295RBr2EyoNJHTGHgvxo8c-wG3e2bJr0DiA4Q@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Zvi Effron <zeffron@riotgames.com>
-Cc: Kiran T <kiran.lkml@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Jesper Dangaard Brouer <brouer@redhat.com>, David Miller <davem@davemloft.net>, xdp-newbies@vger.kernel.org
+To: Y Song <ys114321@gmail.com>
+Cc: xdp-newbies@vger.kernel.org, oss-drivers@netronome.com, Tom Herbert via iovisor-dev <iovisor-dev@lists.iovisor.org>, Jakub Kicinski <jakub.kicinski@netronome.com>
 
-On Fri, Sep 8, 2017 at 10:37 AM, Zvi Effron <zeffron@riotgames.com> wrote:
->> Well, I have to switch between maps based on an "entity switch" in the
->> producing the event.
->> The map type and format is fixed and pinned.  Say it could be one per
->> pid, if pid is the entity
->> switch.  /sys/bpf/pidno could be the pinned location.  Based on the
->> pid at the time of event,
->> I want to consult the map of that pid so I can
->> filter/aggregate/histogram events sent to user space.
->> The "entity switch" could be  major:minor:inode, or other such as well
->> (not easy to get from bpf now, but
->> you get the idea).  I can't have one or just a few maps because the
->> key value pairs will be
->> different for different entity switches.  I might not filter if
->> /sys/pid/pidno map is not present.
->
->> Thanks for your suggestion (Zvi and Daniel).  I will explore
->> BPF_TYPE_ARRAY_OF_MAPS  if it
->> can fit this case.
->
-> It sounds like BPF_TYPE_HASH_OF_MAPS might be more of what you need,
-> then. It's the same as BPF_TYPE_ARRAY_OF_MAPS, only it allows for a
-> key instead of an index. You could use the major:minor:inode or
-> whatever as the key, and then your problem becomes how the eBPF
-> program can calculate the key.
+Hi Y Song,
 
-If you know the details of each map (map type, key/value format), you
-can have an app specific map
-(one element to indicate (active map fd, active map property)) and you
-can have a giant if statement
+   Thanks for the review and test.
 
-  /* fd is the map fd */
-  if (active_map == map1) {
-    ...
-  } else if (active_map == map2) {
-    ...
+[snip]
+> I guess, we may need to add something like LD_VAR_ADDR so that
+> the proper assembly code can be issued. Also we could drop "ll" with
+> "r1 = tx_port"?
+
+Personally, I prefer drop "ll". The "ll" suffix was there to tell people it is 64bit
+constant while the register "r1" is with 64-bit width so I feel it is enough. For
+32-bit situation, we need new register set, some thing like "w1 = tx_port".
+
+And to generate proper assembly, it looks to me the customized print method for
+"uimm64" needs the following code (copied from printOperand):
+
+@@ -90,5 +90,8 @@ void BPFInstPrinter::printImm64Operand(const MCInst *MI, unsigned OpNo,
+    if (Op.isImm())
+      O << (uint64_t)Op.getImm();
+    else
+-    O << Op;
++    {
++      assert(Op.isExpr() && "Expected an expression");
++      printExpr(Op.getExpr(), O);
++    }
   }
 
 >
-> Good luck!
-> --Zvi
+> Back to your test case bpf-insn-unit.s, you do not need add bpf in the file name
+> since it is already under BPF directory.
+
+Will change the name. and will fix all reviews below in the next update.
+
+>>  r0 = *(u16 *)skb[2] // BPF_LD | BPF_ABS | BPF_H
+>> r0 = * (u32*)skb[4] // BPF_LD | BPF_ABS | BPF_W
+> could you add BPF_B test as well?
+>
+>>  r0 = *  (u16 *)skb[r1] // BPF_LD | BPF_IND | BPF_H
+>>  r0 = *(u32 *)skb[r2]   // BPF_LD | BPF_IND | BPF_W
+> BPF_B test?
+>
+>>  r1 = 8589934591 ll     // BPF_LD | BPF_DW | BPF_IMM
+>>  r1 = dummy_map ll      // Symbolic version
+>
+> // ======== BPF_LDX Class ========
+>   r5 = *(u8 *)(r0 + 0)   // BPF_LDX | BPF_B
+>   r6 = *(u16 *)(r1 + 8)  // BPF_LDX | BPF_H
+>   r7 = *(u32 *)(r2 + 16) // BPF_LDX | BPF_W
+>   r8 = *(u64 *)(r3 - 30) // BPF_LDX | BPF_DW
+>
+> // ======== TODO: BPF_ST Class =======
+>> There is no insn here, you can remove this line for now.
+>
+> // ======== BPF_STX Class ========
+>   *(u8 *)(r0 + 0) = r7    // BPF_STX | BPF_B
+>   *(u16 *)(r1 + 8) = r8   // BPF_STX | BPF_H
+>   *(u32 *)(r2 + 16) = r9  // BPF_STX | BPF_W
+>   *(u64 *)(r3 - 30) = r10 // BPF_STX | BPF_DW
+>
+>   lock *(u32 *)(r2 + 16) += r9  // BPF_STX | BPF_W | BPF_XADD
+>   lock *(u64 *)(r3 - 30) += r10 // BPF_STX | BPF_DW | BPF_XADD
+>
+> // ======== BPF_JMP Class ========
+>   goto Llabel0  // BPF_JA
+>   if r0 == r1 goto Llabel0   // BPF_JEQ
+>   if r1 > r2 goto Llabel0    // BPF_JGT
+>   if r2 >= r3 goto Llabel0   // BPF_JGE
+>   // TODO: BPF_JSET
+>> there is no BPF_JSET, you can remove this.
+>   if r3 != r4 goto Llabel0   // BPF_JNE
+>   if r4 s> r5 goto Llabel0   // BPF_JSGT
+>   if r5 s>= r6 goto Llabel0  // BPF_JSGE
+>   call 1                     // BPF_CALL
+>   exit                       // BPF_EXIT
+>   if r6 < r7 goto Llabel0    // BPF_JLT
+>   if r7 <= r8 goto Llabel0   // BPF_JLE
+>   if r8 s< r9 goto Llabel0   // BPF_JSLT
+>   if r9 s<= r10 goto Llabel0 // BPF_JSLE
+>
+>> Could you add test compare register vs. imm?
+>
+> // ======== BPF_ALU64 Class ========
+>   r0 += r1    // BPF_ADD
+>   r1 -= r2    // BPF_SUB
+>   r2 *= r3    // BPF_MUL
+>   r3 /= r4    // BPF_DIV
+> Llabel0:
+>   r4 |= r5    // BPF_OR
+>   r5 &= r6    // BPF_AND
+>   r6 <<= r7   // BPF_LSH
+>   r7 >>= r8   // BPF_RSH
+>               // TODO: BPF_NEG
+>               // TODO: BPF_MOD
+>> There is no BPF_NEG/MOD yet, you can remove these two lines.
+>
+>   r8 ^= r9    // BPF_XOR
+>   r9 = r10    // BPF_MOV
+>   r10 s>>= r0 // BPF_ARSH
+>> Could you add arith operations with register and imm. operands?
+>
+>   bswap16 r1  // BPF_END | BPF_TO_BE
+>   bswap32 r2  // BPF_END | BPF_TO_BE
+>   bswap64 r3  // BPF_END | BPF_TO_BE
+>               // TODO: BPF_END | BPF_TO_LE
+>> There is no BPF_TO_LE yet, you can remove this line.
+>
+>> Could you interleave the CHECK results with insn? This will be
+> clearer to do manual comparison.
