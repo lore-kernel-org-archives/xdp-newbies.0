@@ -1,76 +1,96 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-vk0-f53.google.com ([209.85.213.53]:49362 "EHLO
-        mail-vk0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751790AbdIVE4M (ORCPT
+Received: from mail-pg0-f42.google.com ([74.125.83.42]:51497 "EHLO
+        mail-pg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752536AbdIVQYT (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 22 Sep 2017 00:56:12 -0400
-Received: by mail-vk0-f53.google.com with SMTP id h191so15112vke.6
-        for <xdp-newbies@vger.kernel.org>; Thu, 21 Sep 2017 21:56:12 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <a6541ae5-0da5-4959-c903-36eb749cc3e9@netronome.com>
+        Fri, 22 Sep 2017 12:24:19 -0400
+Received: by mail-pg0-f42.google.com with SMTP id k193so839041pgc.8
+        for <xdp-newbies@vger.kernel.org>; Fri, 22 Sep 2017 09:24:19 -0700 (PDT)
+Date: Fri, 22 Sep 2017 18:24:10 +0200
+From: Jakub Kicinski <jakub.kicinski@netronome.com>
+Subject: Re: [oss-drivers] Re: [iovisor-dev] [PATCH RFC 0/4] Initial 32-bit
+ eBPF encoding support
+Message-ID: <20170922182410.71701aee@cakuba>
+In-Reply-To: <20170921185654.v7nynvebxjpzbnlj@ast-mbp>
 References: <1505767641-40512-1-git-send-email-jiong.wang@netronome.com>
- <1505767641-40512-4-git-send-email-jiong.wang@netronome.com>
- <CAH3MdRVE-CCzVoaFg1tDtyFV7s9Q5nwbotHDs3je03OeX7M9MA@mail.gmail.com> <a6541ae5-0da5-4959-c903-36eb749cc3e9@netronome.com>
-From: Y Song <ys114321@gmail.com>
-Date: Thu, 21 Sep 2017 21:55:31 -0700
-Message-ID: <CAH3MdRU6CkcW5xLFmqs-Bm0jyHP18tjNZ3Mb-3Ss6Gu8u84paA@mail.gmail.com>
-Subject: Re: [iovisor-dev] [PATCH RFC 3/4] New 32-bit register set
-Content-Type: text/plain; charset="UTF-8"
+        <59C03AC5.3080109@iogearbox.net>
+        <f7eb81db-a758-d49d-4c09-08a017b02e98@netronome.com>
+        <20170921185654.v7nynvebxjpzbnlj@ast-mbp>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jiong Wang <jiong.wang@netronome.com>
-Cc: xdp-newbies@vger.kernel.org, LLVM Developers Mailing List <llvm-dev@lists.llvm.org>, oss-drivers@netronome.com, Tom Herbert via iovisor-dev <iovisor-dev@lists.iovisor.org>
+Content-Transfer-Encoding: 8bit
+To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Cc: Jiong Wang <jiong.wang@netronome.com>, Daniel Borkmann <daniel@iogearbox.net>, xdp-newbies@vger.kernel.org, llvm-dev@lists.llvm.org, iovisor-dev@lists.iovisor.org, oss-drivers@netronome.com, yhs@fb.com
 
-Hi, Jiong,
+On Thu, 21 Sep 2017 11:56:55 -0700, Alexei Starovoitov wrote:
+> On Wed, Sep 20, 2017 at 12:20:40AM +0100, Jiong Wang via iovisor-dev wrote:
+> > On 18/09/2017 22:29, Daniel Borkmann wrote:  
+> > > On 09/18/2017 10:47 PM, Jiong Wang wrote:  
+> > > > Hi,
+> > > > 
+> > > >    Currently, LLVM eBPF backend always generate code in 64-bit mode,
+> > > > this may
+> > > > cause troubles when JITing to 32-bit targets.
+> > > > 
+> > > >    For example, it is quite common for XDP eBPF program to access
+> > > > some packet
+> > > > fields through base + offset that the default eBPF will generate
+> > > > BPF_ALU64 for
+> > > > the address formation, later when JITing to 32-bit hardware,
+> > > > BPF_ALU64 needs
+> > > > to be expanded into 32 bit ALU sequences even though the address
+> > > > space is
+> > > > 32-bit that the high bits is not significant.
+> > > > 
+> > > >    While a complete 32-bit mode implemention may need an new ABI
+> > > > (something like
+> > > > -target-abi=ilp32), this patch set first add some initial code so we
+> > > > could
+> > > > construct 32-bit eBPF tests through hand-written assembly.
+> > > > 
+> > > >    A new 32-bit register set is introduced, its name is with "w"
+> > > > prefix and LLVM
+> > > > assembler will encode statements like "w1 += w2" into the following
+> > > > 8-bit code
+> > > > field:
+> > > > 
+> > > >      BPF_ADD | BPF_X | BPF_ALU
+> > > > 
+> > > > BPF_ALU will be used instead of BPF_ALU64.
+> > > > 
+> > > >    NOTE, currently you can only use "w" register with ALU
+> > > > statements, not with
+> > > > others like branches etc as they don't have different encoding for
+> > > > 32-bit
+> > > > target.  
+> > > 
+> > > Great to see work in this direction! Can we also enable to use / emit
+> > > all the 32bit BPF_ALU instructions whenever possible for the currently
+> > > available bpf targets while at it (which only use BPF_ALU64 right now)?  
+> > 
+> > Hi Daniel,
+> > 
+> >    Thanks for the feedback.
+> > 
+> >    I think we could also enable the use of all the 32bit BPF_ALU under
+> > currently
+> > available bpf targets.  As we now have 32bit register set support, we could
+> > make
+> > i32 type as legal type to prevent it be promoted into i64, then hook it up
+> > with i32
+> > ALU patterns, will look into this.  
+> 
+> I don't think we need to gate 32bit alu generation with a flag.
+> Though interpreter and JITs support 32-bit since day one, the verifier
+> never seen such programs before, so some valid programs may get
+> rejected. After some time passes and we're sure that all progs
+> still work fine when they're optimized with 32-bit alu, we can flip
+> the switch in llvm and make it default.
 
-The new patch looks good. I did some basic testing on
-net-next:samples/bpf and net-next:tools/testing/selftests/bpf and it
-works fine. All existing llvm unit tests are not impacted as well as
-expected.
-
-I have applied the patch to the trunk. Besides your other work to
-support 32bit abi, it would be
-interesting to see how new 32bit register can be used in 64bit
-architecture which may help improve performance and/or reduce
-instruction count.
-
-Thanks,
-Yonghong
-
-On Tue, Sep 19, 2017 at 4:10 PM, Jiong Wang <jiong.wang@netronome.com> wrote:
-> On 19/09/2017 07:44, Y Song wrote:
->>
->> Hi, Jiong,
->>
->> Thanks for the patch! It is a great start to support 32bit register in
->> BPF.
->> In the past, I have studied a little bit to see whether 32bit register
->> support may reduce
->> the number of unnecessary shifts on x86_64 and improve the
->> performance. Looking through
->> a few bpf programs and it looks like the opportunity is not great, but
->> still nice to have if we
->> have this capability. As you mentioned, this definitely helped 32bit
->> architecture!
->>
->> I am not an expert in LLVM tablegen. I briefly looked through the code
->> change and it looks like
->> correct. Hopefully some llvm-dev tablegen experts can comment on the
->> implementation.
->>
->> Below I only have a couple of minor comments.
->
->
-> Yong Hong,
->
->   Thanks for the review.
->
->   I have addressed your comments and attached the updated patch.
->
->   Do you want me to put this patch set on to llvm review website? I guess it
-> is the
->   formal review channel?
->
-> Regards,
-> Jiong
->
+Thinking about next steps - do we expect the 32b operations to clear the
+upper halves of the registers?  The interpreter does it, and so does
+x86.  I don't think we can load 32bit-only programs on 64bit hosts, so
+we would need some form of data flow analysis in the kernel to prune
+the zeroing for 32bit offload targets.  Is that correct?
