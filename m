@@ -1,50 +1,55 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from szxga05-in.huawei.com ([45.249.212.191]:6569 "EHLO
-        szxga05-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932698AbdIYKDw (ORCPT
+Received: from www62.your-server.de ([213.133.104.62]:51713 "EHLO
+        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934668AbdIYLCI (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 25 Sep 2017 06:03:52 -0400
-Subject: Re: libbpf missing set_link_xdp_fd ?
-References: <1506276431.21618.2.camel@regit.org>
- <20170925112502.1879734a@redhat.com>
-From: "Wangnan (F)" <wangnan0@huawei.com>
-Message-ID: <31e809a3-d49a-8f62-4ef3-a8cc0695cf18@huawei.com>
-Date: Mon, 25 Sep 2017 18:03:06 +0800
+        Mon, 25 Sep 2017 07:02:08 -0400
+Message-ID: <59C8E22C.3000609@iogearbox.net>
+Date: Mon, 25 Sep 2017 13:02:04 +0200
+From: Daniel Borkmann <daniel@iogearbox.net>
 MIME-Version: 1.0
-In-Reply-To: <20170925112502.1879734a@redhat.com>
-Content-Type: text/plain; charset="utf-8"; format=flowed
+Subject: Re: libbpf missing set_link_xdp_fd ?
+References: <1506276431.21618.2.camel@regit.org> <20170925112502.1879734a@redhat.com> <59C8CF39.7030405@iogearbox.net>
+In-Reply-To: <59C8CF39.7030405@iogearbox.net>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: Jesper Dangaard Brouer <brouer@redhat.com>, Eric Leblond <eric@regit.org>
-Cc: xdp-newbies@vger.kernel.org, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Cc: xdp-newbies@vger.kernel.org, wangnan0@huawei.com, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>
 
-
-
-On 2017/9/25 17:25, Jesper Dangaard Brouer wrote:
-> On Sun, 24 Sep 2017 20:07:11 +0200
-> Eric Leblond <eric@regit.org> wrote:
->
->> Hello,
+On 09/25/2017 11:41 AM, Daniel Borkmann wrote:
+> On 09/25/2017 11:25 AM, Jesper Dangaard Brouer wrote:
+>> On Sun, 24 Sep 2017 20:07:11 +0200
+>> Eric Leblond <eric@regit.org> wrote:
 >>
->> bpf_load is implementing the set_link_xdp_fd() function and it seems
->> this function is not available in libbpf.
-> I also ran into this problem, when I wanted to switch my XDP programs
-> into using tools/lib/bpf/.
+>>> Hello,
+>>>
+>>> bpf_load is implementing the set_link_xdp_fd() function and it seems
+>>> this function is not available in libbpf.
+>>
+>> I also ran into this problem, when I wanted to switch my XDP programs
+>> into using tools/lib/bpf/.
 >
-> E.g.: https://github.com/netoptimizer/prototype-kernel/commit/5397e596c30416763
+> Right.
 >
->> Should it be the case or should it be part of another library ?
-> I'm not sure... maybe Alexei, Daniel or Wang have an opinion?
+>> E.g.: https://github.com/netoptimizer/prototype-kernel/commit/5397e596c30416763
+>>
+>>> Should it be the case or should it be part of another library ?
+>>
+>> I'm not sure... maybe Alexei, Daniel or Wang have an opinion?
 >
+> It seems that none of the actual attach infra is handled in
+> tools/lib/bpf/, meaning neither attaching the fd to kprobes/
+> uprobes/tracepoints nor tc or xdp, so adding a special case
+> only for xdp into the lib feels that we probably might be better
+> off putting this either into its own mini lib on top of that,
 
-tools/lib/bpf is aiming at provide a better way to parse bpf object file,
-load bpf program and maps. It doesn't operate link layer. set_link_xdp_fd()
-and other socket and link related functions are better to be implement
-separately. Two choices: 1. Move them into a library in samples/bpf.
-2. make libbpf support XDP. The second choice looks good, but I'm
-not familiar with XDP API and don't know how to give a good abstraction.
+That could potentially go to tools/lib/xdp/, probably would be
+the best option.
 
-In my opinion it should be part of another library.
-
-Thank you.
+> or as a small helper included in the samples / selftests and
+> the like where its needed.
+>
+> Best,
+> Daniel
