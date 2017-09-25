@@ -1,41 +1,50 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53900 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932404AbdIYJZM (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 25 Sep 2017 05:25:12 -0400
-Date: Mon, 25 Sep 2017 11:25:02 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: libbpf missing set_link_xdp_fd ?
-Message-ID: <20170925112502.1879734a@redhat.com>
-In-Reply-To: <1506276431.21618.2.camel@regit.org>
-References: <1506276431.21618.2.camel@regit.org>
+Received: from www62.your-server.de ([213.133.104.62]:39408 "EHLO
+        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933992AbdIYJlW (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 25 Sep 2017 05:41:22 -0400
+Message-ID: <59C8CF39.7030405@iogearbox.net>
+Date: Mon, 25 Sep 2017 11:41:13 +0200
+From: Daniel Borkmann <daniel@iogearbox.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Subject: Re: libbpf missing set_link_xdp_fd ?
+References: <1506276431.21618.2.camel@regit.org> <20170925112502.1879734a@redhat.com>
+In-Reply-To: <20170925112502.1879734a@redhat.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Eric Leblond <eric@regit.org>
-Cc: xdp-newbies@vger.kernel.org, brouer@redhat.com, wangnan0@huawei.com, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>
+To: Jesper Dangaard Brouer <brouer@redhat.com>, Eric Leblond <eric@regit.org>
+Cc: xdp-newbies@vger.kernel.org, wangnan0@huawei.com, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>
 
-On Sun, 24 Sep 2017 20:07:11 +0200
-Eric Leblond <eric@regit.org> wrote:
+On 09/25/2017 11:25 AM, Jesper Dangaard Brouer wrote:
+> On Sun, 24 Sep 2017 20:07:11 +0200
+> Eric Leblond <eric@regit.org> wrote:
+>
+>> Hello,
+>>
+>> bpf_load is implementing the set_link_xdp_fd() function and it seems
+>> this function is not available in libbpf.
+>
+> I also ran into this problem, when I wanted to switch my XDP programs
+> into using tools/lib/bpf/.
 
-> Hello,
-> 
-> bpf_load is implementing the set_link_xdp_fd() function and it seems
-> this function is not available in libbpf.
+Right.
 
-I also ran into this problem, when I wanted to switch my XDP programs
-into using tools/lib/bpf/.
+> E.g.: https://github.com/netoptimizer/prototype-kernel/commit/5397e596c30416763
+>
+>> Should it be the case or should it be part of another library ?
+>
+> I'm not sure... maybe Alexei, Daniel or Wang have an opinion?
 
-E.g.: https://github.com/netoptimizer/prototype-kernel/commit/5397e596c30416763
+It seems that none of the actual attach infra is handled in
+tools/lib/bpf/, meaning neither attaching the fd to kprobes/
+uprobes/tracepoints nor tc or xdp, so adding a special case
+only for xdp into the lib feels that we probably might be better
+off putting this either into its own mini lib on top of that,
+or as a small helper included in the samples / selftests and
+the like where its needed.
 
-> Should it be the case or should it be part of another library ?
-
-I'm not sure... maybe Alexei, Daniel or Wang have an opinion?
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+Best,
+Daniel
