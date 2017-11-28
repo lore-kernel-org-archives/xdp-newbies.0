@@ -1,67 +1,66 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48794 "EHLO mx1.redhat.com"
+Received: from smtp2.iitd.ac.in ([103.27.10.44]:58360 "EHLO smtp2.iitd.ac.in"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752146AbdK1LCg (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 28 Nov 2017 06:02:36 -0500
-Date: Tue, 28 Nov 2017 12:02:29 +0100
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: XDP on many-core NPU
-Message-ID: <20171128120229.16c0009c@redhat.com>
-In-Reply-To: <CAM7NYTgW1AnJ0C4H2YiXOegp0p3BHCtU5bB7WfbcDTvaYzHJmw@mail.gmail.com>
-References: <CAM7NYTgW1AnJ0C4H2YiXOegp0p3BHCtU5bB7WfbcDTvaYzHJmw@mail.gmail.com>
+        id S1753673AbdK1MTv (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 28 Nov 2017 07:19:51 -0500
+Received: from localhost (localhost [127.0.0.1])
+        by smtp2.iitd.ac.in (Postfix) with ESMTP id 536CA40D86
+        for <xdp-newbies@vger.kernel.org>; Tue, 28 Nov 2017 17:49:48 +0530 (IST)
+Received: from smtp2.iitd.ac.in ([127.0.0.1])
+        by localhost (smtp2.iitd.ac.in [127.0.0.1]) (amavisd-new, port 10026)
+        with ESMTP id t4SWwAjSRK5E for <xdp-newbies@vger.kernel.org>;
+        Tue, 28 Nov 2017 17:49:44 +0530 (IST)
+Received: from webmail.iitd.ac.in (webmail.iitd.ac.in [10.7.172.189])
+        (using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        (Authenticated sender: anmol07.visitor)
+        by smtp2.iitd.ac.in (Postfix) with ESMTPSA id 49E2640D75
+        for <xdp-newbies@vger.kernel.org>; Tue, 28 Nov 2017 17:49:44 +0530 (IST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=US-ASCII;
+ format=flowed
 Content-Transfer-Encoding: 7bit
+Date: Tue, 28 Nov 2017 17:49:44 +0530
+From: Anmol Panda <anmol07.visitor@cse.iitd.ac.in>
+Subject: Compile error with unsigned integers
+Reply-To: anmol07.visitor@cse.iitd.ac.in
+Message-ID: <6fc588408c38bdb9fe79b4128bb4e124@cse.iitd.ac.in>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: "MD I. Islam" <tamim@csebuet.org>
-Cc: xdp-newbies@vger.kernel.org, brouer@redhat.com
+To: Xdp <xdp-newbies@vger.kernel.org>
 
+Dear all,
 
-On Mon, 27 Nov 2017 18:33:10 -0500 "MD I. Islam" <tamim@csebuet.org> wrote:
+     We are trying to compile the xdp programs in the /tests folder of 
+p4c-xdp. On compiling from .c to .o using clang:
+clang -O2 -S -Wall -target bpf -c xdp1-mod.c -o xdp1-mod.o
 
-> I was wondering if XDP can scale to many-core NPU (such as NPS-400
-> which has 256 cores)? I need to develop a XCP/RCP like application
-> that can achieve bare-metal performance on each core. The application
-> will run in a run-to-completion model. I see, DPDK can run userspace
-> application on each core. I'm wondering if XDP has anything like that?
-> Please let me know any suggestion.
+the following errors are reported:
 
-Hi Tamim,
+In file included from xdp1-mod.c:3:
+./xdp1-mod.h:16:5: error: unknown type name 'u32'
+     u32 input_port; /* bit<32> */
+     ^
+./xdp1-mod.h:21:5: error: unknown type name 'u32'
+     u32 output_port; /* bit<32> */
+     ^
+./xdp1-mod.h:25:5: error: unknown type name 'u64'
+     u64 destination; /* bit<48> */
+     ^
+./xdp1-mod.h:26:5: error: unknown type name 'u64'
+     u64 source; /* bit<48> */
+     ^
+./xdp1-mod.h:27:5: error: unknown type name 'u16'
+     u16 etherType; /* bit<16> */
+     ^
+    It reports 20 such errors and exits. We weren't getting such errors 
+before when we successfully compiled and ran the test programs and even 
+some programs that we had written. After browsing for this error, we 
+tried including <stdint.h> and <linux/types.h>, but the error persists.
 
-I think you are mixing up things a bit here...
+    The libstdc++ version is 7.2.0, llvm version is 6.0.0svn. Please 
+guide us how we may resolve this issue. We are utmost grateful for your 
+help and time.
 
-You mention a specific NIC (NPS-400) which have many cores inside the
-NIC.  You need to understand XDP is a software solution, where the
-programming language is eBPF.  XDP does NOT run inside the NIC, instead
-XDP runs as the earliest possible step in the Linux kernel network stack.
-
-The only NIC that does hardware offloading of XDP is Netronome[1], see
-their white papers[2].
-
-[1] https://www.netronome.com/
-[2] https://open-nfp.org/dataplanes-ebpf/technical-papers/
-
-Regarding scaling: XDP scales perfect for each added CPU core.  XDP is
-currently (footnote-1) loaded on for entire NIC, but the XDP/eBPF
-program is executed separate/independent on each NIC RX-ring queue
-(processing up-to 64 frames per NAPI poll cycle).
-
-The XDP scaling depend on how well the NIC RSS distribute traffic
-across RX-ring queues, which is also true for the normal kernel network
-stack.  To address bad RSS distribution, I recently implement cpumap[3]
-to allow XDP to scale delivery to the normal kernel network
-stack.  See sample code[4][5] on how to use it.
-
-[3] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/kernel/bpf/cpumap.c
-[4] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/samples/bpf/xdp_redirect_cpu_kern.c
-[5] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/samples/bpf/xdp_redirect_cpu_user.c
-
-
-(footnote-1: there are debates regarding loading XDP/eBPF progs on
-specific RX-queue numbers, so this might change.)
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+Awaiting your response,
+Sincerely,
