@@ -1,129 +1,67 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32784 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752159AbeADJ6N (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 4 Jan 2018 04:58:13 -0500
-Date: Thu, 4 Jan 2018 10:58:07 +0100
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: CPU redirect and skb mode
-Message-ID: <20180104105807.00363429@redhat.com>
-In-Reply-To: <1515052793.7473.14.camel@regit.org>
-References: <1515025109.7473.10.camel@regit.org>
-        <20180104081500.73d55bd8@redhat.com>
-        <1515052793.7473.14.camel@regit.org>
+Received: from mail-qk0-f171.google.com ([209.85.220.171]:44321 "EHLO
+        mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752257AbeAEWWg (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 5 Jan 2018 17:22:36 -0500
+Received: by mail-qk0-f171.google.com with SMTP id v188so7751247qkh.11
+        for <xdp-newbies@vger.kernel.org>; Fri, 05 Jan 2018 14:22:36 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <20170513.183628.2041405131228393819.davem@davemloft.net>
+References: <20170513.183628.2041405131228393819.davem@davemloft.net>
+From: Charlemagne Lasse <charlemagnelasse@gmail.com>
+Date: Fri, 5 Jan 2018 23:22:34 +0100
+Message-ID: <CAFGhKbwwPKmpDqH3eTXD9AAV+CsLfepkb_fLtqdNVzUHywzqwQ@mail.gmail.com>
+Subject: Re: Contextually speaking...
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Eric Leblond <eric@regit.org>
-Cc: xdp-newbies@vger.kernel.org, brouer@redhat.com
+To: David Miller <davem@davemloft.net>
+Cc: xdp-newbies@vger.kernel.org
 
-On Thu, 04 Jan 2018 08:59:53 +0100
-Eric Leblond <eric@regit.org> wrote:
+2017-05-13 23:36 GMT+02:00 David Miller <davem@davemloft.net>:
+<snip>
+> So our example program above needs a little bit of an adjustment to
+> make it suitable for BPF_PROG_TYPE_SOCK_FILTER:
+>
+> SEC("my_program")
+> int my_main(struct __sk_buff *skb)
+> {
+>         void *data_end = (void *)(long)skb->data_end;
+>         void *data = (void *)(long)skb->data;
+>         struct ethhdr *eth = (struct ethhdr *)(data);
+>         int len = skb->len;
+>
+>         if (eth + 1 > data_end)
+>                 return 0;
+>         if (eth->h_proto == bpf_htons(ETH_P_IP))
+>                 return len;
+>         return 0;
+> }
+>
+> So what changed is that we load "len" from the context metadata and
+> return "len" when we want to accept the packet.  This says "accept
+> the packet and do not truncate it."
 
-> Hello Jesper,
-> 
-> On Thu, 2018-01-04 at 08:15 +0100, Jesper Dangaard Brouer wrote:
-> > On Thu, 04 Jan 2018 01:18:29 +0100 Eric Leblond <eric@regit.org>
-> > wrote:
-> >   
-> > > Hello,
-> > > 
-> > > I'm currently working on implementing XDP CPU redirect map inside
-> > > Suricata.
-> > > 
-> > > I've used CPU redirect map on my test laptop that has only skb mode
-> > > available and my implementation was failing with result being
-> > > almost
-> > > all packets if not all were dropped.  
-> > 
-> > Remember that the tool xdp_monitor helps identify if XDP drops
-> > packets.
-> > (It's on my TODO list to expose the return values, until now I've
-> > just
-> > used the existing perf record/script to inspect the individual return
-> > ERRNO's when I needed more details).
-> > 
-> > Maybe suricata should attach itself to the XDP error tracepoints, to
-> > help the user experience?  
-> 
-> Gonna look at it and see if it is doable.
+This cannot work with BPF_PROG_TYPE_SOCKET_FILTER because skb->data_end
+and skb->data cannot be accessed by this BPF_PROG type. The verifier will
+reject it with
 
-Notice that the xdp redirect tracepoints have an "_err" variant.  For
-performance reasons, thus only attach to the xdp_redirect_{map_,}err
-variants.
+0: (b7) r0 = 0
+1: (61) r2 = *(u32 *)(r1 +80)
+invalid bpf_context access off=80 size=4
 
-The current XDP tracepoints available are:
+Reason for that is the function sk_filter_is_valid_access which checks
+the access to the __sk_buff context pointer (r1):
 
-  $ perf list | grep xdp
-  xdp:xdp_cpumap_enqueue                         [Tracepoint event]
-  xdp:xdp_cpumap_kthread                         [Tracepoint event]
-  xdp:xdp_exception                              [Tracepoint event]
-  xdp:xdp_redirect                               [Tracepoint event]
-  xdp:xdp_redirect_err                           [Tracepoint event]
-  xdp:xdp_redirect_map                           [Tracepoint event]
-  xdp:xdp_redirect_map_err                       [Tracepoint event]
-
-It will be useful to attach to 'xdp:xdp_exception', as returning
-XDP_ABORTED will activate this tracepoint, giving developers of XDP
-programs an easy way to signal error cases in execution.
-
-
-> >   
-> > > So I decided to build the XPD sample and test them:
-> > > 
-> > > sudo ./xdp_redirect_cpu --debug -d wlan0  --cpu 4 -S  
-> > 
-> > I notice the -S option, which long option is --skb-mode.  
-> 
-> Yes, I don't have a network card with XDP enable driver available on my
-> laptop.
-> 
-> > > The result was the same with packet blocked.
-> > > 
-> > > Am I missing something in the setup ?  
-> > 
-> > The cpumap redirect feature does not for for skb-mode. 
-
-Typo (s/for/work) let me update the sentence:
- "The cpumap redirect feature does not work for skb-mode."
-
-> > It's on my TODO-list to make it work for skb-mode, but I got
-> > side-tracked after netconf (implementing xdp_rxq_info).  From a
-> > performance PoV it goes against the basic idea of CPUMAP, which is to
-> > move the SKB allocation to another CPU.  
-> 
-> I second that, this is just pointless.
-
-I actually predict that it will still be faster than RPS, thus there is
-still a performance argument for doing this. (I'm tempted to code it
-up, just to see how much faster...)
- 
-> >   But for completeness sake I
-> > will implement this, it just requires the cpumap-code handle both
-> > xdp_buff's and SKB's in its queue.  
-> 
-> Or you could just error if ever a BOF with CPU redirect is used in a
-> skb-mode ?
-
-(Assuming typo: s/BOF/BPF)
-
-Due to how eBPF+tailcalls and XDP-attach interact, we cannot detect and
-reject the eBPF program at XDP-attach time.  Normally the eBPF program
-gets loaded into the kernel _before_ attaching it to the driver
-XDP-hook.  Which means we (at XDP-driver attach time) could simply walk
-the eBPF program and maps to detect any use of cpumap. *BUT* due to
-BPF-tailcalls new BPF-progs can be attached _after_ the XDP-attach step.
-(I actually coded up a solution, that added XDP feature bits to
-bpf-progs and bpf-maps, thus allowing to revalidate when attaching new
-tailcalls... but it was too complex code)
-
-For now, skb-mode using cpumap will result in a runtime tracepoint
-(xdp:xdp_redirect_map_err) error event with errno-code: EBADRQC.
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+static bool sk_filter_is_valid_access(int off, int size,
+      enum bpf_access_type type,
+      struct bpf_insn_access_aux *info)
+{
+    switch (off) {
+    case bpf_ctx_range(struct __sk_buff, tc_classid):
+    case bpf_ctx_range(struct __sk_buff, data):
+    case bpf_ctx_range(struct __sk_buff, data_meta):
+    case bpf_ctx_range(struct __sk_buff, data_end):
+    case bpf_ctx_range_till(struct __sk_buff, family, local_port):
+        return false;
+    }
