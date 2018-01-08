@@ -1,67 +1,48 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk0-f171.google.com ([209.85.220.171]:44321 "EHLO
-        mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752257AbeAEWWg (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 5 Jan 2018 17:22:36 -0500
-Received: by mail-qk0-f171.google.com with SMTP id v188so7751247qkh.11
-        for <xdp-newbies@vger.kernel.org>; Fri, 05 Jan 2018 14:22:36 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20170513.183628.2041405131228393819.davem@davemloft.net>
-References: <20170513.183628.2041405131228393819.davem@davemloft.net>
-From: Charlemagne Lasse <charlemagnelasse@gmail.com>
-Date: Fri, 5 Jan 2018 23:22:34 +0100
-Message-ID: <CAFGhKbwwPKmpDqH3eTXD9AAV+CsLfepkb_fLtqdNVzUHywzqwQ@mail.gmail.com>
-Subject: Re: Contextually speaking...
-Content-Type: text/plain; charset="UTF-8"
+Received: from fm2nodo1.polito.it ([130.192.180.17]:46853 "EHLO
+        fm2nodo1.polito.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752093AbeAHQAl (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jan 2018 11:00:41 -0500
+Received: from polito.it (frontmail2.polito.it [130.192.180.42])
+        by fm2nodo1.polito.it  with ESMTP id w08FXd4w027142-w08FXd50027142
+        (version=TLSv1.0 cipher=ECDHE-RSA-AES256-SHA bits=256 verify=NOT)
+        for <xdp-newbies@vger.kernel.org>; Mon, 8 Jan 2018 16:33:39 +0100
+Received: from [130.192.225.137] (account d037140@polito.it HELO [192.168.1.102])
+  by polito.it (CommuniGate Pro SMTP 6.1.9)
+  with ESMTPSA id 69909655 for xdp-newbies@vger.kernel.org; Mon, 08 Jan 2018 16:33:38 +0100
+From: Matteo Bertrone <matteo.bertrone@polito.it>
+Content-Type: text/plain;
+        charset=utf-8
+Content-Transfer-Encoding: 8BIT
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Generic XDP and veth
+Message-Id: <88581FA1-DA7C-4329-8D62-185090FC820D@polito.it>
+Date: Mon, 8 Jan 2018 16:33:38 +0100
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: David Miller <davem@davemloft.net>
-Cc: xdp-newbies@vger.kernel.org
+To: xdp-newbies@vger.kernel.org
 
-2017-05-13 23:36 GMT+02:00 David Miller <davem@davemloft.net>:
-<snip>
-> So our example program above needs a little bit of an adjustment to
-> make it suitable for BPF_PROG_TYPE_SOCK_FILTER:
->
-> SEC("my_program")
-> int my_main(struct __sk_buff *skb)
-> {
->         void *data_end = (void *)(long)skb->data_end;
->         void *data = (void *)(long)skb->data;
->         struct ethhdr *eth = (struct ethhdr *)(data);
->         int len = skb->len;
->
->         if (eth + 1 > data_end)
->                 return 0;
->         if (eth->h_proto == bpf_htons(ETH_P_IP))
->                 return len;
->         return 0;
-> }
->
-> So what changed is that we load "len" from the context metadata and
-> return "len" when we want to accept the packet.  This says "accept
-> the packet and do not truncate it."
+Hello,
 
-This cannot work with BPF_PROG_TYPE_SOCKET_FILTER because skb->data_end
-and skb->data cannot be accessed by this BPF_PROG type. The verifier will
-reject it with
+while I was trying to forward packets using Generic XDP [1], I encountered the following problem:
 
-0: (b7) r0 = 0
-1: (61) r2 = *(u32 *)(r1 +80)
-invalid bpf_context access off=80 size=4
+ARP and ICMP packets are forwarded correctly, and ping works fine.
+It seems not all TCP packets are forwarded by XDP program, both netcat and iperf are not working for me.
 
-Reason for that is the function sk_filter_is_valid_access which checks
-the access to the __sk_buff context pointer (r1):
+(Using same configuration as [1])
+sudo ip netns exec ns2 nc -l 8080
+sudo ip netns exec ns1 nc 10.1.1.22 8080
 
-static bool sk_filter_is_valid_access(int off, int size,
-      enum bpf_access_type type,
-      struct bpf_insn_access_aux *info)
-{
-    switch (off) {
-    case bpf_ctx_range(struct __sk_buff, tc_classid):
-    case bpf_ctx_range(struct __sk_buff, data):
-    case bpf_ctx_range(struct __sk_buff, data_meta):
-    case bpf_ctx_range(struct __sk_buff, data_end):
-    case bpf_ctx_range_till(struct __sk_buff, family, local_port):
-        return false;
-    }
+sudo ip netns exec ns2 iperf3 -s 
+sudo ip netns exec ns1 iperf3 -c 10.1.1.22
+
+It seems such traffic is not processed by XDP program.
+Using tcpdump on veth1 in root namespace I’m not able to see ARP and ICMP traffic (as expected) because forwarded by XDP program, but I’m able to see all the traffic it’s not forwarded.
+
+Is this behavior expected?
+Did I miss something in veth configuration?
+
+Thanks in advance,
+Matteo
+
+[1] https://github.com/torvalds/linux/blob/master/tools/testing/selftests/bpf/test_xdp_redirect.sh
