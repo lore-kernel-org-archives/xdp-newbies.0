@@ -1,37 +1,61 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:35276 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751131AbeAIRwE (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 9 Jan 2018 12:52:04 -0500
-Date: Tue, 09 Jan 2018 12:52:03 -0500 (EST)
-Message-Id: <20180109.125203.789715719632293985.davem@davemloft.net>
-Subject: Re: Generic XDP and veth
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <CALDO+SZfAi=9xL6vHwS_zXy+P8HVUQMnE0joEB5ib8zChmL2uQ@mail.gmail.com>
-References: <CALDO+SbEjrrCAxVtq90W_b6K011Fv90GL9srea1+Bb6wUTBYPQ@mail.gmail.com>
-        <20180109.121815.1887159110291802405.davem@davemloft.net>
-        <CALDO+SZfAi=9xL6vHwS_zXy+P8HVUQMnE0joEB5ib8zChmL2uQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+Received: from mail-qk0-f176.google.com ([209.85.220.176]:45298 "EHLO
+        mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750811AbeBUUBe (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 21 Feb 2018 15:01:34 -0500
+MIME-Version: 1.0
+In-Reply-To: <CAKgT0UeMCpjq60ULZ7H8UEw+-hkB2nqBnroDQc8GGu56CY-83Q@mail.gmail.com>
+References: <1513333486.28703.9.camel@regit.org> <20171215.105338.2092740911243038177.davem@davemloft.net>
+ <c677440b-46c5-e32b-5038-21a760ba738b@gmail.com> <CAKgT0UeFUnYdvNZZAzFibYm6JXccyv+9q3=5j1AsAe9Z9bGhjw@mail.gmail.com>
+ <F765740A-B847-4EE5-8BFD-3130F64E6116@gmail.com> <CAMhe82KyKtWnMyN-v7_X7jOQWyE6xw0-P3UZYivCgEVYWM8URA@mail.gmail.com>
+ <CAKgT0UeMCpjq60ULZ7H8UEw+-hkB2nqBnroDQc8GGu56CY-83Q@mail.gmail.com>
+From: Peter Manev <petermanev@gmail.com>
+Date: Wed, 21 Feb 2018 15:01:33 -0500
+Message-ID: <CAMhe82JhXWaO_30Ufd=jyQCqW2WkckYT6F=C5aHyyTbsNKtAuA@mail.gmail.com>
+Subject: Re: ixgbe tuning reset when XDP is setup
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: u9012063@gmail.com
-Cc: stephen@networkplumber.org, daniel@iogearbox.net, matteo.bertrone@polito.it, xdp-newbies@vger.kernel.org
+To: Alexander Duyck <alexander.duyck@gmail.com>
+Cc: John Fastabend <john.fastabend@gmail.com>, David Miller <davem@davemloft.net>, Eric Leblond <eric@regit.org>, Netdev <netdev@vger.kernel.org>, xdp-newbies@vger.kernel.org, Emil Tantilov <emil.s.tantilov@intel.com>
 
-From: William Tu <u9012063@gmail.com>
-Date: Tue, 9 Jan 2018 09:40:59 -0800
+>>
+>> Hi,
+>>
+>> We were wondering if there is any follow up/potential solution for that?
+>> If there is something we could help out testing with regards to that
+>> - please let us know.
+>>
+>> Thank you
+>>
+>> --
+>> Regards,
+>> Peter Manev
+>
+> We don't have a solution available for this yet. Basically what it
+> comes down to is that we have to change the driver code so that if
+> assumes it is going to need to alloc Tx rings for XDP always, and then
+> if it can't we have to disable the XDP feature. The current logic is
+> to advertise the XDP feature, and then allocate the rings when XDP is
+> actually used, and if that fails we fail to load the XDP program.
+>
+> Unfortunately I don't have an ETA for when we can get to that. It may
+> be a while, however patches are always welcome.
+>
+> Thanks.
+>
+> - Alex
 
-> Any reason XDP generic skips the skb_cloned packet? I search previous
-> patches mention
-> v4: - Do not perform generic XDP on reinjected packets (DaveM)
-> but didn't see discussion.
+It seems the issue is not present on 4.15.2 (while it is in 4.13.10
+for example) using the ixgbe available in tree
+(/lib/modules/4.15.2-amd64/kernel/drivers/net/ethernet/intel/ixgbe)
 
-We wanted to avoid re-running XDP on packets re-injected during input
-packet processing.
+Not sure what triggered the fix -  thought here would be a good place
+to ask for some pointers.
 
-The physical outermost XDP device would never see such packets.
+Thank you
 
-I guess we have to decide whether to remove that restriction or not.
-If we do, we have to copy the packet when it is cloned because cloned
-packets cannot be modified and XDP programs can modify packet data.
+-- 
+Regards,
+Peter Manev
