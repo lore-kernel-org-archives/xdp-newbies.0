@@ -1,61 +1,62 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk0-f176.google.com ([209.85.220.176]:45298 "EHLO
-        mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750811AbeBUUBe (ORCPT
+Received: from userp2120.oracle.com ([156.151.31.85]:60698 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751233AbeB0Ama (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 21 Feb 2018 15:01:34 -0500
+        Mon, 26 Feb 2018 19:42:30 -0500
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id w1R0gTTM168499
+        for <xdp-newbies@vger.kernel.org>; Tue, 27 Feb 2018 00:42:29 GMT
+Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
+        by userp2120.oracle.com with ESMTP id 2gcvfg846d-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <xdp-newbies@vger.kernel.org>; Tue, 27 Feb 2018 00:42:29 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id w1R0WSur026821
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+        for <xdp-newbies@vger.kernel.org>; Tue, 27 Feb 2018 00:32:28 GMT
+Received: from abhmp0006.oracle.com (abhmp0006.oracle.com [141.146.116.12])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id w1R0WSNG030178
+        for <xdp-newbies@vger.kernel.org>; Tue, 27 Feb 2018 00:32:28 GMT
+From: Tushar Dave <tushar.n.dave@oracle.com>
+Subject: loop in eBPF kernel program
+Message-ID: <e3a523ec-b090-61b5-c92b-58d3b74a9c31@oracle.com>
+Date: Mon, 26 Feb 2018 16:32:27 -0800
 MIME-Version: 1.0
-In-Reply-To: <CAKgT0UeMCpjq60ULZ7H8UEw+-hkB2nqBnroDQc8GGu56CY-83Q@mail.gmail.com>
-References: <1513333486.28703.9.camel@regit.org> <20171215.105338.2092740911243038177.davem@davemloft.net>
- <c677440b-46c5-e32b-5038-21a760ba738b@gmail.com> <CAKgT0UeFUnYdvNZZAzFibYm6JXccyv+9q3=5j1AsAe9Z9bGhjw@mail.gmail.com>
- <F765740A-B847-4EE5-8BFD-3130F64E6116@gmail.com> <CAMhe82KyKtWnMyN-v7_X7jOQWyE6xw0-P3UZYivCgEVYWM8URA@mail.gmail.com>
- <CAKgT0UeMCpjq60ULZ7H8UEw+-hkB2nqBnroDQc8GGu56CY-83Q@mail.gmail.com>
-From: Peter Manev <petermanev@gmail.com>
-Date: Wed, 21 Feb 2018 15:01:33 -0500
-Message-ID: <CAMhe82JhXWaO_30Ufd=jyQCqW2WkckYT6F=C5aHyyTbsNKtAuA@mail.gmail.com>
-Subject: Re: ixgbe tuning reset when XDP is setup
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Alexander Duyck <alexander.duyck@gmail.com>
-Cc: John Fastabend <john.fastabend@gmail.com>, David Miller <davem@davemloft.net>, Eric Leblond <eric@regit.org>, Netdev <netdev@vger.kernel.org>, xdp-newbies@vger.kernel.org, Emil Tantilov <emil.s.tantilov@intel.com>
+To: xdp-newbies@vger.kernel.org
+Cc: tndave <tushar.n.dave@oracle.com>
 
->>
->> Hi,
->>
->> We were wondering if there is any follow up/potential solution for that?
->> If there is something we could help out testing with regards to that
->> - please let us know.
->>
->> Thank you
->>
->> --
->> Regards,
->> Peter Manev
->
-> We don't have a solution available for this yet. Basically what it
-> comes down to is that we have to change the driver code so that if
-> assumes it is going to need to alloc Tx rings for XDP always, and then
-> if it can't we have to disable the XDP feature. The current logic is
-> to advertise the XDP feature, and then allocate the rings when XDP is
-> actually used, and if that fails we fail to load the XDP program.
->
-> Unfortunately I don't have an ETA for when we can get to that. It may
-> be a while, however patches are always welcome.
->
-> Thanks.
->
-> - Alex
+Hello,
 
-It seems the issue is not present on 4.15.2 (while it is in 4.13.10
-for example) using the ixgbe available in tree
-(/lib/modules/4.15.2-amd64/kernel/drivers/net/ethernet/intel/ixgbe)
+I am writing sample eBPF kernel program that uses kprobe
+e.g.
+SEC("kprobe/xyz")
+int bpf_prog1(struct pt_regs *ctx)
+{
+.
+..
+}
 
-Not sure what triggered the fix -  thought here would be a good place
-to ask for some pointers.
+And with pt_regs context I retrieved pointer to 'struct sk_buff_head'.
+ From here on, I want to iterate over all skbs in the skb queue and
+print/gather packet data. This certainly involves loop and that causes
+my ebpf kernel program to fail with error,
+e.g.
+bpf_load_program() err=22
+back-edge from insn 51 to 39
+back-edge from insn 51 to 39
 
-Thank you
 
--- 
-Regards,
-Peter Manev
+Any other alternative so that I can retrieve all packet data from skb queue?
+
+Apology as this is not pure xdp query but I feel it should be okay to
+ask here.
+
+Thanks.
+
+-Tushar
