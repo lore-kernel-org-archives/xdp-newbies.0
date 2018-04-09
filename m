@@ -1,72 +1,89 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:57302 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752621AbeB0Not (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 27 Feb 2018 08:44:49 -0500
-Subject: Re: loop in eBPF kernel program
-References: <e3a523ec-b090-61b5-c92b-58d3b74a9c31@oracle.com>
- <56c9ce62-9822-f498-4c12-27c68b2d7a51@iogearbox.net>
-From: Tushar Dave <tushar.n.dave@oracle.com>
-Message-ID: <e0d9ca2c-deaf-15fb-1d1f-a5c04c4538cf@oracle.com>
-Date: Tue, 27 Feb 2018 05:39:29 -0800
+Received: from m02.nii.ac.jp ([136.187.7.8]:42804 "EHLO m02.nii.ac.jp"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750982AbeDIXAm (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 9 Apr 2018 19:00:42 -0400
+Received: from 2.3.h.ccmp.jp (124.41.93.194 [124.41.93.194])
+        by m02.nii.ac.jp (deepsmtpd.sk)
+        with ESMTP id <47428621-2f24-3c8e-5d34-1d788a86a455@nii.ac.jp>
+        for <xdp-newbies@vger.kernel.org>; Tue, 10 Apr 2018 07:49:26 +0900
+From: Kimitoshi Takahashi <ktaka@nii.ac.jp>
+Subject: XDP_TX for virtio_net not working in recent kernel?
+Message-ID: <47428621-2f24-3c8e-5d34-1d788a86a455@nii.ac.jp>
+Date: Tue, 10 Apr 2018 07:49:25 +0900
 MIME-Version: 1.0
-In-Reply-To: <56c9ce62-9822-f498-4c12-27c68b2d7a51@iogearbox.net>
 Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Language: en-US
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>, xdp-newbies@vger.kernel.org
+To: xdp-newbies@vger.kernel.org
+
+Hello,
+
+I'm totally newbie.
+
+I want to try some examples under the samples/bpf of the kernel tree using the virtio_net driver in 
+kvm, in order to get familiar with the XDP. However, it seems to me that for kernels newer than 
+linux-4.15, the xdp2 and xdp_tx_tunnel are not working in the case of virtio_net.
+
+Can somebody help me out to make them working?
 
 
+1) For linux-4.11.12, linux-4.12.14, and linux-4.14.31, xdp2 and xdp_tx_tunnel are working.
 
-On 02/27/2018 01:52 AM, Daniel Borkmann wrote:
-> On 02/27/2018 01:32 AM, Tushar Dave wrote:
->> Hello,
->>
->> I am writing sample eBPF kernel program that uses kprobe
->> e.g.
->> SEC("kprobe/xyz")
->> int bpf_prog1(struct pt_regs *ctx)
->> {
->> .
->> ..
->> }
->>
->> And with pt_regs context I retrieved pointer to 'struct sk_buff_head'.
->>  From here on, I want to iterate over all skbs in the skb queue and
->> print/gather packet data. This certainly involves loop and that causes
->> my ebpf kernel program to fail with error,
->> e.g.
->> bpf_load_program() err=22
->> back-edge from insn 51 to 39
->> back-edge from insn 51 to 39
->>
->> Any other alternative so that I can retrieve all packet data from skb queue?
->>
->> Apology as this is not pure xdp query but I feel it should be okay to
->> ask here.
-> Bounded loops are still wip in BPF core, but today you can make use of
-> loop unrolling like the following when <X> is a known constant:
-> 
-> #pragma unroll
-> 	for (i = 0; i < <X>; i++) {
-> 		[...]
-> 	}
-Ok. Thanks.
-> 
-> I presume you're walking the skb via bpf_probe_read() helper from tracing
-> side, right? Other option could be to add a networking program (e.g. via
-> cls_bpf) and dump the full skb to perf RB via bpf_skb_event_output() helper.
-> Potentially if you already dump other data from tracing side via perf RB,
-> then the networking program can reuse/share the very same perf event map
-> as well.
-yes I am using bpf_probe_read to walk over skb list. I will look into
-cls_bpf option you mentioned. Thanks for suggestion :)
+[xdp2]
+10.0.0.27# ./xdp2 2 (or ./xdp -N 2)
 
--Tushar
-> 
-> Cheers,
-> Daniel
-> 
+10.0.0.254# hping3 10.0.0.27 -p 5000 -2
+
+10.0.0.254# tcpdump -nei kbr0 udp port 5000
+06:18:37.677070 2e:c9:83:fb:5b:f3 > 52:54:00:11:00:1b, ethertype IPv4 (0x0800), length 42: 
+10.0.0.254.2982 > 10.0.0.27.5000: UDP, length 0
+06:18:37.677265 52:54:00:11:00:1b > 2e:c9:83:fb:5b:f3, ethertype IPv4 (0x0800), length 42: 
+10.0.0.254.2982 > 10.0.0.27.5000: UDP, length 0
+
+I can see the UDP packets with MAC addresses swapped.
+
+[xdp_tx_tunnel]
+
+10.0.0.254# telnet 10.1.2.1 80
+
+10.0.0.27# ./xdp_tx_iptunnel -i 2 -a 10.1.2.1 -p 80 -s 10.0.0.27 -d 10.0.0.24 -m 52:54:00:11:00:18
+
+10.0.0.24# tcpdump -nei any proto 4
+22:08:20.510354  In 52:54:00:11:00:1b ethertype IPv4 (0x0800), length 96: 10.0.0.27 > 10.0.0.24: 
+10.0.0.254.60826 > 10.1.2.1.80: Flags [S], seq 3224377720, win 29200, options [mss 1460,sackOK,TS 
+val 217801953 ecr 0,nop,wscale 7], length 0 (ipip-proto-4)
+
+I can see the encapsulated SYN packet that is forwarded by the 10.0.0.27.
+
+2) For linux-4.15, linux-4.15.5, linux-4.15.13 and linux-4.16.1, xdp2 and xdp_tx_tunnel are NOT working.
+
+[xdp2]
+10.0.0.27# ./xdp2 -N 2
+
+10.0.0.254# hping3 10.0.0.27 -p 5000 -2
+
+10.0.0.254# tcpdump -nei br0 udp port 5000
+06:45:34.810046 2e:c9:83:fb:5b:f3 > 52:54:00:11:00:1b, ethertype IPv4 (0x0800), length 42: 
+10.0.0.254.2346 > 10.0.0.27.5000: UDP, length 0
+06:45:35.810176 2e:c9:83:fb:5b:f3 > 52:54:00:11:00:1b, ethertype IPv4 (0x0800), length 42: 
+10.0.0.254.2347 > 10.0.0.27.5000: UDP, length 0
+
+Only the outgoing packets can be seen.
+
+[xdp_tx_tunnel]
+
+10.0.0.254# telnet 10.1.2.1 80
+
+10.0.0.27# ./xdp_tx_iptunnel -i 2 -a 10.1.2.1 -p 80 -s 10.0.0.27 -d 10.0.0.24 -m 52:54:00:11:00:18
+
+10.0.0.24# tcpdump -nei any proto 4
+
+I can NOT see the encapsulated SYN packet that is forwarded by the 10.0.0.27.
+
+
+--
+Sincerely,
+Takahashi Kimitoshi
