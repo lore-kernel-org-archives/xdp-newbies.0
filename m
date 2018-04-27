@@ -1,36 +1,47 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36515 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750735AbeDSJnY (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 19 Apr 2018 05:43:24 -0400
-Subject: Re: BPF doc updates ...
-References: <1468383d-fd50-dbc0-5329-2f9d5bee81a0@iogearbox.net>
-From: Nirmoy Das <ndas@suse.de>
-Message-ID: <074fbd3f-a075-2b1c-bc45-9f9d16d7a6e8@suse.de>
-Date: Thu, 19 Apr 2018 11:43:22 +0200
+Received: from mail-oi0-f49.google.com ([209.85.218.49]:37205 "EHLO
+        mail-oi0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1758379AbeD0Nbk (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 27 Apr 2018 09:31:40 -0400
+Received: by mail-oi0-f49.google.com with SMTP id f63-v6so1576637oic.4
+        for <xdp-newbies@vger.kernel.org>; Fri, 27 Apr 2018 06:31:39 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1468383d-fd50-dbc0-5329-2f9d5bee81a0@iogearbox.net>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+From: Bobby Powers <bobbypowers@gmail.com>
+Date: Fri, 27 Apr 2018 09:31:38 -0400
+Message-ID: <CAArOQ2UJDD-kA3O9h-MZTedhyRfXg4UC=QM-Hdw9tzPoe__ZvQ@mail.gmail.com>
+Subject: egress packet filtering
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>, xdp-newbies@vger.kernel.org
+To: xdp-newbies@vger.kernel.org
 
+Hi folks!
 
+I've been reading about eBPF and XDP, and I _think_ that XDP can only
+filter incoming (ingress) packets on a machine, not outgoing packets.
+Is that right?  In particular I've been looking at:
 
-On 04/19/2018 12:45 AM, Daniel Borkmann wrote:
-> Just fyi, for those interested, added several updates to the BPF doc
-> including better coverage for llvm, bpftool, bpf calls, iproute2, tc,
-> xdp and various miscellaneous bits:
-> 
-> http://cilium.readthedocs.io/en/latest/bpf/
-> 
-Thanks Daniel!
+https://jvns.ca/blog/2017/04/07/xdp-bpf-tutorial/
+https://www.netdevconf.org/2.1/slides/apr7/gospodarek-Netdev2.1-XDP-for-the-Rest-of-Us_Final.pdf
+https://github.com/netoptimizer/prototype-kernel/tree/master/kernel/samples/bpf
 
-Regards,
-Nirmoy
--- 
-SUSE Linux GmbH, GF: Felix Imendörffer, Jane Smithard, Graham Norton HRB
-21284 (AG Nürnberg) Maxfeldstr. 5
-D-90409 Nürnberg / Phone: +49-911-740 18-4
+And What I Really Want To Do is create an eBPF filter that will
+selectively drop outgoing packets on a particular TCP stream.  The
+idea is to simulate underlying network/firewall misconfigurations so I
+can observe the effect on higher-level software (like an HTTP client,
+a load balancer, and an HTTP server).  I think I can accomplish this
+with `tc` and the `cls_bpf` and `act_bpf` modules, as documented here:
+
+http://man7.org/linux/man-pages/man8/tc-bpf.8.html
+
+Does that sound about right?  Am I right in understanding that the
+main difference between using a BPF classifier/action and XDP filter
+is that performance of XDP filters is higher (because there is some
+amount of integration with the NIC/driver), and they only process
+ingress traffic?
+
+Thanks for the help!
+
+yours,
+Bobby
