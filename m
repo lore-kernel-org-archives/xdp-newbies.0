@@ -1,59 +1,43 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:37396 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1754876AbeFRHlA (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 18 Jun 2018 03:41:00 -0400
-Date: Mon, 18 Jun 2018 09:40:56 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: Packet access from bpf_perf_event_output
-Message-ID: <20180618094056.4571a1c7@redhat.com>
-In-Reply-To: <CAC1LvL2x3=LRdMOmipEr-LZ5XwXVjirr1_oQcP305t0pfbPn1Q@mail.gmail.com>
-References: <CAC1LvL2x3=LRdMOmipEr-LZ5XwXVjirr1_oQcP305t0pfbPn1Q@mail.gmail.com>
+Received: from mail-qt0-f181.google.com ([209.85.216.181]:40183 "EHLO
+        mail-qt0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727036AbeHLJzf (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Sun, 12 Aug 2018 05:55:35 -0400
+Received: by mail-qt0-f181.google.com with SMTP id h4-v6so14454526qtj.7
+        for <xdp-newbies@vger.kernel.org>; Sun, 12 Aug 2018 00:18:32 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+From: Manohar Kumar <forwardinglnx@gmail.com>
+Date: Sun, 12 Aug 2018 00:18:29 -0700
+Message-ID: <CA+N+6-y-QAEj3f6C2onuvymNOwPiShMDcikqVnX5KaKUCeyTVA@mail.gmail.com>
+Subject: veth interface and native XDP
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Zvi Effron <zeffron@riotgames.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>, brouer@redhat.com, Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@toke.dk>
+To: xdp-newbies@vger.kernel.org
 
-On Sun, 17 Jun 2018 18:07:02 -0700
-Zvi Effron <zeffron@riotgames.com> wrote:
+Hello,
 
-> Hi XDPeople!
-> 
-> In /include/uapi/linux/bpf.h, (in 4.18-rc1) the comment describing
-> bpf_perf_event_output says:
-> 
-> /*
->  * Note that this helper is not restricted to tracing use cases
->  * and can be used with programs attached to TC or XDP as well,
->  * where it allows for passing data to user space listeners. Data
->  * can be:
->  *
->  * * Only custom structs,
->  * * Only the packet payload, or
->  * * A combination of both.
->  */
-> 
-> This seems to imply that for both TC and XDP, the packet can be used
-> for passing data. When I try this, the verifier rejects the program
-> with "helper access to the packet is not allowed". Looking through the
-> kernel it doesn't look like bpf_perf_output_event has been tagged with
-> the appropriate metadata to allow it to access the packet structure,
-> either for TC or for XDP. Neither bpf_skb_event_output_proto nor
-> bpf_xdp_event_output_proto have pkt_acess set to true. Is the
-> documentation incorrect, should that metadata be updated to allow
-> packet access, or is there something I'm missing?
+I am trying out XDP using the example
+https://github.com/torvalds/linux/blob/master/tools/testing/selftests/bpf/test_xdp_redirect.sh
 
-Toke (Cc'ed) recently posted a samples/bpf/ program to the kernel that
-implement this (but it didn't reach the merge window).  Thus, I assume
-that this works...
+To set the xdp program instead of using xdpgeneric I did
 
- http://lkml.kernel.org/r/152830792912.21161.3609946361971472545.stgit@alrua-kau
+ip link set dev veth1 xdp obj test_xdp_redirect.o sec redirect_to_222
 
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+My kernel version is 4.15.0 which I think has native XDP support for
+veth. But from the ip link ouptut it looks like the generic XDP is
+being used and not the native XDP for veth.
+
+What is the right way to make use of the native XDP for veth ?
+
+root@ubuntu-G551JW:~# ip link show dev veth1
+111: veth1@if18: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 xdpgeneric
+qdisc noqueue state UP mode DEFAULT group default qlen 1000
+    link/ether c2:ff:f4:d9:15:8f brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    prog/xdp id 32 tag d92aa6f7de3bd7d0 jited
+root@ubuntu-G551JW:~#
+
+Thanks for the help.
+
+-Kumar
