@@ -1,35 +1,53 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-wr1-f53.google.com ([209.85.221.53]:43948 "EHLO
-        mail-wr1-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725979AbeHWWnf (ORCPT
+Received: from www62.your-server.de ([213.133.104.62]:33602 "EHLO
+        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727322AbeHUSeF (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 23 Aug 2018 18:43:35 -0400
-Received: by mail-wr1-f53.google.com with SMTP id k5-v6so5502716wre.10
-        for <xdp-newbies@vger.kernel.org>; Thu, 23 Aug 2018 12:12:29 -0700 (PDT)
+        Tue, 21 Aug 2018 14:34:05 -0400
+From: Daniel Borkmann <daniel@iogearbox.net>
+Subject: Linux Plumbers BPF micro-conference CFP
+Message-ID: <4e0793c9-2808-2a0b-c299-dc386d18a001@iogearbox.net>
+Date: Tue, 21 Aug 2018 17:11:30 +0200
 MIME-Version: 1.0
-References: <CAJL276BB6OudtAxQdSq_4c-cFCQ1JpKFAwJvjs0SK_fdksT8bA@mail.gmail.com>
- <20180823210111.5238ad38@cakuba.netronome.com>
-In-Reply-To: <20180823210111.5238ad38@cakuba.netronome.com>
-From: Justin Azoff <justin.azoff@gmail.com>
-Date: Thu, 23 Aug 2018 15:12:16 -0400
-Message-ID: <CAJL276BDYVTdMdJ0qoj0Y5Fs8sNzuXC77sMrdDvGBGj8CAh00A@mail.gmail.com>
-Subject: Re: libbpf and persistent maps
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: jakub.kicinski@netronome.com
-Cc: xdp-newbies@vger.kernel.org
+To: netdev@vger.kernel.org, iovisor-dev@lists.iovisor.org, xdp-newbies@vger.kernel.org, containers@lists.linuxfoundation.org, linux-kernel@vger.kernel.org
+Cc: lpc-bpf@vger.kernel.org, alexei.starovoitov@gmail.com
 
-On Thu, Aug 23, 2018 at 3:01 PM Jakub Kicinski
-<jakub.kicinski@netronome.com> wrote:
-> Could bpf_map__reuse_fd() be of any help?  (Present in Linus's tree for
-> now, will be there in upcoming -rc1.)  You'll need to
-> bpf_object__open() and bpf_object__load() separately, and set the FDs
-> between the two.
+This is a call for proposals for the BPF micro-conference at the
+Linux Plumbers Conference (LPC) 2018 which will be held in Vancouver,
+Canada from the 13th to the 15th of November, co-located with the
+Linux Kernel Summit.
 
-Yes!  I think that's exactly what I need.  I got it working for now by
-just hacking up
-libbpf.h but I will port things over to that.
+The goal of the BPF micro-conference is to bring BPF developers
+together to discuss topics around Linux kernel work related to
+the BPF core infrastructure as well as its many subsystems under
+tracing, networking, security, and BPF user space tooling. The
+format of the micro-conference has a main focus on discussion,
+therefore each accepted topic will provide a short 1-2 slide
+introduction with subsequent discussion for the rest of the
+allocated time slot. The expected time for one discussion slot is
+approximately 15 min. The whole BPF micro-conference is a 3 hours
+long session which will run on the third day of LPC (so that it
+does not overlap with the LPC's Networking Track).
 
--- 
-- Justin
+The BPF micro-conference is a community-driven event and open to
+all LPC attendees, there is no additional registration required.
+
+Please submit your discussion proposals to the LPC BPF micro-conference
+organizers at:
+
+	lpc-bpf@vger.kernel.org
+
+Proposals must be submitted until October 1st, and submitters will
+be notified of acceptance by October 5th. (Please note that proposals
+must not be sent as html mail as they are otherwise dropped by vger.)
+
+The format of the submission and many other details can be found at:
+
+	http://vger.kernel.org/lpc-bpf.html
+
+Looking forward to seeing you all in Vancouver!
