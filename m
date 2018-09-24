@@ -1,53 +1,23 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:33602 "EHLO
-        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727322AbeHUSeF (ORCPT
+Received: from mail-wm1-f52.google.com ([209.85.128.52]:53443 "EHLO
+        mail-wm1-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727206AbeIYD51 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 21 Aug 2018 14:34:05 -0400
-From: Daniel Borkmann <daniel@iogearbox.net>
-Subject: Linux Plumbers BPF micro-conference CFP
-Message-ID: <4e0793c9-2808-2a0b-c299-dc386d18a001@iogearbox.net>
-Date: Tue, 21 Aug 2018 17:11:30 +0200
+        Mon, 24 Sep 2018 23:57:27 -0400
+Received: by mail-wm1-f52.google.com with SMTP id b19-v6so11262773wme.3
+        for <xdp-newbies@vger.kernel.org>; Mon, 24 Sep 2018 14:53:09 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+From: Alex Forster <aforster@cloudflare.com>
+Date: Mon, 24 Sep 2018 16:52:57 -0500
+Message-ID: <CAKxSbF09EOU4nvNLaVmMqb7hE-ZrKMd7SC+rVEAqeasG2HGRKg@mail.gmail.com>
+Subject: AF_XDP umem and jumbo frames?
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: netdev@vger.kernel.org, iovisor-dev@lists.iovisor.org, xdp-newbies@vger.kernel.org, containers@lists.linuxfoundation.org, linux-kernel@vger.kernel.org
-Cc: lpc-bpf@vger.kernel.org, alexei.starovoitov@gmail.com
+To: xdp-newbies@vger.kernel.org
 
-This is a call for proposals for the BPF micro-conference at the
-Linux Plumbers Conference (LPC) 2018 which will be held in Vancouver,
-Canada from the 13th to the 15th of November, co-located with the
-Linux Kernel Summit.
+What happens in the case where umem's chunk size is smaller than the
+NIC frame size, like when jumbo frames are enabled? I.e, a NIC using
+MTU ~9000 on an x86-64 machine with a page size of 4096.
 
-The goal of the BPF micro-conference is to bring BPF developers
-together to discuss topics around Linux kernel work related to
-the BPF core infrastructure as well as its many subsystems under
-tracing, networking, security, and BPF user space tooling. The
-format of the micro-conference has a main focus on discussion,
-therefore each accepted topic will provide a short 1-2 slide
-introduction with subsequent discussion for the rest of the
-allocated time slot. The expected time for one discussion slot is
-approximately 15 min. The whole BPF micro-conference is a 3 hours
-long session which will run on the third day of LPC (so that it
-does not overlap with the LPC's Networking Track).
-
-The BPF micro-conference is a community-driven event and open to
-all LPC attendees, there is no additional registration required.
-
-Please submit your discussion proposals to the LPC BPF micro-conference
-organizers at:
-
-	lpc-bpf@vger.kernel.org
-
-Proposals must be submitted until October 1st, and submitters will
-be notified of acceptance by October 5th. (Please note that proposals
-must not be sent as html mail as they are otherwise dropped by vger.)
-
-The format of the submission and many other details can be found at:
-
-	http://vger.kernel.org/lpc-bpf.html
-
-Looking forward to seeing you all in Vancouver!
+Alex Forster
