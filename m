@@ -1,67 +1,49 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54864 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727311AbeJDOom (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 4 Oct 2018 10:44:42 -0400
-Date: Thu, 4 Oct 2018 09:52:33 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: AF_XDP umem and jumbo frames?
-Message-ID: <20181004095233.5430b87c@redhat.com>
-In-Reply-To: <CAJ+HfNivt8pQN_FjA2DauCXNemW-ZT3pHxQFGCt2eHi592GXhA@mail.gmail.com>
-References: <CAKxSbF09EOU4nvNLaVmMqb7hE-ZrKMd7SC+rVEAqeasG2HGRKg@mail.gmail.com>
-        <CAJL276DCPNAB_s=ZPHAbanWjQ4rGvo_rKJG+yxa1dP+-OCBfpw@mail.gmail.com>
-        <CAKxSbF0yn0s5JEbWsF65uwEB6sCThhvJ8kpuOVCNaf=diFxjyA@mail.gmail.com>
-        <CAFg6RxsSRzww4f3n6xH1gRWQfXhhHkk0oZNSWNc6+kHT0p_VeQ@mail.gmail.com>
-        <CAJ+HfNivt8pQN_FjA2DauCXNemW-ZT3pHxQFGCt2eHi592GXhA@mail.gmail.com>
+Received: from mail-wr1-f48.google.com ([209.85.221.48]:38068 "EHLO
+        mail-wr1-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727703AbeJDVl4 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 4 Oct 2018 17:41:56 -0400
+Received: by mail-wr1-f48.google.com with SMTP id a13-v6so10238249wrt.5
+        for <xdp-newbies@vger.kernel.org>; Thu, 04 Oct 2018 07:48:18 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+References: <CAKxSbF09EOU4nvNLaVmMqb7hE-ZrKMd7SC+rVEAqeasG2HGRKg@mail.gmail.com>
+ <CAJL276DCPNAB_s=ZPHAbanWjQ4rGvo_rKJG+yxa1dP+-OCBfpw@mail.gmail.com>
+ <CAKxSbF0yn0s5JEbWsF65uwEB6sCThhvJ8kpuOVCNaf=diFxjyA@mail.gmail.com>
+ <CAFg6RxsSRzww4f3n6xH1gRWQfXhhHkk0oZNSWNc6+kHT0p_VeQ@mail.gmail.com>
+ <CAJ+HfNivt8pQN_FjA2DauCXNemW-ZT3pHxQFGCt2eHi592GXhA@mail.gmail.com> <20181004095233.5430b87c@redhat.com>
+In-Reply-To: <20181004095233.5430b87c@redhat.com>
+From: Justin Azoff <justin.azoff@gmail.com>
+Date: Thu, 4 Oct 2018 10:48:06 -0400
+Message-ID: <CAJL276Co5xjGnCp6OwLF84BowQ54vfcd08xKdce9SiojsGppPw@mail.gmail.com>
+Subject: Re: AF_XDP umem and jumbo frames?
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
-Cc: rob.sherwood@gmail.com, aforster@cloudflare.com, justin.azoff@gmail.com, xdp-newbies@vger.kernel.org, "Karlsson, Magnus" <magnus.karlsson@intel.com>, brouer@redhat.com
+To: brouer@redhat.com
+Cc: bjorn.topel@gmail.com, rob.sherwood@gmail.com, aforster@cloudflare.com, xdp-newbies@vger.kernel.org, magnus.karlsson@intel.com
 
-On Thu, 4 Oct 2018 08:44:27 +0200
-Björn Töpel <bjorn.topel@gmail.com> wrote:
+On Thu, Oct 4, 2018 at 3:52 AM Jesper Dangaard Brouer <brouer@redhat.com> wrote:
+> Can Alex or Rob explain:
+>
+> (1) What is your use-case for wanting jumbo-frames?
+>
+> And (2) will an MTU of ~3000Bytes be sufficient? (which XDP does support)
 
-> Den tors 27 sep. 2018 kl 02:56 skrev Rob Sherwood <rob.sherwood@gmail.com>:
-> >
-> > Thanks for the reference and the page-per-packet point makes sense.
-> > At the same time, not supporting jumbo frames seems like a non-trivial
-> > limitation.  Are there a subset of drivers that do support jumbo
-> > frames (or LRO or the other features that require multiple pages per
-> > packet)?
-> >  
-> 
-> No, not at the moment. XDP has a strict "one frame cannot exceed a
-> page" constraint. Everything that applies to XDP in terms of
-> constraints, applies to AF_XDP as well.
-> 
-> Just to clarify, XDP supports jumbo frames -- i.e. larger than 1500B
-> payload, just not the maximum 9000B size. My personal observation is
-> that many deployments that "require jumbo frames", are usually OK with
-> an of MTU ~3000B. Jumbo frames, yes. Full jumbo frames, no. :-)
+Not Alex or Rob, but lack of jumbo frames is currently a blocker for using XDP.
 
-Thank you for clarifying that Bjørn.
+I'm working on https://github.com/JustinAzoff/libflowbypass which is similar to
+the bypass stuff suricata can do, but implemented as a standalone library.
 
-Can Alex or Rob explain:
- 
-(1) What is your use-case for wanting jumbo-frames?
- 
-And (2) will an MTU of ~3000Bytes be sufficient? (which XDP does support)
+We have a number of high performance networks that use jumbo frames and the XDP
+NICs sit on fiber taps.  So it's not so much that I want to use jumbo frames
+but that some of the traffic I need to analyze is using them.  For
+this same reason 3000
+bytes isn't enough since I see 9000 byte frames.
 
-
-> > On Tue, Sep 25, 2018 at 9:44 AM Alex Forster <aforster@cloudflare.com> wrote:  
-> > >  
-> > > > On my test box running 4.18 if XDP is in use the MTU can not be
-> > > > set higher than 3050.  
-> > >
-> > > Ah, that answers a few questions for me. Thanks!
-> > >
-> > > Alex Forster  
+If XDP could implicitly XDP_PASS jumbo frames instead of truncating them at
+3000 that would at least allow the use of XDP to inspect and drop the
+majority of  < 3000
+byte frames.
 
 -- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+- Justin
