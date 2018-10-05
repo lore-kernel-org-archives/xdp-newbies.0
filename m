@@ -1,10 +1,10 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ed1-f54.google.com ([209.85.208.54]:39034 "EHLO
-        mail-ed1-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728503AbeJFBrh (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 5 Oct 2018 21:47:37 -0400
-Received: by mail-ed1-f54.google.com with SMTP id d15-v6so300450edq.6
-        for <xdp-newbies@vger.kernel.org>; Fri, 05 Oct 2018 11:47:37 -0700 (PDT)
+Received: from mail-wr1-f49.google.com ([209.85.221.49]:34894 "EHLO
+        mail-wr1-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728042AbeJFC46 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 5 Oct 2018 22:56:58 -0400
+Received: by mail-wr1-f49.google.com with SMTP id w5-v6so14705297wrt.2
+        for <xdp-newbies@vger.kernel.org>; Fri, 05 Oct 2018 12:56:43 -0700 (PDT)
 MIME-Version: 1.0
 References: <CAKxSbF09EOU4nvNLaVmMqb7hE-ZrKMd7SC+rVEAqeasG2HGRKg@mail.gmail.com>
  <CAJL276DCPNAB_s=ZPHAbanWjQ4rGvo_rKJG+yxa1dP+-OCBfpw@mail.gmail.com>
@@ -14,55 +14,16 @@ References: <CAKxSbF09EOU4nvNLaVmMqb7hE-ZrKMd7SC+rVEAqeasG2HGRKg@mail.gmail.com>
  <20181004095233.5430b87c@redhat.com> <CAFg6Rxt6Xdhzwb41uPOWaihhLYV2Gf69D=XLCt=wyQ1Vc6YwFA@mail.gmail.com>
  <20181004214452.3045c356@redhat.com>
 In-Reply-To: <20181004214452.3045c356@redhat.com>
-From: Zvi Effron <zeffron@riotgames.com>
-Date: Fri, 5 Oct 2018 11:47:25 -0700
-Message-ID: <CAC1LvL1wds7CL11xUhF_e0QU__C1mX4X69XoHOv95Y=1b4ZQug@mail.gmail.com>
+From: Justin Azoff <justin.azoff@gmail.com>
+Date: Fri, 5 Oct 2018 15:56:31 -0400
+Message-ID: <CAJL276AAN2CcyV_vFV1CX7_8BHHoiP9w0z=GQL0imsC+4ujORA@mail.gmail.com>
 Subject: Re: AF_XDP umem and jumbo frames?
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: rob.sherwood@gmail.com, bjorn.topel@gmail.com, aforster@cloudflare.com, justin.azoff@gmail.com, Xdp <xdp-newbies@vger.kernel.org>, magnus.karlsson@intel.com
+To: brouer@redhat.com
+Cc: rob.sherwood@gmail.com, bjorn.topel@gmail.com, aforster@cloudflare.com, xdp-newbies@vger.kernel.org, magnus.karlsson@intel.com
 
-If the requirement is just for contiguous memory, could this be
-resolved with allowing the driver to request multiple contiguous 4KB
-pages instead of one higher order page? Does that reduce the cost? (Or
-does it actually increase it?)
-
---Zvi
-On Thu, Oct 4, 2018 at 12:45 PM Jesper Dangaard Brouer
-<brouer@redhat.com> wrote:
->
-> On Thu, 4 Oct 2018 08:47:45 -0700
-> Rob Sherwood <rob.sherwood@gmail.com> wrote:
->
-> > [not speaking for my current employer, but just from past experience ]
-> >
-> > Certainly a lot of the 'hard' requirements (hard meaning - "without
-> > this it won't work")  I've seen could be served with a ~3k non-full
-> > jumbo frame.
->
-> Glad to hear that _most_ use-cases can be solved with a ~3k non-full
-> jumbo-frame.
->
-> > But at least what I've seen in the past was that because
-> > many of the host-side operations are per-packet limited (e.g., because
-> > of CPU or RAM, but ultimately turns into a max pps per host), a
-> > trivial way to increase application performance/reduce CPU for
-> > networking was to run at as large a frame size as possible.  For
-> > example, if your application/host is really pps limited, then getting
-> > the frame size to increase from 3k to 9k means either 3x more
-> > bandwidth for the same cpu usage (assuming the application is
-> > bandwidth limited) or 1/3x the CPU usage for the same bandwidth (if
-> > the application is not bandwidth limited).  Either way, IMHO it's a
-> > pretty big win.
->
-> With XDP we have basically solved the issue of being PPS (packets per
-> sec) limited.  And we can avoid these workarounds of using jumbo frames.
-> That is why it is a bit provoking to ask for jumbo-frames ;-)
->
->
 > People on this list might not realize that there is a significant
 > overhead in supporting larger that 4K frames for XDP, that is larger
 > than one memory-page. So let me explain...
@@ -70,91 +31,20 @@ On Thu, Oct 4, 2018 at 12:45 PM Jesper Dangaard Brouer
 > It is actually trivially easy for XDP to support jumbo frames, if the
 > NIC hardware supports storing RX frames into higher order pages (aka
 > compound pages, more 4K pages physically after each-other) which most
-> HW does. (Page order0 =3D 4KB, order1=3D8KB, order2=3D16KB, order3=3D32KB=
-).
+> HW does. (Page order0 = 4KB, order1=8KB, order2=16KB, order3=32KB).
 > As then XDP will work out-of-the-box, as the requirement is really that
 > packet-payload is layout as phys continuous memory.
 >
-> Kernel page allocator can give us high-order pages, sure, but is cost
-> more, see slide 12 of [1].  The large jump to order-1, is because
-> order-0 have a Per-Cpu-Pages (PCP) cache.  From order-1 and above, the
-> page allocator goes through a central (per NUMA) lock, which makes
-> thing even worse, as this does not scale to multiple CPUs.  And there
-> is also the point of wasting memory when processing 64Byte packets.
-> So, it is not 100% of the picture, that we could support jumbo-frames
-> for XDP.  Mostly because we can workaround this cost/issue, by having
-> recycle caches for these pages, which we even do for order-0 pages.
-> Hint, I actually left this door open, as you can specify page-order
-> when setting up the page_pool API in the driver...
->
-> [1] http://people.netfilter.org/hawk/presentations/MM-summit2017/MM-summi=
-t2017-JesperBrouer.pdf
->
-> --
-> Best regards,
->   Jesper Dangaard Brouer
->   MSc.CS, Principal Kernel Engineer at Red Hat
->   LinkedIn: http://www.linkedin.com/in/brouer
->
->
->
->
-> > On Thu, Oct 4, 2018 at 12:52 AM Jesper Dangaard Brouer
-> > <brouer@redhat.com> wrote:
-> > >
-> > > On Thu, 4 Oct 2018 08:44:27 +0200
-> > > Bj=C3=B6rn T=C3=B6pel <bjorn.topel@gmail.com> wrote:
-> > >
-> > > > Den tors 27 sep. 2018 kl 02:56 skrev Rob Sherwood <rob.sherwood@gma=
-il.com>:
-> > > > >
-> > > > > Thanks for the reference and the page-per-packet point makes sens=
-e.
-> > > > > At the same time, not supporting jumbo frames seems like a non-tr=
-ivial
-> > > > > limitation.  Are there a subset of drivers that do support jumbo
-> > > > > frames (or LRO or the other features that require multiple pages =
-per
-> > > > > packet)?
-> > > > >
-> > > >
-> > > > No, not at the moment. XDP has a strict "one frame cannot exceed a
-> > > > page" constraint. Everything that applies to XDP in terms of
-> > > > constraints, applies to AF_XDP as well.
-> > > >
-> > > > Just to clarify, XDP supports jumbo frames -- i.e. larger than 1500=
-B
-> > > > payload, just not the maximum 9000B size. My personal observation i=
-s
-> > > > that many deployments that "require jumbo frames", are usually OK w=
-ith
-> > > > an of MTU ~3000B. Jumbo frames, yes. Full jumbo frames, no. :-)
-> > >
-> > > Thank you for clarifying that Bj=C3=B8rn.
-> > >
-> > > Can Alex or Rob explain:
-> > >
-> > > (1) What is your use-case for wanting jumbo-frames?
-> > >
-> > > And (2) will an MTU of ~3000Bytes be sufficient? (which XDP does supp=
-ort)
-> > >
-> > >
-> > > > > On Tue, Sep 25, 2018 at 9:44 AM Alex Forster <aforster@cloudflare=
-.com> wrote:
-> > > > > >
-> > > > > > > On my test box running 4.18 if XDP is in use the MTU can not =
-be
-> > > > > > > set higher than 3050.
-> > > > > >
-> > > > > > Ah, that answers a few questions for me. Thanks!
-> > > > > >
-> > > > > > Alex Forster
-> > >
-> > > --
-> > > Best regards,
-> > >   Jesper Dangaard Brouer
-> > >   MSc.CS, Principal Kernel Engineer at Red Hat
-> > >   LinkedIn: http://www.linkedin.com/in/brouer
->
->
+
+For the use cases of XDP_DROP or XDP_PASS, could XDP send as much of
+the packet that fits in a single page up to the ebpf program and allow
+decisions based on that?
+
+For the flow bypass, ddos drop stuff, you only need the l3 header to
+make the PASS/DROP decision, not the entire packet.
+
+I suppose this would be a bit more complicated for modifying headers
+and using XDP_TX.
+
+-- 
+- Justin
