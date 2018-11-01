@@ -1,76 +1,47 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-io1-f46.google.com ([209.85.166.46]:46141 "EHLO
-        mail-io1-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726200AbeJaPIH (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 31 Oct 2018 11:08:07 -0400
-Received: by mail-io1-f46.google.com with SMTP id y22-v6so8871720ioj.13
-        for <xdp-newbies@vger.kernel.org>; Tue, 30 Oct 2018 23:11:26 -0700 (PDT)
+Received: from fanzine.igalia.com ([91.117.99.155]:41739 "EHLO
+        fanzine.igalia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725843AbeKBCPo (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 1 Nov 2018 22:15:44 -0400
+Received: from maestria.local.igalia.com ([192.168.10.14] helo=mail.igalia.com)
+        by fanzine.igalia.com with esmtps
+        (Cipher TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128) (Exim)
+        id 1gIGCz-0002fb-QC
+        for <xdp-newbies@vger.kernel.org>; Thu, 01 Nov 2018 17:52:37 +0100
+Received: from webmail.local.igalia.com ([192.168.10.121])
+        by mail.igalia.com with esmtps
+        (Cipher TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128) (Exim)
+        id 1gIGCx-00005h-Hg
+        for <xdp-newbies@vger.kernel.org>; Thu, 01 Nov 2018 17:52:37 +0100
+Received: from localhost ([127.0.0.1] helo=webmail.igalia.com)
+        by webmail.local.igalia.com with esmtp (Exim 4.84_2)
+        (envelope-from <kdjimeli@igalia.com>)
+        id 1gIGCx-0003UV-Dv
+        for xdp-newbies@vger.kernel.org; Thu, 01 Nov 2018 17:52:35 +0100
 MIME-Version: 1.0
-References: <CAKS0-=qXKuTVt+KuXZ08_1VU1reJkCf=v=oNiASbxVaKfcr3oA@mail.gmail.com>
- <00aa9bf7-6253-5f0e-6056-e67fccba6756@polito.it>
-In-Reply-To: <00aa9bf7-6253-5f0e-6056-e67fccba6756@polito.it>
-From: Matthew Tejo <matthew.tejo@gmail.com>
-Date: Tue, 30 Oct 2018 23:11:14 -0700
-Message-ID: <CAKS0-=r5vF0d=J+_+4u67xNrLJDTf8wcEg2zSYs6yrcKpS4TjA@mail.gmail.com>
-Subject: Re: New to xdp Cant find initial syn packet?
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Date: Thu, 01 Nov 2018 17:52:35 +0100
+From: Konrad Djimeli <kdjimeli@igalia.com>
+Subject: AF_XDP socket (sock2)  unable to read, after writing with another
+ AF_XDP socket (sock1)
+Message-ID: <ad85176a72e82878a4073a4215aa5e3a@igalia.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: mauricio.vasquez@polito.it
-Cc: xdp-newbies@vger.kernel.org
+To: xdp-newbies@vger.kernel.org
 
-On Tue, Oct 30, 2018 at 12:07 PM Mauricio Vasquez
-<mauricio.vasquez@polito.it> wrote:
->
->
-> On 10/26/18 2:13 PM, Matthew Tejo wrote:
-> > Hey,
-> > I started trying out xdp programs recently and I was comparing what
-> > comes out of tcp dump and my test program. It seems like the first syn
-> > in the packet never appears in my logged out put, the rest of the
-> > packets do.
-> >
-> > I am using a vm and using the loopback interface and a virtual one
-> > created by docker, both will only start from the second outgoing
-> > packet.
-> >
-> > Tcpdump shows syn -> syn,ack -> ack. But the xdp program only starts
-> > from syn,ack then ack. Im logging using bpf_trace_printk and put the
-> > statement at the beginning of the section being loaded so something
-> > should at least print every time?
-> >
-> > Is there something Im over looking?
-> >
-> > Thanks and let me know if I can clarify anything.
-> > Matt
-> >
-> Hello Matthew,
->
-> If you are using generic XDP [1] you are probably hitting a known issue
-> with TCP traffic [2].
->
-> AFAIK there is not a solution for that issue yet, Linux kernel v4.19 has
-> a native XDP driver for veth [3], this probably solves this issue
-> (please somebody correct me if I am wrong).
->
-> I hope this helps,
->
-> Mauricio.
->
->
-> [1] https://lwn.net/Articles/720072/
->
-> [2] https://www.spinics.net/lists/xdp-newbies/msg00440.html
->
-> [3]
-> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=948d4f214fde43743c57aae0c708bff44f6345f2
->
+Hello,
 
-Oh. That looks pretty similar to what I'm running into.
+I am working on developing a Snabb Switch app which uses Af_XDP sockets
+and so far I have not found any AF_XDP sample example online, except for
+the sample in the Linux Kernel source. I have tried modifying the
+example, to create two sockets (sock1 and sock2) sharing a UMEM with
+custom write_sock and read_sock functions. But when I do a write with
+"sock1" I am unable to read the data with "sock2". Here is the code
+https://github.com/djkonro/afxdp/blob/master/xdpsock/xdpsock_user.c ,
+and I am new to working with AF_XDP sockets and I wish I could get some
+pointers to what may be wrong with the program. 
 
-I guess Im still out of luck for the loop back device.
-
-Thanks for the links
-
-Matt
+Thanks,
+Konrad
+www.djimeli.me
