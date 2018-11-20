@@ -1,81 +1,100 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf1-f193.google.com ([209.85.210.193]:41785 "EHLO
-        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727354AbeKUBIt (ORCPT
+Received: from mail-vs1-f51.google.com ([209.85.217.51]:39742 "EHLO
+        mail-vs1-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727346AbeKUBNA (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 20 Nov 2018 20:08:49 -0500
-Received: by mail-pf1-f193.google.com with SMTP id b7so1088785pfi.8
-        for <xdp-newbies@vger.kernel.org>; Tue, 20 Nov 2018 06:39:21 -0800 (PST)
-Subject: Re: qemu-kvm XDP forwarding with virtio_net
-References: <CAHOxX0xFn2RARhnQeJ3m-+8UWrtD-bN2dn8x_FygCfDKdD3oQQ@mail.gmail.com>
-From: David Ahern <dsahern@gmail.com>
-Message-ID: <d69fbde9-c28a-d5be-a667-c54e3c4f52f3@gmail.com>
-Date: Tue, 20 Nov 2018 07:39:17 -0700
+        Tue, 20 Nov 2018 20:13:00 -0500
+Received: by mail-vs1-f51.google.com with SMTP id h78so1198718vsi.6
+        for <xdp-newbies@vger.kernel.org>; Tue, 20 Nov 2018 06:43:30 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <CAHOxX0xFn2RARhnQeJ3m-+8UWrtD-bN2dn8x_FygCfDKdD3oQQ@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+From: Peter Parkanyi <peter@redsift.io>
+Date: Tue, 20 Nov 2018 14:45:38 +0000
+Message-ID: <CAG+T_tVFQwoNXw+=-RME+zMQzNij_Q8EUsBY6aXCguv8QovwgA@mail.gmail.com>
+Subject: BPF probe namespacing
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Pavel Popa <pashinho1990@gmail.com>, xdp-newbies@vger.kernel.org
+To: xdp-newbies@vger.kernel.org
 
-On 11/20/18 7:18 AM, Pavel Popa wrote:
-> Hi all,
-> 
-> I've implemented a XDP forwarding program using the bpf_fib_lookup()
-> helper, and loaded it in the kernel as XDP driver mode (i.e. executed
-> at the virtio_net driver level). The only problem is that the
-> receiving virtio network interface seems to drop the XDP packet after
-> successfully executing my XDP program.
-> Kernel: 4.18.10
-> 
-> my_xdp_fwd_kern.c:
-> /* made sure this returns 0 (i.e. BPF_FIB_LKUP_RET_SUCCESS) */
-> rc = bpf_fib_lookup(ctx, &fib_params, sizeof(fib_params),
-> BPF_FIB_LOOKUP_DIRECT);
-> /* made sure this returns 4 (i.e. XDP_REDIRECT) */
-> rc = bpf_redirect_map(&dev_map, fib_params.ifindex, 0);
-> return rc;
-> 
-> I checked that rc is indeed XDP_REDIRECT and that fib_params.ifindex
-> is the correct dev index from FIB lookup.
-> dev_map is setup by the userspace my_xdp_fwd_user.c component as follows:
-> for (i = 1; i < 64; i++)
->     bpf_map_update_elem(devmap_fd, &i, &i, BPF_ANY);
-> 
-> I'm passing the following to the qemu cmd line for the 2 devices I
-> want to run XDP on (as stated here
-> https://marc.info/?l=xdp-newbies&m=149486931113651&w=2):
-> -device virtio-net-pci,mq=on,vectors=18,rx_queue_size=1024,tx_queue_size=512,
-> ... ,gso=off,guest_tso4=off,guest_tso6=off,guest_ecn=off,guest_ufo=off
-> \
-> -device virtio-net-pci,mq=on,vectors=18,rx_queue_size=1024,tx_queue_size=512,
-> ... ,gso=off,guest_tso4=off,guest_tso6=off,guest_ecn=off,guest_ufo=off
-> \
-> 
-> In the guest enabling also the MultiQueue feature, as stated here
-> https://www.linux-kvm.org/page/Multiqueue#Enable_MQ_feature.
-> What I'm left with is debugging the virtio_net kernel module by adding
-> a bunch of printk() and see what happens, especially here
-> https://elixir.bootlin.com/linux/v4.18.10/source/drivers/net/virtio_net.c#L667.
-> 
-> Am I doing something wrong here? What I'm missing?
-> 
+Hi,
 
-I believe at this point you can drop the gso,tso,ufo and ecn args. I use
-virtio for development and these days start my VMs with only:
+At LPC I raised the observation that currently it doesn't seem
+feasible to insert a BPF probe from within a container that sees
+events happening outside of the container, while it is possible to
+insert a kernel module.
 
-...,mq=on,guest_csum=off,...
+It was suggested that this is not the case, and things should just work.
+I wanted to get a minimal reproduction of what I've seen in Docker
+containers, so if somebody could take a look, I'd appreciate any
+comments on the right way of doing this.
 
-After that are you installing the xdp program on all interfaces that can
-be used for forwarding? ie., if it transmits a packet in XDP mode it
-needs the xdp program loaded. For example I use:
+The kprobe in question:
+https://github.com/redsift/ingraind/blob/master/bpf/file.c
+BCC's libbpf does the attach:
+https://github.com/iovisor/bcc/blob/master/src/cc/libbpf.c#L829
 
-xdp_fwd eth1 eth2 eth3 eth4
+# Steps to reproduce
+Build the bpf module & loader (generic binary targeting 4.16/x86_64 at
+https://123-130035428-gh.circle-artifacts.com/0/ingraind ):
+1. get a rust toolchain, musl-dev
+2. git clone https://github.com/redsift/ingraind; cd ingraind;
+KERNEL_SOURCE=<path to src> cargo +nightly build
+--target=x86_64-unknown-linux-musl --release
+
+## Run the BPF module without a sandbox
+3. echo >config <<EOF
+[[probe]]
+pipelines = ["console"]
+[probe.config]
+type = "Files"
+monitor_dirs = ["/"]not
+
+[pipeline.console.config]
+backend = "Console"
+EOF
+4. sudo ./target/x86_64-unknown-linux-musl/release/ingraind config
+5. You can see that all VFS operations from the host are listed.
+6. Kill the process C-c
+
+### Expectation
+I get system-wide filesystem events through the VFS
+
+### Reality
+Meets the expectation
+
+## Run BPF module from chroot
+1. mkdir -p test/proc test/sys; cp
+/target/x86_64-unknown-linux-musl/release/ingraind config test
+2. sudo mount -t sysfs sys test/sys; sudo mount -t debugfs none
+test/sys/kernel/debug
+3. sudo chroot ./test /ingraind /config
+
+### Expectation
+I see system-wide events, just like without chroot.
+
+### Reality
+I don't see events firing at all.
+
+If you compile the code at
+https://gist.github.com/rsdy/bfe45ebae7354217e7242c8bf10df274
+statically and run it inside the chroot while ingraind is running
+chrooted, the kprobe will fire both read and write events from within
+the mount namespace.
+
+Thanks,
+Peter
+
+-- 
 
 
-From there:
+Red Sift is the power behind OnDMARC
 
-echo 1 > /sys/kernel/debug/tracing/events/xdp/enable
-cat /sys/kernel/debug/tracing/trace_pipe
+You can find us at 20 Air Street, 
+4th Floor at Wayra, London, W1B 5AN
+
+
+
+
+Red Sift is a limited company 
+registered in England and Wales. Registered number: 09240956. Registered 
+office: Kemp House, 152 City Road, London, EC1V 2NX.
