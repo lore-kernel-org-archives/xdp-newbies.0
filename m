@@ -1,52 +1,28 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38590 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727406AbeK2QzQ (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 29 Nov 2018 11:55:16 -0500
-Subject: Re: qemu-kvm XDP forwarding with virtio_net
-From: Jason Wang <jasowang@redhat.com>
-References: <CAHOxX0xFn2RARhnQeJ3m-+8UWrtD-bN2dn8x_FygCfDKdD3oQQ@mail.gmail.com>
- <d69fbde9-c28a-d5be-a667-c54e3c4f52f3@gmail.com>
- <CAHOxX0zjkCczaav6NfPYLu=ivJYoLCJe_L+3krn3-vr+paNdDA@mail.gmail.com>
- <20181120191412.088c68fb@redhat.com>
- <b9da9c67-e31c-f469-6515-c7913a89dd26@redhat.com>
- <CAHOxX0zY5WM4oK7W6owem2LpkuyokCw_oLSXArdp2OMAU9-Wng@mail.gmail.com>
- <c9f1233e-bcc8-e8db-3f25-ca572a104d80@redhat.com>
-Message-ID: <13c7d34b-dd0a-1ba9-e72d-b89955249ea8@redhat.com>
-Date: Thu, 29 Nov 2018 13:50:57 +0800
+Received: from mail-wm1-f53.google.com ([209.85.128.53]:35402 "EHLO
+        mail-wm1-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726435AbeLMUyu (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 13 Dec 2018 15:54:50 -0500
+Received: by mail-wm1-f53.google.com with SMTP id c126so3789059wmh.0
+        for <xdp-newbies@vger.kernel.org>; Thu, 13 Dec 2018 12:54:49 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <c9f1233e-bcc8-e8db-3f25-ca572a104d80@redhat.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8bit
-Content-Language: en-US
+From: Rafael Vargas <vargas@khomp.com>
+Date: Thu, 13 Dec 2018 18:54:37 -0200
+Message-ID: <CAEaYocZxBKoD72jrE3_YasxxYGfrh1nhkE7yBaXSwRWfe2f54w@mail.gmail.com>
+Subject: Which interface is the program running...
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Pavel Popa <pashinho1990@gmail.com>
-Cc: brouer@redhat.com, David Ahern <dsahern@gmail.com>, xdp-newbies@vger.kernel.org
+To: xdp-newbies@vger.kernel.org
 
+Hi all,
 
-On 2018/11/26 下午2:36, Jason Wang wrote:
->
-> On 2018/11/24 上午1:09, Pavel Popa wrote:
->> Hi Jason,
->>
->> I confirm that the patch you sent me, together with "[PATCH net 1/2]
->> virtio-net: disable guest csum during XDP set" and "[PATCH net 2/2]
->> virtio-net: fail XDP set if guest csum is negotiated", have fixed the
->> "bad gso" issue.
->>
->> Cheers
->
->
-> Thanks for the testing.
->
-> Let me post a formal patch.
+I've being doing some tests and could not find a way within the
+program to know in which interface is the XDP program running.
 
+I install the same program to several interfaces (with
+bpf_set_link_xdp_fd), is there any way to do that?
 
-Actually, there's a typo in the patch I attached.
-
-The check xdp_prog != NULL should be !xdp_prog.
-
-I will fix this and post soon.
-
-Thanks
+Thanks,
+Rafael Vargas
