@@ -1,65 +1,85 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53222 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728966AbeLTMoq (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 20 Dec 2018 07:44:46 -0500
-Date: Thu, 20 Dec 2018 13:44:39 +0100
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: Debugging cpumap_kthread drops
-Message-ID: <20181220134439.23c45643@redhat.com>
-In-Reply-To: <CAHOxX0w+K0u2vQbrAJ0kHG+XQjAqCSZY6SRTZCwWVXyzWQ_D0A@mail.gmail.com>
-References: <CAHOxX0w+K0u2vQbrAJ0kHG+XQjAqCSZY6SRTZCwWVXyzWQ_D0A@mail.gmail.com>
+Received: from mail-it1-f170.google.com ([209.85.166.170]:36504 "EHLO
+        mail-it1-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726254AbfAMRqj (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Sun, 13 Jan 2019 12:46:39 -0500
+Received: by mail-it1-f170.google.com with SMTP id c9so9399604itj.1
+        for <xdp-newbies@vger.kernel.org>; Sun, 13 Jan 2019 09:46:38 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+From: Pavel Popa <pashinho1990@gmail.com>
+Date: Sun, 13 Jan 2019 18:46:26 +0100
+Message-ID: <CAHOxX0y+aAcZjLBp-=N=ix1nw-PDnOVRS5LW_BpkTuRT5Az9tA@mail.gmail.com>
+Subject: eBPF parsing of network protocol's optional headers
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Pavel Popa <pashinho1990@gmail.com>
-Cc: xdp-newbies@vger.kernel.org, brouer@redhat.com
+To: xdp-newbies@vger.kernel.org
 
-On Wed, 19 Dec 2018 17:51:21 +0100
-Pavel Popa <pashinho1990@gmail.com> wrote:
+Hi all,
 
-> Hi all,
-> 
-> I'm encountering the following log line "xdp_cpumap_kthread: kthread
-> cpu=0 map_id=155 action=REDIRECT processed=1 drops=1 sched=1", and as
-> you can see the "drops" counter is =1, thus not good. Is there any way
-> to know the reason of such error? This is triggered when the IP dst
-> address of a to be forwarded packet doesn't have a corresponding ARP
-> entry, so what the XDP program does is basically redirecting the
-> packet to a different CPU core for the net stack processing which will
-> perform ARP, at least that's the intent. I should say that it
-> perfectly worked some days ago, but now I'm encountering this. So, is
-> there any possible way to debug deeper in a "xdp_cpumap_kthread
-> drops"?
+I hope this might be a right place for asking this.
+So, as per subj, I'm fighting (seems in vain) with the verifier for
+parsing optional headers of a network tunneling protocol. The
+following is the layout of the tunneling protocol's optional header:
 
-This trace point is located in function cpu_map_kthread_run() in file
-kernel/bpf/cpumap.c.
+struct somehdr_ext
+{
+    uint8_t len;            /* Length of the extension in 4-octet units */
+    uint8_t content[];    /* Content of the extension */
+}
 
-The relevant code section:
-	/* Inject into network stack */
-	ret = netif_receive_skb_core(skb);
-	if (ret == NET_RX_DROP)
-		drops++;
+The following is the interested code snippet:
 
-The "drops" count is incremented when we inject the packet into the
-network stack and it returns NET_RX_DROP.  Thus, it is the network
-stack that choose to drop your packet. As such it is likely a netstack
-issue, not an XDP issue.
+int some_parser(struct xdp_md *ctx)
+{
+    void *data = (void *)(long)ctx->data;
+    void *data_end = (void *)(long)ctx->data_end;
+    struct somehdr_ext *ext = data + some_fixed_offset;
 
-To debug this further you can use other netstack tracepoint to debug
-this further.  It might even be possible to tcpdump the packet before
-it gets dropped by netstack.  
+    if (ext + 2 > data_end)
+        return -1;
+    if (ext->len == 0)
+        return -1;
 
-It can be hard to follow the code path of the kernel, to figure out
-exactly what code path is dropping the packet.  But given you seem to
-know howto use tracepoints, there is a shortcut to this information by
-using the tracepoint "skb:kfree_skb" and look at the function
-call-graph (we have "skb:consume_skb" for normal free path).
+    if (ext->content + (ext->len * 4) > data_end)  // hopefully make
+the BPF verifier happy
+        return -1;
 
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+    /* the verifier is happy with this */
+    return ext->content[0];
+    /* but not with this
+     * ext->content[1]; // from 1 to ((ext->len * 4) - 1)
+     * WHY???
+     */
+}
+
+Specifically, the verifier complains about the following:
+183: (71) r1 = *(u8 *)(r4 +0)
+184: (07) r4 += 1
+185: (67) r1 <<= 2
+186: (bf) r2 = r4
+187: (0f) r2 += r1
+188: (2d) if r2 > r7 goto pc+29
+ R0=map_value(id=0,off=0,ks=4,vs=32,imm=0)
+ R1=inv(id=0,umax_value=1020,var_off=(0x0; 0x3fc))
+R2=pkt(id=6,off=13,r=13,umin_value=12,umax_value=2307,var_off=(0x0;
+0xfff)) R3=inv(id=0,umin_value=12,umax_value=1032,var_off=(0x0;
+0x7fc)) R4=pkt(id=5,off=13,r=14,umin_value=12,umax_value=1287,var_off=(0x0;
+0x7ff)) R5=inv(id=0,umax_value=255,var_off=(0x0; 0xff))
+R6=ctx(id=0,off=0,imm=0) R7=pkt_end(id=0,off=0,imm=0)
+R8=pkt(id=0,off=0,r=14,imm=0) R10=fp0,call_-1
+189: (71) r1 = *(u8 *)(r4 +1)
+invalid access to packet, off=14 size=1, R4(id=5,off=13,r=14)
+R4 offset is outside of the packet
+
+I understand what the verifier is afraid of with this message,
+basically potentially dereferencing memory outside of the packet's
+context [data, data_end] valid range. What I don't get is why this:
+    if (ext->content + (ext->len * 4) > data_end)
+        return -1;
+doesn't make him happy for avoiding precisely the complaining message.
+In fact, it seems to me that my attempt might be completely futile. Is
+there any work around to this?
+
+Thank you
