@@ -1,16 +1,19 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-it1-f170.google.com ([209.85.166.170]:36504 "EHLO
-        mail-it1-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726254AbfAMRqj (ORCPT
+Received: from turquesa.dcc.ufmg.br ([150.164.0.150]:45204 "EHLO
+        smtp.dcc.ufmg.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725879AbfAURKv (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Sun, 13 Jan 2019 12:46:39 -0500
-Received: by mail-it1-f170.google.com with SMTP id c9so9399604itj.1
-        for <xdp-newbies@vger.kernel.org>; Sun, 13 Jan 2019 09:46:38 -0800 (PST)
+        Mon, 21 Jan 2019 12:10:51 -0500
+Received: from mail-io1-f54.google.com (mail-io1-f54.google.com [209.85.166.54])
+        by smtp.dcc.ufmg.br (Postfix) with ESMTPSA id 2EB6C7F75A
+        for <xdp-newbies@vger.kernel.org>; Mon, 21 Jan 2019 15:10:49 -0200 (-02)
+Received: by mail-io1-f54.google.com with SMTP id s22so16917155ioc.8
+        for <xdp-newbies@vger.kernel.org>; Mon, 21 Jan 2019 09:10:49 -0800 (PST)
 MIME-Version: 1.0
-From: Pavel Popa <pashinho1990@gmail.com>
-Date: Sun, 13 Jan 2019 18:46:26 +0100
-Message-ID: <CAHOxX0y+aAcZjLBp-=N=ix1nw-PDnOVRS5LW_BpkTuRT5Az9tA@mail.gmail.com>
-Subject: eBPF parsing of network protocol's optional headers
+From: Matheus Salgueiro Castanho <matheus.castanho@dcc.ufmg.br>
+Date: Mon, 21 Jan 2019 15:10:36 -0200
+Message-ID: <CAPyJoHkGzwc7LhH5kz=GHP3V8CK8EAZgy0X2TavhRXBGUOZFdA@mail.gmail.com>
+Subject: Encapsulation operation on TX
 Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
@@ -18,68 +21,46 @@ To: xdp-newbies@vger.kernel.org
 
 Hi all,
 
-I hope this might be a right place for asking this.
-So, as per subj, I'm fighting (seems in vain) with the verifier for
-parsing optional headers of a network tunneling protocol. The
-following is the layout of the tunneling protocol's optional header:
+I've recently begun playing around with BPF and XDP. Right now I'm
+trying to write BPF programs to perform encap/decap of a custom
+protocol I'm using to transport packets over the network, creating
+something like a tunnel. The packet looks like this:
 
-struct somehdr_ext
-{
-    uint8_t len;            /* Length of the extension in 4-octet units */
-    uint8_t content[];    /* Content of the extension */
-}
+| Outer encapsulation | Original packet |
 
-The following is the interested code snippet:
+Upon reception, a program loaded on XDP removes this external
+encapsulation, leaving only the original packet, which is processed by
+the server and then sent back to the network. However, I need to
+re-add this outer encapsulation before sending the packet.
 
-int some_parser(struct xdp_md *ctx)
-{
-    void *data = (void *)(long)ctx->data;
-    void *data_end = (void *)(long)ctx->data_end;
-    struct somehdr_ext *ext = data + some_fixed_offset;
+I found out I can do this using L3 using routing rules, like this:
+          ip route add <IP-address> encap bpf headroom <size>  xmit
+obj <bpf-obj> section <sec-name> dev <iface>
 
-    if (ext + 2 > data_end)
-        return -1;
-    if (ext->len == 0)
-        return -1;
+The problem with this approach is that at this level I cannot add my
+tunnel properly, which should come before Ethernet header. And from my
+tests, this does not work with raw sockets (could be mistaken,
+though).
 
-    if (ext->content + (ext->len * 4) > data_end)  // hopefully make
-the BPF verifier happy
-        return -1;
+Ideally, this should be done right before the packet reaches the NIC,
+at the lowest layer possible, since the Linux kernel does not
+recognize this external encapsulation. I then would need something
+like "XDP on TX", which as far as I know doesn't exist.
 
-    /* the verifier is happy with this */
-    return ext->content[0];
-    /* but not with this
-     * ext->content[1]; // from 1 to ((ext->len * 4) - 1)
-     * WHY???
-     */
-}
+I was able to implement this functionality at the Traffic Control (TC)
+layer, but could not find an equivalent helper funcion to
+bpf_xdp_adjust_head() on TC. I ended up using a "hack", calling
+bpf_skb_vlan_push() several times and reorganizing and re-writing the
+initial headers. No surprise the performance ended up not being really
+good, plus some side-effects.
 
-Specifically, the verifier complains about the following:
-183: (71) r1 = *(u8 *)(r4 +0)
-184: (07) r4 += 1
-185: (67) r1 <<= 2
-186: (bf) r2 = r4
-187: (0f) r2 += r1
-188: (2d) if r2 > r7 goto pc+29
- R0=map_value(id=0,off=0,ks=4,vs=32,imm=0)
- R1=inv(id=0,umax_value=1020,var_off=(0x0; 0x3fc))
-R2=pkt(id=6,off=13,r=13,umin_value=12,umax_value=2307,var_off=(0x0;
-0xfff)) R3=inv(id=0,umin_value=12,umax_value=1032,var_off=(0x0;
-0x7fc)) R4=pkt(id=5,off=13,r=14,umin_value=12,umax_value=1287,var_off=(0x0;
-0x7ff)) R5=inv(id=0,umax_value=255,var_off=(0x0; 0xff))
-R6=ctx(id=0,off=0,imm=0) R7=pkt_end(id=0,off=0,imm=0)
-R8=pkt(id=0,off=0,r=14,imm=0) R10=fp0,call_-1
-189: (71) r1 = *(u8 *)(r4 +1)
-invalid access to packet, off=14 size=1, R4(id=5,off=13,r=14)
-R4 offset is outside of the packet
+My question is: is there a better way to do this encapsulation on TX?
+If not, what would be the steps to implement a basic "XDP on TX" on
+the Linux kernel to support this? Although new to kernel programming
+I've spent a good amount of time reading through BPF-related pieces of
+code in the kernel, so I have a basic idea of how things are
+implemented, but would like to hear from more experienced developers
+than me.
 
-I understand what the verifier is afraid of with this message,
-basically potentially dereferencing memory outside of the packet's
-context [data, data_end] valid range. What I don't get is why this:
-    if (ext->content + (ext->len * 4) > data_end)
-        return -1;
-doesn't make him happy for avoiding precisely the complaining message.
-In fact, it seems to me that my attempt might be completely futile. Is
-there any work around to this?
-
-Thank you
+Thank you very much,
+Matheus Castanho
