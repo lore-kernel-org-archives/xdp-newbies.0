@@ -1,111 +1,118 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ot1-f67.google.com ([209.85.210.67]:35534 "EHLO
-        mail-ot1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728908AbfBRKJt (ORCPT
+Received: from www62.your-server.de ([213.133.104.62]:37316 "EHLO
+        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726955AbfBRVvR (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 18 Feb 2019 05:09:49 -0500
+        Mon, 18 Feb 2019 16:51:17 -0500
+Subject: Re: Interruption in eBPF program after kernel update
+From: Daniel Borkmann <daniel@iogearbox.net>
+References: <96e834867100a5ae9a941c639ef93456a2600021.camel@regit.org>
+ <509b74cb74f13b02122707d2505e5c690866b159.camel@regit.org>
+ <CAADnVQ+5KbWJqwOWVGGBwfX7h+1r7287452_Scrud8N8iR3Gow@mail.gmail.com>
+ <aecce2b7-a14d-b649-f180-2c43f30096f7@iogearbox.net>
+Message-ID: <f0167cf4-6cad-2e1b-01ff-0dfb9d108852@iogearbox.net>
+Date: Mon, 18 Feb 2019 22:51:14 +0100
 MIME-Version: 1.0
-References: <1549631126-29067-1-git-send-email-magnus.karlsson@intel.com>
- <36557463-D23A-432E-AA18-7731F43CEBA6@gmail.com> <CAJ8uoz19UjmEHTc28Qd_9KdY9D-ojXSBRTbmffRhUTX49mnWvg@mail.gmail.com>
- <20190213125530.4a7fb8bc@carbon> <20ba7719-b660-462c-a6bf-6c749e1f2f30@iogearbox.net>
- <CAJ8uoz3kRrXJCthhm4u=0Z-7=uNryB_r8Yj3p7inYEPjtLp2Kw@mail.gmail.com> <5ed22245-fe6b-14a9-9c93-f039828a02b6@iogearbox.net>
-In-Reply-To: <5ed22245-fe6b-14a9-9c93-f039828a02b6@iogearbox.net>
-From: Magnus Karlsson <magnus.karlsson@gmail.com>
-Date: Mon, 18 Feb 2019 11:09:36 +0100
-Message-ID: <CAJ8uoz1XUE_8vjO8foa16NN1GnMp8ME8VfKxv_ovdNaHGibLuA@mail.gmail.com>
-Subject: Re: [PATCH bpf-next v4 0/2] libbpf: adding AF_XDP support
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <aecce2b7-a14d-b649-f180-2c43f30096f7@iogearbox.net>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Magnus Karlsson <magnus.karlsson@intel.com>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, ast@kernel.org, Network Development <netdev@vger.kernel.org>, Jakub Kicinski <jakub.kicinski@netronome.com>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>, "Zhang, Qi Z" <qi.z.zhang@intel.com>, xiaolong.ye@intel.com, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+To: Eric Leblond <eric@regit.org>
+Cc: Alexei Starovoitov <alexei.starovoitov@gmail.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-On Mon, Feb 18, 2019 at 10:38 AM Daniel Borkmann <daniel@iogearbox.net> wrote:
->
-> On 02/18/2019 09:20 AM, Magnus Karlsson wrote:
-> > On Fri, Feb 15, 2019 at 5:48 PM Daniel Borkmann <daniel@iogearbox.net> wrote:
-> >>
-> >> On 02/13/2019 12:55 PM, Jesper Dangaard Brouer wrote:
-> >>> On Wed, 13 Feb 2019 12:32:47 +0100
-> >>> Magnus Karlsson <magnus.karlsson@gmail.com> wrote:
-> >>>> On Mon, Feb 11, 2019 at 9:44 PM Jonathan Lemon <jonathan.lemon@gmail.com> wrote:
-> >>>>> On 8 Feb 2019, at 5:05, Magnus Karlsson wrote:
-> >>>>>
-> >>>>>> This patch proposes to add AF_XDP support to libbpf. The main reason
-> >>>>>> for this is to facilitate writing applications that use AF_XDP by
-> >>>>>> offering higher-level APIs that hide many of the details of the AF_XDP
-> >>>>>> uapi. This is in the same vein as libbpf facilitates XDP adoption by
-> >>>>>> offering easy-to-use higher level interfaces of XDP
-> >>>>>> functionality. Hopefully this will facilitate adoption of AF_XDP, make
-> >>>>>> applications using it simpler and smaller, and finally also make it
-> >>>>>> possible for applications to benefit from optimizations in the AF_XDP
-> >>>>>> user space access code. Previously, people just copied and pasted the
-> >>>>>> code from the sample application into their application, which is not
-> >>>>>> desirable.
-> >>>>>
-> >>>>> I like the idea of encapsulating the boilerplate logic in a library.
-> >>>>>
-> >>>>> I do think there is an important missing piece though - there should be
-> >>>>> some code which queries the netdev for how many queues are attached, and
-> >>>>> create the appropriate number of umem/AF_XDP sockets.
-> >>>>>
-> >>>>> I ran into this issue when testing the current AF_XDP code - on my test
-> >>>>> boxes, the mlx5 card has 55 channels (aka queues), so when the test program
-> >>>>> binds only to channel 0, nothing works as expected, since not all traffic
-> >>>>> is being intercepted.  While obvious in hindsight, this took a while to
-> >>>>> track down.
-> >>>>
-> >>>> Yes, agreed. You are not the first one to stumble upon this problem
-> >>>> :-). Let me think a little bit on how to solve this in a good way. We
-> >>>> need this to be simple and intuitive, as you say.
-> >>>
-> >>> I see people hitting this with AF_XDP all the time... I had some
-> >>> backup-slides[2] in our FOSDEM presentation[1] that describe the issue,
-> >>> give the performance reason why and propose a workaround.
-> >>
-> >> Magnus, I presume you're going to address this for the initial libbpf merge
-> >> since the plan is to make it easier to consume for users?
-> >
-> > I think the first thing we need is education and documentation. Have a
-> > FAQ or "common mistakes" section in the Documentation. And of course,
-> > sending Jesper around the world reminding people about this ;-).
-> >
-> > To address this on a libbpf interface level, I think the best way is
-> > to reprogram the NIC to send all traffic to the queue that you
-> > provided in the xsk_socket__create call. This "set up NIC routing"
-> > behavior can then be disable with a flag, just as the XDP program
-> > loading can be disabled. The standard config of xsk_socket__create
-> > will then set up as many things for the user as possible just to get
-> > up and running quickly. More advanced users can then disable parts of
-> > it to gain more flexibility. Does this sound OK? Do not want to go the
-> > route of polling multiple sockets and aggregating the traffic as this
-> > will have significant negative performance implications.
->
-> I think that is fine, I would probably make this one a dedicated API call
-> in order to have some more flexibility than just simple flag. E.g. once
-> nfp AF_XDP support lands at some point, I could imagine that this call
-> resp. a drop-in replacement API call for more advanced steering could
-> also take an offloaded BPF prog fd, for example, which then would program
-> the steering on the NIC [0]. Seems at least there's enough complexity on
-> its own to have a dedicated API for it. Thoughts?
+Hi Eric,
 
-I agree that there is probably enough complexity to warrant adding a
-higher level API to deal with this problem (flow steering). But there
-are likely a number of cases we have not thought that would complicate
-it even further. This is why I suggest that this functionality should
-be in its own patch set that I can devote some time and thought to.
-IMO, the current patch set and functionality does already lower the
-bar of entry significantly and has a value even without hiding or
-controlling the steering of traffic. What I would like to do in this
-patch set is to add a FAQ section in
-Documentation/networking/af_xdp.rst explaining this problem. Something
-like: "Q: Why am I not seeing any traffic? A: Check these four
-things.....". Could add some text in the libbpf README referring to
-this document also. Opinions?
+On 02/15/2019 02:07 PM, Daniel Borkmann wrote:
+> On 02/14/2019 10:37 PM, Alexei Starovoitov wrote:
+>> On Thu, Feb 14, 2019 at 10:33 AM Eric Leblond <eric@regit.org> wrote:
+>>>
+>>> Hello,
+>>>
+>>> On Wed, 2019-02-13 at 20:46 +0100, Eric Leblond wrote:
+>>>> Hello,
+>>>>
+>>>> I've got a simple socket filter program that seems to interrupt when
+>>>> calling the load_word construct. I'm seeing the first message but
+>>>> never
+>>>> the second one.
+>>>>
+>>>> The code is the following
+>>>>
+>>>> int SEC("filter") hashfilter(struct __sk_buff *skb) {
+>>>>     __u32 nhoff = BPF_LL_OFF + ETH_HLEN;
+>>>
+>>> So it seems the problem was coming from this line. Removing BPF_LL_OFF
+>>> fixes the problem for kernel starting 4.18.
+>>>
+>>> Is this a known issue ?
+>>>
+>>> Is there something that would allow a BPF file to work independently of
+>>> the kernel version ?
+>>
+>> Daniel,
+>> can this be related to removal of ld_abs legacy ?
+> 
+> Hm, strange, I'll take a look.
 
-Thanks: Magnus
+Do you have a concrete stand-alone reproducer? Works fine for me on
+latest bpf tree at least (internal code gen is same for filter and
+tc BPF) ...
 
-> Thanks,
-> Daniel
->
->   [0] https://patchwork.ozlabs.org/cover/910614/
+# pwd
+/root/iproute2/examples/bpf
+# cat foo.c
+#include <stdio.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include "../../include/bpf_api.h"
+
+__section_cls_entry
+int cls_entry(struct __sk_buff *skb)
+{
+    __u32 nhoff = BPF_LL_OFF + ETH_HLEN;
+    __u32 ip = 0;
+    __u32 *value = NULL;
+#if 1
+    char fmtrei[] = "word load\n";
+    trace_printk(fmtrei, sizeof(fmtrei));
+#endif
+    ip = load_word(skb, nhoff + offsetof(struct iphdr, saddr));
+#if 1
+    char fmti[] = "work done\n";
+    trace_printk(fmti, sizeof(fmti));
+#endif
+    return TC_ACT_OK;
+}
+
+BPF_LICENSE("GPL");
+# clang -target bpf -O2 -Wall -c foo.c -o foo.o -I ../../include/uapi/
+# tc qdisc add dev bond0 clsact
+# tc filter add dev bond0 ingress bpf da obj ./foo.o
+# tc exec bpf dbg
+[...]
+          <idle>-0     [005] .Ns. 21102.794996: 0: work done
+          <idle>-0     [005] ..s. 21102.796023: 0: word load
+          <idle>-0     [005] .Ns. 21102.796045: 0: work done
+          <idle>-0     [005] ..s. 21102.807417: 0: word load
+          <idle>-0     [005] .Ns. 21102.807438: 0: work done
+          <idle>-0     [005] ..s. 21102.808365: 0: word load
+          <idle>-0     [005] .Ns. 21102.808387: 0: work done
+          <idle>-0     [005] ..s. 21102.819905: 0: word load
+          <idle>-0     [005] .Ns. 21102.819923: 0: work done
+          <idle>-0     [005] ..s. 21102.820626: 0: word load
+          <idle>-0     [005] .Ns. 21102.820646: 0: work done
+          <idle>-0     [005] ..s. 21102.832293: 0: word load
+          <idle>-0     [005] .Ns. 21102.832314: 0: work done
+[...]
+# uname -a
+Linux test2 5.0.0-rc6+ #1 SMP Mon Feb 18 13:06:11 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux
+# llc --version
+[...]
+  LLVM version 3.8.0
+# cat /proc/sys/net/core/bpf_jit_enable
+1
+
+Thanks,
+Daniel
