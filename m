@@ -1,123 +1,97 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:39278 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388035AbfBMCfd (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 12 Feb 2019 21:35:33 -0500
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.20 074/105] samples/bpf: workaround clang asm goto compilation errors
-Date: Tue, 12 Feb 2019 21:33:05 -0500
-Message-Id: <20190213023336.19019-74-sashal@kernel.org>
-In-Reply-To: <20190213023336.19019-1-sashal@kernel.org>
-References: <20190213023336.19019-1-sashal@kernel.org>
+Received: from www62.your-server.de ([213.133.104.62]:32914 "EHLO
+        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727228AbfBRJi7 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 18 Feb 2019 04:38:59 -0500
+Subject: Re: [PATCH bpf-next v4 0/2] libbpf: adding AF_XDP support
+References: <1549631126-29067-1-git-send-email-magnus.karlsson@intel.com>
+ <36557463-D23A-432E-AA18-7731F43CEBA6@gmail.com>
+ <CAJ8uoz19UjmEHTc28Qd_9KdY9D-ojXSBRTbmffRhUTX49mnWvg@mail.gmail.com>
+ <20190213125530.4a7fb8bc@carbon>
+ <20ba7719-b660-462c-a6bf-6c749e1f2f30@iogearbox.net>
+ <CAJ8uoz3kRrXJCthhm4u=0Z-7=uNryB_r8Yj3p7inYEPjtLp2Kw@mail.gmail.com>
+From: Daniel Borkmann <daniel@iogearbox.net>
+Message-ID: <5ed22245-fe6b-14a9-9c93-f039828a02b6@iogearbox.net>
+Date: Mon, 18 Feb 2019 10:38:51 +0100
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAJ8uoz3kRrXJCthhm4u=0Z-7=uNryB_r8Yj3p7inYEPjtLp2Kw@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Yonghong Song <yhs@fb.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: Magnus Karlsson <magnus.karlsson@gmail.com>
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Magnus Karlsson <magnus.karlsson@intel.com>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, ast@kernel.org, Network Development <netdev@vger.kernel.org>, Jakub Kicinski <jakub.kicinski@netronome.com>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>, "Zhang, Qi Z" <qi.z.zhang@intel.com>, xiaolong.ye@intel.com, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-From: Yonghong Song <yhs@fb.com>
+On 02/18/2019 09:20 AM, Magnus Karlsson wrote:
+> On Fri, Feb 15, 2019 at 5:48 PM Daniel Borkmann <daniel@iogearbox.net> wrote:
+>>
+>> On 02/13/2019 12:55 PM, Jesper Dangaard Brouer wrote:
+>>> On Wed, 13 Feb 2019 12:32:47 +0100
+>>> Magnus Karlsson <magnus.karlsson@gmail.com> wrote:
+>>>> On Mon, Feb 11, 2019 at 9:44 PM Jonathan Lemon <jonathan.lemon@gmail.com> wrote:
+>>>>> On 8 Feb 2019, at 5:05, Magnus Karlsson wrote:
+>>>>>
+>>>>>> This patch proposes to add AF_XDP support to libbpf. The main reason
+>>>>>> for this is to facilitate writing applications that use AF_XDP by
+>>>>>> offering higher-level APIs that hide many of the details of the AF_XDP
+>>>>>> uapi. This is in the same vein as libbpf facilitates XDP adoption by
+>>>>>> offering easy-to-use higher level interfaces of XDP
+>>>>>> functionality. Hopefully this will facilitate adoption of AF_XDP, make
+>>>>>> applications using it simpler and smaller, and finally also make it
+>>>>>> possible for applications to benefit from optimizations in the AF_XDP
+>>>>>> user space access code. Previously, people just copied and pasted the
+>>>>>> code from the sample application into their application, which is not
+>>>>>> desirable.
+>>>>>
+>>>>> I like the idea of encapsulating the boilerplate logic in a library.
+>>>>>
+>>>>> I do think there is an important missing piece though - there should be
+>>>>> some code which queries the netdev for how many queues are attached, and
+>>>>> create the appropriate number of umem/AF_XDP sockets.
+>>>>>
+>>>>> I ran into this issue when testing the current AF_XDP code - on my test
+>>>>> boxes, the mlx5 card has 55 channels (aka queues), so when the test program
+>>>>> binds only to channel 0, nothing works as expected, since not all traffic
+>>>>> is being intercepted.  While obvious in hindsight, this took a while to
+>>>>> track down.
+>>>>
+>>>> Yes, agreed. You are not the first one to stumble upon this problem
+>>>> :-). Let me think a little bit on how to solve this in a good way. We
+>>>> need this to be simple and intuitive, as you say.
+>>>
+>>> I see people hitting this with AF_XDP all the time... I had some
+>>> backup-slides[2] in our FOSDEM presentation[1] that describe the issue,
+>>> give the performance reason why and propose a workaround.
+>>
+>> Magnus, I presume you're going to address this for the initial libbpf merge
+>> since the plan is to make it easier to consume for users?
+> 
+> I think the first thing we need is education and documentation. Have a
+> FAQ or "common mistakes" section in the Documentation. And of course,
+> sending Jesper around the world reminding people about this ;-).
+> 
+> To address this on a libbpf interface level, I think the best way is
+> to reprogram the NIC to send all traffic to the queue that you
+> provided in the xsk_socket__create call. This "set up NIC routing"
+> behavior can then be disable with a flag, just as the XDP program
+> loading can be disabled. The standard config of xsk_socket__create
+> will then set up as many things for the user as possible just to get
+> up and running quickly. More advanced users can then disable parts of
+> it to gain more flexibility. Does this sound OK? Do not want to go the
+> route of polling multiple sockets and aggregating the traffic as this
+> will have significant negative performance implications.
 
-[ Upstream commit 6bf3bbe1f4d4cf405e3c2bf07bbdff56d3223ec8 ]
+I think that is fine, I would probably make this one a dedicated API call
+in order to have some more flexibility than just simple flag. E.g. once
+nfp AF_XDP support lands at some point, I could imagine that this call
+resp. a drop-in replacement API call for more advanced steering could
+also take an offloaded BPF prog fd, for example, which then would program
+the steering on the NIC [0]. Seems at least there's enough complexity on
+its own to have a dedicated API for it. Thoughts?
 
-x86 compilation has required asm goto support since 4.17.
-Since clang does not support asm goto, at 4.17,
-Commit b1ae32dbab50 ("x86/cpufeature: Guard asm_volatile_goto usage
-for BPF compilation") worked around the issue by permitting an
-alternative implementation without asm goto for clang.
+Thanks,
+Daniel
 
-At 5.0, more asm goto usages appeared.
-  [yhs@148 x86]$ egrep -r asm_volatile_goto
-  include/asm/cpufeature.h:     asm_volatile_goto("1: jmp 6f\n"
-  include/asm/jump_label.h:     asm_volatile_goto("1:"
-  include/asm/jump_label.h:     asm_volatile_goto("1:"
-  include/asm/rmwcc.h:  asm_volatile_goto (fullop "; j" #cc " %l[cc_label]"     \
-  include/asm/uaccess.h:        asm_volatile_goto("\n"                          \
-  include/asm/uaccess.h:        asm_volatile_goto("\n"                          \
-  [yhs@148 x86]$
-
-Compiling samples/bpf directories, most bpf programs failed
-compilation with error messages like:
-  In file included from /home/yhs/work/bpf-next/samples/bpf/xdp_sample_pkts_kern.c:2:
-  In file included from /home/yhs/work/bpf-next/include/linux/ptrace.h:6:
-  In file included from /home/yhs/work/bpf-next/include/linux/sched.h:15:
-  In file included from /home/yhs/work/bpf-next/include/linux/sem.h:5:
-  In file included from /home/yhs/work/bpf-next/include/uapi/linux/sem.h:5:
-  In file included from /home/yhs/work/bpf-next/include/linux/ipc.h:9:
-  In file included from /home/yhs/work/bpf-next/include/linux/refcount.h:72:
-  /home/yhs/work/bpf-next/arch/x86/include/asm/refcount.h:70:9: error: 'asm goto' constructs are not supported yet
-        return GEN_BINARY_SUFFIXED_RMWcc(LOCK_PREFIX "subl",
-               ^
-  /home/yhs/work/bpf-next/arch/x86/include/asm/rmwcc.h:67:2: note: expanded from macro 'GEN_BINARY_SUFFIXED_RMWcc'
-        __GEN_RMWcc(op " %[val], %[var]\n\t" suffix, var, cc,           \
-        ^
-  /home/yhs/work/bpf-next/arch/x86/include/asm/rmwcc.h:21:2: note: expanded from macro '__GEN_RMWcc'
-        asm_volatile_goto (fullop "; j" #cc " %l[cc_label]"             \
-        ^
-  /home/yhs/work/bpf-next/include/linux/compiler_types.h:188:37: note: expanded from macro 'asm_volatile_goto'
-  #define asm_volatile_goto(x...) asm goto(x)
-
-Most implementation does not even provide an alternative
-implementation. And it is also not practical to make changes
-for each call site.
-
-This patch workarounded the asm goto issue by redefining the macro like below:
-  #define asm_volatile_goto(x...) asm volatile("invalid use of asm_volatile_goto")
-
-If asm_volatile_goto is not used by bpf programs, which is typically the case, nothing bad
-will happen. If asm_volatile_goto is used by bpf programs, which is incorrect, the compiler
-will issue an error since "invalid use of asm_volatile_goto" is not valid assembly codes.
-
-With this patch, all bpf programs under samples/bpf can pass compilation.
-
-Note that bpf programs under tools/testing/selftests/bpf/ compiled fine as
-they do not access kernel internal headers.
-
-Fixes: e769742d3584 ("Revert "x86/jump-labels: Macrofy inline assembly code to work around GCC inlining bugs"")
-Fixes: 18fe58229d80 ("x86, asm: change the GEN_*_RMWcc() macros to not quote the condition")
-Acked-by: Alexei Starovoitov <ast@kernel.org>
-Signed-off-by: Yonghong Song <yhs@fb.com>
-Signed-off-by: Daniel Borkmann <daniel@iogearbox.net>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- samples/bpf/Makefile              |  1 +
- samples/bpf/asm_goto_workaround.h | 16 ++++++++++++++++
- 2 files changed, 17 insertions(+)
- create mode 100644 samples/bpf/asm_goto_workaround.h
-
-diff --git a/samples/bpf/Makefile b/samples/bpf/Makefile
-index be0a961450bc..f5ce993c78e4 100644
---- a/samples/bpf/Makefile
-+++ b/samples/bpf/Makefile
-@@ -273,6 +273,7 @@ $(obj)/%.o: $(src)/%.c
- 		-Wno-gnu-variable-sized-type-not-at-end \
- 		-Wno-address-of-packed-member -Wno-tautological-compare \
- 		-Wno-unknown-warning-option $(CLANG_ARCH_ARGS) \
-+		-I$(srctree)/samples/bpf/ -include asm_goto_workaround.h \
- 		-O2 -emit-llvm -c $< -o -| $(LLC) -march=bpf $(LLC_FLAGS) -filetype=obj -o $@
- ifeq ($(DWARF2BTF),y)
- 	$(BTF_PAHOLE) -J $@
-diff --git a/samples/bpf/asm_goto_workaround.h b/samples/bpf/asm_goto_workaround.h
-new file mode 100644
-index 000000000000..5cd7c1d1a5d5
---- /dev/null
-+++ b/samples/bpf/asm_goto_workaround.h
-@@ -0,0 +1,16 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/* Copyright (c) 2019 Facebook */
-+#ifndef __ASM_GOTO_WORKAROUND_H
-+#define __ASM_GOTO_WORKAROUND_H
-+
-+/* this will bring in asm_volatile_goto macro definition
-+ * if enabled by compiler and config options.
-+ */
-+#include <linux/types.h>
-+
-+#ifdef asm_volatile_goto
-+#undef asm_volatile_goto
-+#define asm_volatile_goto(x...) asm volatile("invalid use of asm_volatile_goto")
-+#endif
-+
-+#endif
--- 
-2.19.1
+  [0] https://patchwork.ozlabs.org/cover/910614/
