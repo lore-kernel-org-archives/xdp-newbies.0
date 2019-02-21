@@ -1,69 +1,78 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk1-f195.google.com ([209.85.222.195]:41466 "EHLO
-        mail-qk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726480AbfBURNP (ORCPT
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:43985 "EHLO
+        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725831AbfBURRV (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 21 Feb 2019 12:13:15 -0500
-Received: by mail-qk1-f195.google.com with SMTP id y15so3243674qki.8
-        for <xdp-newbies@vger.kernel.org>; Thu, 21 Feb 2019 09:13:14 -0800 (PST)
-Date: Thu, 21 Feb 2019 12:13:11 -0500
+        Thu, 21 Feb 2019 12:17:21 -0500
+Received: by mail-qt1-f194.google.com with SMTP id y4so32322182qtc.10
+        for <xdp-newbies@vger.kernel.org>; Thu, 21 Feb 2019 09:17:21 -0800 (PST)
+Date: Thu, 21 Feb 2019 12:17:19 -0500
 From: Joel Fernandes <joel@joelfernandes.org>
-Subject: Re: [PATCH RFC 3/5] sched/cpufreq: Fix incorrect RCU API usage
-Message-ID: <20190221171311.GA118415@google.com>
+Subject: Re: [PATCH RFC 4/5] sched/topology: Annonate RCU pointers properly
+Message-ID: <20190221171719.GB118415@google.com>
 References: <20190221054942.132388-1-joel@joelfernandes.org>
- <20190221054942.132388-4-joel@joelfernandes.org>
- <20190221091805.GX32477@hirez.programming.kicks-ass.net>
- <20190221152139.GB19213@google.com>
- <20190221153117.GT32494@hirez.programming.kicks-ass.net>
- <20190221155218.GZ11787@linux.ibm.com>
- <20190221161144.GU32494@hirez.programming.kicks-ass.net>
+ <20190221054942.132388-5-joel@joelfernandes.org>
+ <20190221091944.GY32477@hirez.programming.kicks-ass.net>
+ <20190221151057.GA19213@google.com>
+ <20190221152944.GS32494@hirez.programming.kicks-ass.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190221161144.GU32494@hirez.programming.kicks-ass.net>
+In-Reply-To: <20190221152944.GS32494@hirez.programming.kicks-ass.net>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: Peter Zijlstra <peterz@infradead.org>
-Cc: "Paul E. McKenney" <paulmck@linux.ibm.com>, linux-kernel@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Christian Brauner <christian@brauner.io>, Daniel Borkmann <daniel@iogearbox.net>, David Ahern <dsahern@gmail.com>, "David S. Miller" <davem@davemloft.net>, Ido Schimmel <idosch@mellanox.com>, Ingo Molnar <mingo@redhat.com>, "moderated list:INTEL ETHERNET DRIVERS" <intel-wired-lan@lists.osuosl.org>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jeff Kirsher <jeffrey.t.kirsher@intel.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Josh Triplett <josh@joshtriplett.org>, keescook@chromium.org, Lai Jiangshan <jiangshanlai@gmail.com>, Martin KaFai Lau <kafai@fb.com>, Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, netdev@vger.kernel.org, rcu@vger.kernel.org, Song Liu <songliubraving@fb.com>, Steven Rostedt <rostedt@goodmis.org>, xdp-newbies@vger.kernel.org, Yonghong Song <yhs@fb.com>
+Cc: linux-kernel@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Christian Brauner <christian@brauner.io>, Daniel Borkmann <daniel@iogearbox.net>, David Ahern <dsahern@gmail.com>, "David S. Miller" <davem@davemloft.net>, Ido Schimmel <idosch@mellanox.com>, Ingo Molnar <mingo@redhat.com>, "moderated list:INTEL ETHERNET DRIVERS" <intel-wired-lan@lists.osuosl.org>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jeff Kirsher <jeffrey.t.kirsher@intel.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Josh Triplett <josh@joshtriplett.org>, keescook@chromium.org, Lai Jiangshan <jiangshanlai@gmail.com>, Martin KaFai Lau <kafai@fb.com>, Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, netdev@vger.kernel.org, "Paul E. McKenney" <paulmck@linux.ibm.com>, rcu@vger.kernel.org, Song Liu <songliubraving@fb.com>, Steven Rostedt <rostedt@goodmis.org>, xdp-newbies@vger.kernel.org, Yonghong Song <yhs@fb.com>
 
-On Thu, Feb 21, 2019 at 05:11:44PM +0100, Peter Zijlstra wrote:
-> On Thu, Feb 21, 2019 at 07:52:18AM -0800, Paul E. McKenney wrote:
-> > On Thu, Feb 21, 2019 at 04:31:17PM +0100, Peter Zijlstra wrote:
-> > > On Thu, Feb 21, 2019 at 10:21:39AM -0500, Joel Fernandes wrote:
-> > > > On Thu, Feb 21, 2019 at 10:18:05AM +0100, Peter Zijlstra wrote:
-> > > > > On Thu, Feb 21, 2019 at 12:49:40AM -0500, Joel Fernandes (Google) wrote:
-> > > > > > @@ -34,8 +34,12 @@ void cpufreq_add_update_util_hook(int cpu, struct update_util_data *data,
-> > > > > >  	if (WARN_ON(!data || !func))
-> > > > > >  		return;
-> > > > > >  
-> > > > > > -	if (WARN_ON(per_cpu(cpufreq_update_util_data, cpu)))
-> > > > > > +	rcu_read_lock();
-> > > > > > +	if (WARN_ON(rcu_dereference(per_cpu(cpufreq_update_util_data, cpu)))) {
-> > > > > > +		rcu_read_unlock();
-> > > > > >  		return;
-> > > > > > +	}
-> > > > > > +	rcu_read_unlock();
-> > > > > >  
-> > > > > >  	data->func = func;
-> > > > > >  	rcu_assign_pointer(per_cpu(cpufreq_update_util_data, cpu), data);
+On Thu, Feb 21, 2019 at 04:29:44PM +0100, Peter Zijlstra wrote:
+> On Thu, Feb 21, 2019 at 10:10:57AM -0500, Joel Fernandes wrote:
+> > Hi Peter,
+> > 
+> > Thanks for taking a look.
+> > 
+> > On Thu, Feb 21, 2019 at 10:19:44AM +0100, Peter Zijlstra wrote:
+> > > On Thu, Feb 21, 2019 at 12:49:41AM -0500, Joel Fernandes (Google) wrote:
+> > > 
+> > > > Also replace rcu_assign_pointer call on rq->sd with WRITE_ONCE. This
+> > > > should be sufficient for the rq->sd initialization.
+> > > 
+> > > > @@ -668,7 +668,7 @@ cpu_attach_domain(struct sched_domain *sd, struct root_domain *rd, int cpu)
+> > > >  
+> > > >  	rq_attach_root(rq, rd);
+> > > >  	tmp = rq->sd;
+> > > > -	rcu_assign_pointer(rq->sd, sd);
+> > > > +	WRITE_ONCE(rq->sd, sd);
+> > > >  	dirty_sched_domain_sysctl(cpu);
+> > > >  	destroy_sched_domains(tmp);
+> > > 
+> > > Where did the RELEASE barrier go?
+> > > 
+> > > That was a publish operation, now it is not.
+> > 
+> > Funny thing is, initially I had written this patch with smp_store_release()
+> > instead of WRITE_ONCE, but checkpatch complaints with that since it needs a
+> > comment on top of it, and I wasn't sure if RELEASE barrier was the intent of
+> > using rcu_assign_pointer (all the more reason to replace it with something
+> > more explicit).
+> > 
+> > I will replace it with the following and resubmit it then:
+> > 
+> > /* Release barrier */
+> > smp_store_release(&rq->sd, sd);
+> > 
+> > Or do we want to just drop the "Release barrier" comment and live with the
+> > checkpatch warning?
 > 
-> > For whatever it is worth, in that case it could use rcu_access_pointer().
-> > And this primitive does not do the lockdep check for being within an RCU
-> > read-side critical section.  As Peter says, if there is no dereferencing,
-> > there can be no use-after-free bug, so the RCU read-side critical is
-> > not needed.
+> How about we keep using rcu_assign_pointer(), the whole sched domain
+> tree is under rcu; peruse that destroy_sched_domains() function for
+> instance.
 > 
-> On top of that, I suspect this is under the write-side lock (we're doing
-> assignment after all).
+> Also check how for_each_domain() uses rcu_dereference().
 
-Yes it is under a policy->rwsem, just confirmed that.
+May be then, all those pointers should be made __rcu as well. Then we can use
+rcu_assign_pointer() here. I will look more into it and study these functions
+as you are suggesting.
 
-And indeed rcu_read_lock() is not needed here in this patch, thanks for
-pointing that out. Sometimes the word "dereference" plays some visual tricks
-and in this case tempted me to add an RCU reader section ;-) Assuming you
-guys are in agreement with usage of rcu_access_pointer() here to keep sparse
-happy, I'll rework the patch accordingly and resubmit with that.
+thanks,
 
-thanks!
-
- - Joel
+- Joel
