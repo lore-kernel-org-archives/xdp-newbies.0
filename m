@@ -1,15 +1,15 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk1-f196.google.com ([209.85.222.196]:37818 "EHLO
-        mail-qk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726701AbfBUFuB (ORCPT
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:44434 "EHLO
+        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726671AbfBUFt7 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 21 Feb 2019 00:50:01 -0500
-Received: by mail-qk1-f196.google.com with SMTP id m9so3615109qkl.4
-        for <xdp-newbies@vger.kernel.org>; Wed, 20 Feb 2019 21:50:00 -0800 (PST)
+        Thu, 21 Feb 2019 00:49:59 -0500
+Received: by mail-qt1-f194.google.com with SMTP id d2so4549528qti.11
+        for <xdp-newbies@vger.kernel.org>; Wed, 20 Feb 2019 21:49:58 -0800 (PST)
 From: "Joel Fernandes (Google)" <joel@joelfernandes.org>
-Subject: [PATCH RFC 2/5] ixgbe: Fix incorrect RCU API usage
-Date: Thu, 21 Feb 2019 00:49:39 -0500
-Message-Id: <20190221054942.132388-3-joel@joelfernandes.org>
+Subject: [PATCH RFC 1/5] net: rtnetlink: Fix incorrect RCU API usage
+Date: Thu, 21 Feb 2019 00:49:38 -0500
+Message-Id: <20190221054942.132388-2-joel@joelfernandes.org>
 In-Reply-To: <20190221054942.132388-1-joel@joelfernandes.org>
 References: <20190221054942.132388-1-joel@joelfernandes.org>
 MIME-Version: 1.0
@@ -19,100 +19,44 @@ List-ID: <xdp-newbies.vger.kernel.org>
 To: linux-kernel@vger.kernel.org
 Cc: "Joel Fernandes (Google)" <joel@joelfernandes.org>, Alexei Starovoitov <ast@kernel.org>, Christian Brauner <christian@brauner.io>, Daniel Borkmann <daniel@iogearbox.net>, David Ahern <dsahern@gmail.com>, "David S. Miller" <davem@davemloft.net>, Ido Schimmel <idosch@mellanox.com>, Ingo Molnar <mingo@redhat.com>, "moderated list:INTEL ETHERNET DRIVERS" <intel-wired-lan@lists.osuosl.org>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jeff Kirsher <jeffrey.t.kirsher@intel.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Josh Triplett <josh@joshtriplett.org>, keescook@chromium.org, Lai Jiangshan <jiangshanlai@gmail.com>, Martin KaFai Lau <kafai@fb.com>, Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, netdev@vger.kernel.org, "Paul E. McKenney" <paulmck@linux.ibm.com>, Peter Zijlstra <peterz@infradead.org>, rcu@vger.kernel.org, Song Liu <songliubraving@fb.com>, Steven Rostedt <rostedt@goodmis.org>, xdp-newbies@vger.kernel.org, Yonghong Song <yhs@fb.com>
 
-Recently, I added an RCU annotation check in rcu_assign_pointer. This
-caused a sparse error to be reported by the ixgbe driver.
+rtnl_register_internal() and rtnl_unregister_all tries to directly
+dereference an RCU protected pointed outside RCU read side section.
+While this is Ok to do since a lock is held, let us use the correct
+API to avoid programmer bugs in the future.
 
-Further looking, it seems the adapter->xdp_prog pointer is not annotated
-with __rcu. Annonating it fixed the error, but caused a bunch of other
-warnings.
+This also fixes sparse warnings arising from not using RCU API.
 
-This patch tries to fix all warnings by using RCU API properly. This
-makes sense to do because not using RCU properly can result in various
-hard to find bugs. This is a best effort fix and is only build tested.
-The sparse errors and warnings go away with the change. I request
-maintainers / developers in this area to test it properly.
+net/core/rtnetlink.c:332:13: warning: incorrect type in assignment
+(different address spaces) net/core/rtnetlink.c:332:13:    expected
+struct rtnl_link **tab net/core/rtnetlink.c:332:13:    got struct
+rtnl_link *[noderef] <asn:4>*<noident>
 
 Signed-off-by: Joel Fernandes (Google) <joel@joelfernandes.org>
 ---
- drivers/net/ethernet/intel/ixgbe/ixgbe.h      |  4 ++--
- drivers/net/ethernet/intel/ixgbe/ixgbe_main.c | 17 ++++++++++++-----
- 2 files changed, 14 insertions(+), 7 deletions(-)
+ net/core/rtnetlink.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/net/ethernet/intel/ixgbe/ixgbe.h b/drivers/net/ethernet/intel/ixgbe/ixgbe.h
-index 08d85e336bd4..3b14daf27516 100644
---- a/drivers/net/ethernet/intel/ixgbe/ixgbe.h
-+++ b/drivers/net/ethernet/intel/ixgbe/ixgbe.h
-@@ -311,7 +311,7 @@ struct ixgbe_ring {
- 	struct ixgbe_ring *next;	/* pointer to next ring in q_vector */
- 	struct ixgbe_q_vector *q_vector; /* backpointer to host q_vector */
- 	struct net_device *netdev;	/* netdev ring belongs to */
--	struct bpf_prog *xdp_prog;
-+	struct bpf_prog __rcu *xdp_prog;
- 	struct device *dev;		/* device for DMA mapping */
- 	void *desc;			/* descriptor ring memory */
- 	union {
-@@ -560,7 +560,7 @@ struct ixgbe_adapter {
- 	unsigned long active_vlans[BITS_TO_LONGS(VLAN_N_VID)];
- 	/* OS defined structs */
- 	struct net_device *netdev;
--	struct bpf_prog *xdp_prog;
-+	struct bpf_prog __rcu *xdp_prog;
- 	struct pci_dev *pdev;
- 	struct mii_bus *mii_bus;
+diff --git a/net/core/rtnetlink.c b/net/core/rtnetlink.c
+index 5ea1bed08ede..98be4b4818a9 100644
+--- a/net/core/rtnetlink.c
++++ b/net/core/rtnetlink.c
+@@ -188,7 +188,7 @@ static int rtnl_register_internal(struct module *owner,
+ 	msgindex = rtm_msgindex(msgtype);
  
-diff --git a/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
-index daff8183534b..6aa59bb13a14 100644
---- a/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
-+++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_main.c
-@@ -2199,7 +2199,7 @@ static struct sk_buff *ixgbe_run_xdp(struct ixgbe_adapter *adapter,
- 	u32 act;
+ 	rtnl_lock();
+-	tab = rtnl_msg_handlers[protocol];
++	tab = rtnl_dereference(rtnl_msg_handlers[protocol]);
+ 	if (tab == NULL) {
+ 		tab = kcalloc(RTM_NR_MSGTYPES, sizeof(void *), GFP_KERNEL);
+ 		if (!tab)
+@@ -329,7 +329,7 @@ void rtnl_unregister_all(int protocol)
+ 	BUG_ON(protocol < 0 || protocol > RTNL_FAMILY_MAX);
  
- 	rcu_read_lock();
--	xdp_prog = READ_ONCE(rx_ring->xdp_prog);
-+	xdp_prog = rcu_dereference(rx_ring->xdp_prog);
- 
- 	if (!xdp_prog)
- 		goto xdp_out;
-@@ -6547,7 +6547,7 @@ int ixgbe_setup_rx_resources(struct ixgbe_adapter *adapter,
- 			     rx_ring->queue_index) < 0)
- 		goto err;
- 
--	rx_ring->xdp_prog = adapter->xdp_prog;
-+	rcu_assign_pointer(rx_ring->xdp_prog, adapter->xdp_prog);
- 
- 	return 0;
- err:
-@@ -10246,7 +10246,10 @@ static int ixgbe_xdp_setup(struct net_device *dev, struct bpf_prog *prog)
- 	if (nr_cpu_ids > MAX_XDP_QUEUES)
- 		return -ENOMEM;
- 
--	old_prog = xchg(&adapter->xdp_prog, prog);
-+	rcu_read_lock();
-+	old_prog = rcu_dereference(adapter->xdp_prog);
-+	rcu_assign_pointer(adapter->xdp_prog, prog);
-+	rcu_read_unlock();
- 
- 	/* If transitioning XDP modes reconfigure rings */
- 	if (!!prog != !!old_prog) {
-@@ -10271,13 +10274,17 @@ static int ixgbe_xdp_setup(struct net_device *dev, struct bpf_prog *prog)
- static int ixgbe_xdp(struct net_device *dev, struct netdev_bpf *xdp)
- {
- 	struct ixgbe_adapter *adapter = netdev_priv(dev);
-+	struct bpf_prog *prog;
- 
- 	switch (xdp->command) {
- 	case XDP_SETUP_PROG:
- 		return ixgbe_xdp_setup(dev, xdp->prog);
- 	case XDP_QUERY_PROG:
--		xdp->prog_id = adapter->xdp_prog ?
--			adapter->xdp_prog->aux->id : 0;
-+		rcu_read_lock();
-+		prog = rcu_dereference(adapter->xdp_prog);
-+		xdp->prog_id = prog ? prog->aux->id : 0;
-+		rcu_read_unlock();
-+
- 		return 0;
- 	case XDP_QUERY_XSK_UMEM:
- 		return ixgbe_xsk_umem_query(adapter, &xdp->xsk.umem,
+ 	rtnl_lock();
+-	tab = rtnl_msg_handlers[protocol];
++	tab = rtnl_dereference(rtnl_msg_handlers[protocol]);
+ 	if (!tab) {
+ 		rtnl_unlock();
+ 		return;
 -- 
 2.21.0.rc0.258.g878e2cd30e-goog
