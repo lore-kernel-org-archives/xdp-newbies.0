@@ -1,75 +1,60 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from cloudserver094114.home.pl ([79.96.170.134]:63179 "EHLO
-        cloudserver094114.home.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726035AbfBUXGj (ORCPT
+Received: from mail-ot1-f67.google.com ([209.85.210.67]:43836 "EHLO
+        mail-ot1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726995AbfBVEJ4 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 21 Feb 2019 18:06:39 -0500
-From: "Rafael J. Wysocki" <rjw@rjwysocki.net>
-Subject: Re: [PATCH RFC 3/5] sched/cpufreq: Fix incorrect RCU API usage
-Date: Fri, 22 Feb 2019 00:05:08 +0100
-Message-ID: <3194474.xhKMNsEZRq@aspire.rjw.lan>
-In-Reply-To: <20190221054942.132388-4-joel@joelfernandes.org>
-References: <20190221054942.132388-1-joel@joelfernandes.org> <20190221054942.132388-4-joel@joelfernandes.org>
+        Thu, 21 Feb 2019 23:09:56 -0500
+From: Florian Fainelli <f.fainelli@gmail.com>
+Subject: [PATCH net-next 4/4] veth: Fix -Wformat-truncation
+Date: Thu, 21 Feb 2019 20:09:29 -0800
+Message-Id: <20190222040929.16657-5-f.fainelli@gmail.com>
+In-Reply-To: <20190222040929.16657-1-f.fainelli@gmail.com>
+References: <20190222040929.16657-1-f.fainelli@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: "Joel Fernandes (Google)" <joel@joelfernandes.org>
-Cc: linux-kernel@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Christian Brauner <christian@brauner.io>, Daniel Borkmann <daniel@iogearbox.net>, David Ahern <dsahern@gmail.com>, "David S. Miller" <davem@davemloft.net>, Ido Schimmel <idosch@mellanox.com>, Ingo Molnar <mingo@redhat.com>, "moderated list:INTEL ETHERNET DRIVERS" <intel-wired-lan@lists.osuosl.org>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jeff Kirsher <jeffrey.t.kirsher@intel.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Josh Triplett <josh@joshtriplett.org>, keescook@chromium.org, Lai Jiangshan <jiangshanlai@gmail.com>, Martin KaFai Lau <kafai@fb.com>, Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, netdev@vger.kernel.org, "Paul E. McKenney" <paulmck@linux.ibm.com>, Peter Zijlstra <peterz@infradead.org>, rcu@vger.kernel.org, Song Liu <songliubraving@fb.com>, Steven Rostedt <rostedt@goodmis.org>, xdp-newbies@vger.kernel.org, Yonghong Song <yhs@fb.com>
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, Florian Fainelli <f.fainelli@gmail.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>, David Ahern <dsahern@gmail.com>, Michael Walle <michael@walle.cc>, Li RongQing <lirongqing@baidu.com>, open list <linux-kernel@vger.kernel.org>, "open list:XDP eXpress Data Path" <xdp-newbies@vger.kernel.org>
 
-On Thursday, February 21, 2019 6:49:40 AM CET Joel Fernandes (Google) wrote:
-> Recently I added an RCU annotation check to rcu_assign_pointer(). All
-> pointers assigned to RCU protected data are to be annotated with __rcu
-> inorder to be able to use rcu_assign_pointer() similar to checks in
-> other RCU APIs.
-> 
-> This resulted in a sparse error: kernel//sched/cpufreq.c:41:9: sparse:
-> error: incompatible types in comparison expression (different address
-> spaces)
-> 
-> Fix this by using the correct APIs for RCU accesses. This will
-> potentially avoid any future bugs in the code. If it is felt that RCU
-> protection is not needed here, then the rcu_assign_pointer call can be
-> dropped and replaced with, say, WRITE_ONCE or smp_store_release. Or, may
-> be we add a new API to do it. But calls rcu_assign_pointer seems an
-> abuse of the RCU API unless RCU is being used.
-> 
-> Signed-off-by: Joel Fernandes (Google) <joel@joelfernandes.org>
-> ---
->  kernel/sched/cpufreq.c | 8 ++++++--
->  kernel/sched/sched.h   | 2 +-
->  2 files changed, 7 insertions(+), 3 deletions(-)
-> 
-> diff --git a/kernel/sched/cpufreq.c b/kernel/sched/cpufreq.c
-> index 22bd8980f32f..c9aeb3bf5dc2 100644
-> --- a/kernel/sched/cpufreq.c
-> +++ b/kernel/sched/cpufreq.c
-> @@ -7,7 +7,7 @@
->   */
->  #include "sched.h"
->  
-> -DEFINE_PER_CPU(struct update_util_data *, cpufreq_update_util_data);
-> +DEFINE_PER_CPU(struct update_util_data __rcu *, cpufreq_update_util_data);
->  
->  /**
->   * cpufreq_add_update_util_hook - Populate the CPU's update_util_data pointer.
-> @@ -34,8 +34,12 @@ void cpufreq_add_update_util_hook(int cpu, struct update_util_data *data,
->  	if (WARN_ON(!data || !func))
->  		return;
->  
-> -	if (WARN_ON(per_cpu(cpufreq_update_util_data, cpu)))
-> +	rcu_read_lock();
-> +	if (WARN_ON(rcu_dereference(per_cpu(cpufreq_update_util_data, cpu)))) {
-> +		rcu_read_unlock();
->  		return;
-> +	}
-> +	rcu_read_unlock();
+Provide a precision hint to snprintf() in order to eliminate a
+-Wformat-truncation warning provided below. A maximum of 11 characters
+is allowed to reach a maximum of 32 - 1 characters given a possible
+maximum value of queues using up to UINT_MAX which occupies 10
+characters. Incidentally 11 is the number of characters for
+"xdp_packets" which is the largest string we append.
 
-As Steve said, this is not a read-side critical section, so the rcu_read_lock()
-and rcu_read_unlock() don't help.
+drivers/net/veth.c: In function 'veth_get_strings':
+drivers/net/veth.c:118:47: warning: '%s' directive output may be
+truncated writing up to 31 bytes into a region of size between 12 and 21
+[-Wformat-truncation=]
+     snprintf(p, ETH_GSTRING_LEN, "rx_queue_%u_%s",
+                                               ^~
+drivers/net/veth.c:118:5: note: 'snprintf' output between 12 and 52
+bytes into a destination of size 32
+     snprintf(p, ETH_GSTRING_LEN, "rx_queue_%u_%s",
+     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+       i, veth_rq_stats_desc[j].desc);
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-But rcu_access_pointer() should work here AFAICS.
+Signed-off-by: Florian Fainelli <f.fainelli@gmail.com>
+---
+ drivers/net/veth.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Cheers,
-Rafael
+diff --git a/drivers/net/veth.c b/drivers/net/veth.c
+index fbf890ebbeae..569e87a51a33 100644
+--- a/drivers/net/veth.c
++++ b/drivers/net/veth.c
+@@ -115,7 +115,8 @@ static void veth_get_strings(struct net_device *dev, u32 stringset, u8 *buf)
+ 		p += sizeof(ethtool_stats_keys);
+ 		for (i = 0; i < dev->real_num_rx_queues; i++) {
+ 			for (j = 0; j < VETH_RQ_STATS_LEN; j++) {
+-				snprintf(p, ETH_GSTRING_LEN, "rx_queue_%u_%s",
++				snprintf(p, ETH_GSTRING_LEN,
++					 "rx_queue_%u_%.11s",
+ 					 i, veth_rq_stats_desc[j].desc);
+ 				p += ETH_GSTRING_LEN;
+ 			}
+-- 
+2.19.1
