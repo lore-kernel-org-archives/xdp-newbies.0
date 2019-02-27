@@ -1,66 +1,40 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:36594 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726971AbfBYVLt (ORCPT
+Received: from mail-wm1-f51.google.com ([209.85.128.51]:38776 "EHLO
+        mail-wm1-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726062AbfB0KwC (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 25 Feb 2019 16:11:49 -0500
-Received: from pps.filterd (m0098421.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x1PL9VAH133153
-        for <xdp-newbies@vger.kernel.org>; Mon, 25 Feb 2019 16:11:48 -0500
-Received: from e11.ny.us.ibm.com (e11.ny.us.ibm.com [129.33.205.201])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2qvr1j03dm-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <xdp-newbies@vger.kernel.org>; Mon, 25 Feb 2019 16:11:47 -0500
-Received: from localhost
-        by e11.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <xdp-newbies@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
-        Mon, 25 Feb 2019 21:11:47 -0000
-Date: Mon, 25 Feb 2019 13:11:38 -0800
-From: "Paul E. McKenney" <paulmck@linux.ibm.com>
-Subject: Re: [PATCH v2 5/6] rcuwait: Annotate task_struct with __rcu
-Reply-To: paulmck@linux.ibm.com
-References: <20190223063434.6793-1-joel@joelfernandes.org>
- <20190223063434.6793-6-joel@joelfernandes.org>
+        Wed, 27 Feb 2019 05:52:02 -0500
+Received: by mail-wm1-f51.google.com with SMTP id v26so5110516wmh.3
+        for <xdp-newbies@vger.kernel.org>; Wed, 27 Feb 2019 02:52:00 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190223063434.6793-6-joel@joelfernandes.org>
-Message-Id: <20190225211138.GZ4072@linux.ibm.com>
+From: Kal Cutter Conley <kal.conley@dectris.com>
+Date: Wed, 27 Feb 2019 11:51:48 +0100
+Message-ID: <CAHApi-=wjBn54NkO5tn2Vb5vn0_YSUewrUMJ3yF1e+emJdwGvg@mail.gmail.com>
+Subject: XDP full jumbo frame support
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: "Joel Fernandes (Google)" <joel@joelfernandes.org>
-Cc: linux-kernel@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Christian Brauner <christian@brauner.io>, Daniel Borkmann <daniel@iogearbox.net>, David Ahern <dsahern@gmail.com>, "David S. Miller" <davem@davemloft.net>, Ingo Molnar <mingo@redhat.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jeff Kirsher <jeffrey.t.kirsher@intel.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Josh Triplett <josh@joshtriplett.org>, keescook@chromium.org, kernel-hardening@lists.openwall.com, kernel-team@android.com, Kirill Tkhai <ktkhai@virtuozzo.com>, Lai Jiangshan <jiangshanlai@gmail.com>, Martin KaFai Lau <kafai@fb.com>, Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, netdev@vger.kernel.org, Peter Zijlstra <peterz@infradead.org>, Quentin Perret <quentin.perret@arm.com>, rcu@vger.kernel.org, Song Liu <songliubraving@fb.com>, Steven Rostedt <rostedt@goodmis.org>, Vincent Guittot <vincent.guittot@linaro.org>, xdp-newbies@vger.kernel.org, Yonghong Song <yhs@fb.com>
+To: xdp-newbies@vger.kernel.org
 
-On Sat, Feb 23, 2019 at 01:34:33AM -0500, Joel Fernandes (Google) wrote:
-> This suppresses sparse error generated due to the recently added
-> rcu_assign_pointer sparse check.
-> 
-> percpu-rwsem.c:162:9: sparse: error: incompatible types in comparison expression
-> exit.c:316:16: sparse: error: incompatible types in comparison expression
-> 
-> Signed-off-by: Joel Fernandes (Google) <joel@joelfernandes.org>
+Hi,
+We would love to adopt AF_XDP with ZC (with i40e), however, we are a
+blocked by the lack of full jumbo frame support (8000-9000 bytes). I
+would like to get a feel for the feasibility of implementing support
+for this. Looking through the code it seems possible to support this
+through huge pages without a huge amount of effort (i may be wrong).
+The first thing that came to mind is something like:
+(1) Add a page_size (or similar) field to the xdp_umem struct.
+(2) During UMEM registration, check if the UMEM is only made up of
+huge pages, if so, save the huge page size into the umem page_size
+field instead of the default constant PAGE_SIZE value.
+(3) Use the umem page size (for dma mapping etc.) instead of the fixed
+standard PAGE_SIZE.
 
-From an RCU perspective:
+Would this be a feasible solution? At least from the user (space)
+perspective, this seems like relatively straightforward change: when
+allocating the umem buffer, they only need to call mmap with the
+appropriate huge page flags if they want to receive packets >
+PAGE_SIZE.
 
-Reviewed-by: Paul E. McKenney <paulmck@linux.ibm.com>
-
-> ---
->  include/linux/rcuwait.h | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/include/linux/rcuwait.h b/include/linux/rcuwait.h
-> index 90bfa3279a01..563290fc194f 100644
-> --- a/include/linux/rcuwait.h
-> +++ b/include/linux/rcuwait.h
-> @@ -18,7 +18,7 @@
->   * awoken.
->   */
->  struct rcuwait {
-> -	struct task_struct *task;
-> +	struct task_struct __rcu *task;
->  };
->  
->  #define __RCUWAIT_INITIALIZER(name)		\
-> -- 
-> 2.21.0.rc0.258.g878e2cd30e-goog
-> 
+Thanks,
+Kal
