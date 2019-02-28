@@ -1,14 +1,14 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:50672 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:47582 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388801AbfB1PPP (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 28 Feb 2019 10:15:15 -0500
+        id S2388462AbfB1PNd (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 28 Feb 2019 10:13:33 -0500
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.14 36/36] qed: Consider TX tcs while deriving the max num_queues for PF.
-Date: Thu, 28 Feb 2019 10:13:37 -0500
-Message-Id: <20190228151337.12176-36-sashal@kernel.org>
-In-Reply-To: <20190228151337.12176-1-sashal@kernel.org>
-References: <20190228151337.12176-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 62/64] qed: Consider TX tcs while deriving the max num_queues for PF.
+Date: Thu, 28 Feb 2019 10:11:03 -0500
+Message-Id: <20190228151105.11277-62-sashal@kernel.org>
+In-Reply-To: <20190228151105.11277-1-sashal@kernel.org>
+References: <20190228151105.11277-1-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
@@ -32,10 +32,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/ethernet/qlogic/qed/qed_l2.c b/drivers/net/ethernet/qlogic/qed/qed_l2.c
-index 83c1c4fa102b7..13db311c16e5e 100644
+index 67c02ea939062..bde6f5f3bf8f7 100644
 --- a/drivers/net/ethernet/qlogic/qed/qed_l2.c
 +++ b/drivers/net/ethernet/qlogic/qed/qed_l2.c
-@@ -2161,7 +2161,7 @@ static int qed_fill_eth_dev_info(struct qed_dev *cdev,
+@@ -2207,7 +2207,7 @@ static int qed_fill_eth_dev_info(struct qed_dev *cdev,
  			u16 num_queues = 0;
  
  			/* Since the feature controls only queue-zones,
@@ -44,7 +44,7 @@ index 83c1c4fa102b7..13db311c16e5e 100644
  			 * match.
  			 */
  			for_each_hwfn(cdev, i) {
-@@ -2171,7 +2171,8 @@ static int qed_fill_eth_dev_info(struct qed_dev *cdev,
+@@ -2217,7 +2217,8 @@ static int qed_fill_eth_dev_info(struct qed_dev *cdev,
  				u16 cids;
  
  				cids = hwfn->pf_params.eth_pf_params.num_cons;
