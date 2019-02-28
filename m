@@ -1,14 +1,14 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:47582 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:43970 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388462AbfB1PNd (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 28 Feb 2019 10:13:33 -0500
+        id S2387852AbfB1PLC (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 28 Feb 2019 10:11:02 -0500
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.19 62/64] qed: Consider TX tcs while deriving the max num_queues for PF.
-Date: Thu, 28 Feb 2019 10:11:03 -0500
-Message-Id: <20190228151105.11277-62-sashal@kernel.org>
-In-Reply-To: <20190228151105.11277-1-sashal@kernel.org>
-References: <20190228151105.11277-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.20 79/81] qed: Consider TX tcs while deriving the max num_queues for PF.
+Date: Thu, 28 Feb 2019 10:08:11 -0500
+Message-Id: <20190228150813.10256-79-sashal@kernel.org>
+In-Reply-To: <20190228150813.10256-1-sashal@kernel.org>
+References: <20190228150813.10256-1-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
