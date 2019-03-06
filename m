@@ -1,58 +1,64 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:43970 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387852AbfB1PLC (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 28 Feb 2019 10:11:02 -0500
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.20 79/81] qed: Consider TX tcs while deriving the max num_queues for PF.
-Date: Thu, 28 Feb 2019 10:08:11 -0500
-Message-Id: <20190228150813.10256-79-sashal@kernel.org>
-In-Reply-To: <20190228150813.10256-1-sashal@kernel.org>
-References: <20190228150813.10256-1-sashal@kernel.org>
+Received: from mail-qk1-f182.google.com ([209.85.222.182]:42290 "EHLO
+        mail-qk1-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728548AbfCFICV (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 6 Mar 2019 03:02:21 -0500
+Received: by mail-qk1-f182.google.com with SMTP id y140so6284462qkb.9
+        for <xdp-newbies@vger.kernel.org>; Wed, 06 Mar 2019 00:02:20 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CAHApi-=wjBn54NkO5tn2Vb5vn0_YSUewrUMJ3yF1e+emJdwGvg@mail.gmail.com>
+In-Reply-To: <CAHApi-=wjBn54NkO5tn2Vb5vn0_YSUewrUMJ3yF1e+emJdwGvg@mail.gmail.com>
+From: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
+Date: Wed, 6 Mar 2019 09:02:08 +0100
+Message-ID: <CAJ+HfNgU=Z68dMm6DHUP+sOkSJDxdy6-kW2AKCqwem++t3p_6Q@mail.gmail.com>
+Subject: Re: XDP full jumbo frame support
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Sudarsana Reddy Kalluru <skalluru@marvell.com>, Ariel Elior <aelior@marvell.com>, "David S . Miller" <davem@davemloft.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+To: Kal Cutter Conley <kal.conley@dectris.com>
+Cc: xdp-newbies@vger.kernel.org
 
-From: Sudarsana Reddy Kalluru <skalluru@marvell.com>
+On Wed, 27 Feb 2019 at 11:54, Kal Cutter Conley <kal.conley@dectris.com> wr=
+ote:
+>
+> Hi,
+> We would love to adopt AF_XDP with ZC (with i40e), however, we are a
+> blocked by the lack of full jumbo frame support (8000-9000 bytes). I
+> would like to get a feel for the feasibility of implementing support
+> for this. Looking through the code it seems possible to support this
+> through huge pages without a huge amount of effort (i may be wrong).
+> The first thing that came to mind is something like:
+> (1) Add a page_size (or similar) field to the xdp_umem struct.
+> (2) During UMEM registration, check if the UMEM is only made up of
+> huge pages, if so, save the huge page size into the umem page_size
+> field instead of the default constant PAGE_SIZE value.
+> (3) Use the umem page size (for dma mapping etc.) instead of the fixed
+> standard PAGE_SIZE.
+>
+> Would this be a feasible solution? At least from the user (space)
+> perspective, this seems like relatively straightforward change: when
+> allocating the umem buffer, they only need to call mmap with the
+> appropriate huge page flags if they want to receive packets >
+> PAGE_SIZE.
+>
 
-[ Upstream commit fb1faab74ddef9ec2d841d54e5d0912a097b3abe ]
+Hi!
 
-Max supported queues is derived incorrectly in the case of multi-CoS.
-Need to consider TCs while calculating num_queues for PF.
+A lot of people has been asking for >4k chunk sizes to deal with jumbo
+frames. Something in line with what you're suggesting is definitely
+doable.
 
-Signed-off-by: Sudarsana Reddy Kalluru <skalluru@marvell.com>
-Signed-off-by: Ariel Elior <aelior@marvell.com>
-Signed-off-by: David S. Miller <davem@davemloft.net>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- drivers/net/ethernet/qlogic/qed/qed_l2.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Somewhat related; we have some ideas of passing (huge)pages, instead
+of chunks into the fill ring. This could be baked into the huge page
+support as well.
 
-diff --git a/drivers/net/ethernet/qlogic/qed/qed_l2.c b/drivers/net/ethernet/qlogic/qed/qed_l2.c
-index 67c02ea939062..bde6f5f3bf8f7 100644
---- a/drivers/net/ethernet/qlogic/qed/qed_l2.c
-+++ b/drivers/net/ethernet/qlogic/qed/qed_l2.c
-@@ -2207,7 +2207,7 @@ static int qed_fill_eth_dev_info(struct qed_dev *cdev,
- 			u16 num_queues = 0;
- 
- 			/* Since the feature controls only queue-zones,
--			 * make sure we have the contexts [rx, tx, xdp] to
-+			 * make sure we have the contexts [rx, xdp, tcs] to
- 			 * match.
- 			 */
- 			for_each_hwfn(cdev, i) {
-@@ -2217,7 +2217,8 @@ static int qed_fill_eth_dev_info(struct qed_dev *cdev,
- 				u16 cids;
- 
- 				cids = hwfn->pf_params.eth_pf_params.num_cons;
--				num_queues += min_t(u16, l2_queues, cids / 3);
-+				cids /= (2 + info->num_tc);
-+				num_queues += min_t(u16, l2_queues, cids);
- 			}
- 
- 			/* queues might theoretically be >256, but interrupts'
--- 
-2.19.1
+OTOH a lot of people are also concerned about the internal
+fragmentation with a chunk size of 2k, which is an opposing force to
+the huge page support. :-)
+
+
+Bj=C3=B6rn
+
+> Thanks,
+> Kal
