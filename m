@@ -1,54 +1,80 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:42884 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727177AbfCMTMP (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 13 Mar 2019 15:12:15 -0400
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.20 47/60] ixgbe: don't do any AF_XDP zero-copy transmit if netif is not OK
-Date: Wed, 13 Mar 2019 15:10:08 -0400
-Message-Id: <20190313191021.158171-47-sashal@kernel.org>
-In-Reply-To: <20190313191021.158171-1-sashal@kernel.org>
-References: <20190313191021.158171-1-sashal@kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Received: from mta-p6.oit.umn.edu ([134.84.196.206]:52278 "EHLO
+        mta-p6.oit.umn.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727123AbfCRWzQ (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 18 Mar 2019 18:55:16 -0400
+Received: from localhost (unknown [127.0.0.1])
+        by mta-p6.oit.umn.edu (Postfix) with ESMTP id 44909B4A
+        for <xdp-newbies@vger.kernel.org>; Mon, 18 Mar 2019 22:55:15 +0000 (UTC)
+Received: from mta-p6.oit.umn.edu ([127.0.0.1])
+        by localhost (mta-p6.oit.umn.edu [127.0.0.1]) (amavisd-new, port 10024)
+        with ESMTP id sYzK0IiBmj-9 for <xdp-newbies@vger.kernel.org>;
+        Mon, 18 Mar 2019 17:55:15 -0500 (CDT)
+Received: from mail-it1-f197.google.com (mail-it1-f197.google.com [209.85.166.197])
+        (using TLSv1.2 with cipher AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mta-p6.oit.umn.edu (Postfix) with ESMTPS id 0B712B38
+        for <xdp-newbies@vger.kernel.org>; Mon, 18 Mar 2019 17:55:15 -0500 (CDT)
+Received: by mail-it1-f197.google.com with SMTP id m132so2141643ita.4
+        for <xdp-newbies@vger.kernel.org>; Mon, 18 Mar 2019 15:55:15 -0700 (PDT)
+From: Aditya Pakki <pakki001@umn.edu>
+Subject: [PATCH] thunderbolt: xdomain: Fix to check return value of kmemdup
+Date: Mon, 18 Mar 2019 17:55:08 -0500
+Message-Id: <20190318225508.7886-1-pakki001@umn.edu>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Jan Sokolowski <jan.sokolowski@intel.com>, Jeff Kirsher <jeffrey.t.kirsher@intel.com>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+To: pakki001@umn.edu
+Cc: kjlu@umn.edu, Andreas Noever <andreas.noever@gmail.com>, Michael Jamet <michael.jamet@intel.com>, Mika Westerberg <mika.westerberg@linux.intel.com>, Yehezkel Bernat <YehezkelShB@gmail.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
 
-From: Jan Sokolowski <jan.sokolowski@intel.com>
+kmemdup can fail and return a NULL pointer. The patch modifies the
+signature of tb_xdp_schedule_request and passes the failure error upstream.
 
-[ Upstream commit c685c69fba71462c3f9f6a1fb6151cded6c74d42 ]
-
-An issue has been found while testing zero-copy XDP that
-causes a reset to be triggered. As it takes some time to
-turn the carrier on after setting zc, and we already
-start trying to transmit some packets, watchdog considers
-this as an erroneous state and triggers a reset.
-
-Don't do any work if netif carrier is not OK.
-
-Fixes: 8221c5eba8c13 (ixgbe: add AF_XDP zero-copy Tx support)
-Signed-off-by: Jan Sokolowski <jan.sokolowski@intel.com>
-Signed-off-by: Jeff Kirsher <jeffrey.t.kirsher@intel.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Signed-off-by: Aditya Pakki <pakki001@umn.edu>
 ---
- drivers/net/ethernet/intel/ixgbe/ixgbe_xsk.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ drivers/thunderbolt/xdomain.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/net/ethernet/intel/ixgbe/ixgbe_xsk.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_xsk.c
-index 654ae92342ea..36a8879536a4 100644
---- a/drivers/net/ethernet/intel/ixgbe/ixgbe_xsk.c
-+++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_xsk.c
-@@ -642,7 +642,8 @@ static bool ixgbe_xmit_zc(struct ixgbe_ring *xdp_ring, unsigned int budget)
- 	dma_addr_t dma;
+diff --git a/drivers/thunderbolt/xdomain.c b/drivers/thunderbolt/xdomain.c
+index e27dd8beb94b..b0e9cc30d708 100644
+--- a/drivers/thunderbolt/xdomain.c
++++ b/drivers/thunderbolt/xdomain.c
+@@ -526,7 +526,7 @@ static void tb_xdp_handle_request(struct work_struct *work)
+ 	kfree(xw);
+ }
  
- 	while (budget-- > 0) {
--		if (unlikely(!ixgbe_desc_unused(xdp_ring))) {
-+		if (unlikely(!ixgbe_desc_unused(xdp_ring)) ||
-+		    !netif_carrier_ok(xdp_ring->netdev)) {
- 			work_done = false;
- 			break;
+-static void
++static bool
+ tb_xdp_schedule_request(struct tb *tb, const struct tb_xdp_header *hdr,
+ 			size_t size)
+ {
+@@ -534,13 +534,16 @@ tb_xdp_schedule_request(struct tb *tb, const struct tb_xdp_header *hdr,
+ 
+ 	xw = kmalloc(sizeof(*xw), GFP_KERNEL);
+ 	if (!xw)
+-		return;
++		return false;
+ 
+ 	INIT_WORK(&xw->work, tb_xdp_handle_request);
+ 	xw->pkg = kmemdup(hdr, size, GFP_KERNEL);
++	if (!xw->pkg)
++		return false;
+ 	xw->tb = tb;
+ 
+ 	queue_work(tb->wq, &xw->work);
++	return true;
+ }
+ 
+ /**
+@@ -1417,8 +1420,7 @@ bool tb_xdomain_handle_request(struct tb *tb, enum tb_cfg_pkg_type type,
+ 	 */
+ 	if (uuid_equal(&hdr->uuid, &tb_xdp_uuid)) {
+ 		if (type == TB_CFG_PKG_XDOMAIN_REQ) {
+-			tb_xdp_schedule_request(tb, hdr, size);
+-			return true;
++			return tb_xdp_schedule_request(tb, hdr, size);
  		}
+ 		return false;
+ 	}
 -- 
-2.19.1
+2.17.1
