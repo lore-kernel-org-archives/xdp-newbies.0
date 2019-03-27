@@ -1,82 +1,57 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f169.google.com ([209.85.160.169]:44698 "EHLO
-        mail-qt1-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726810AbfC0GA0 (ORCPT
+Received: from 1.mo173.mail-out.ovh.net ([178.33.111.180]:50679 "EHLO
+        1.mo173.mail-out.ovh.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727632AbfC0R1v (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 27 Mar 2019 02:00:26 -0400
-Received: by mail-qt1-f169.google.com with SMTP id w5so17464854qtb.11
-        for <xdp-newbies@vger.kernel.org>; Tue, 26 Mar 2019 23:00:25 -0700 (PDT)
+        Wed, 27 Mar 2019 13:27:51 -0400
+Received: from player788.ha.ovh.net (unknown [10.109.159.152])
+        by mo173.mail-out.ovh.net (Postfix) with ESMTP id A947BFAF94
+        for <xdp-newbies@vger.kernel.org>; Wed, 27 Mar 2019 18:10:12 +0100 (CET)
+Received: from simonbernard.eu (134.163-14-84.ripe.coltfrance.com [84.14.163.134])
+        (Authenticated sender: contact@simonbernard.eu)
+        by player788.ha.ovh.net (Postfix) with ESMTPSA id 5966E41B4164
+        for <xdp-newbies@vger.kernel.org>; Wed, 27 Mar 2019 17:10:12 +0000 (UTC)
+From: Simon Bernard <contact@simonbernard.eu>
+Subject: Any good practice for bpf_helpers.h ?
+Message-ID: <d16e652e-f9a7-62a4-4aab-87e067c92d6d@simonbernard.eu>
+Date: Wed, 27 Mar 2019 18:10:10 +0100
 MIME-Version: 1.0
-References: <CALDO+SYM1jcds1_duzRrVWFJd-DHOcC8DCqfgDsey26eXrf8Sw@mail.gmail.com>
-In-Reply-To: <CALDO+SYM1jcds1_duzRrVWFJd-DHOcC8DCqfgDsey26eXrf8Sw@mail.gmail.com>
-From: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
-Date: Wed, 27 Mar 2019 07:00:13 +0100
-Message-ID: <CAJ+HfNj7+Cn1eJUwk+6UR-am_ugNYVJ_DykV25-G0ePpEPmc1w@mail.gmail.com>
-Subject: Re: AF_XDP xdpsock rxdrop not seeing packets
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: William Tu <u9012063@gmail.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>, Magnus Karlsson <magnus.karlsson@gmail.com>
+To: xdp-newbies@vger.kernel.org
 
-On Tue, 26 Mar 2019 at 21:18, William Tu <u9012063@gmail.com> wrote:
->
-> Hi,
->
-> I'm testing xdpsock on the latest bpf-next and found that rxdrop does not=
- work.
->
-> To reproduce the issue:
-> -------------------------------
-> ip netns add at_ns0
-> ip link add p0 type veth peer name afxdp-p0
-> ip link set p0 netns at_ns0
-> ip link set dev afxdp-p0 up
-> ip netns exec at_ns0 sh << NS_EXEC_HEREDOC
-> ip addr add "10.1.1.1/24" dev p0
-> ip link set dev p0 up
-> NS_EXEC_HEREDOC
->
-> ip addr add "10.1.1.2/24" dev afxdp-p0
-> ip netns exec at_ns0 ping 10.1.1.2
-> # the afxdp-p0 will receive ping packets
->
-> At another console, run SKB mode rxdrop
-> ------------------------------------------------------
-> root@osboxes:~/bpf-next/samples/bpf# ./xdpsock -r -S -p -i afxdp-p0
->  sock0@afxdp-p0:0 rxdrop xdp-skb poll()
->                 pps         pkts        1.00
-> rx              0           0
-> tx              0           0
->
-> Where I think xdpsock should receive packet here, but it's not.
-> it turns out at rx_drop(),
-> 514     ret =3D xsk_ring_prod__reserve(&xsk->umem->fq, rcvd, &idx_fq);
-> 515     while (ret !=3D rcvd) {
-> 518         if (ret < 0)
-> 519             exit_with_error(-ret);
-> 520         ret =3D xsk_ring_prod__reserve(&xsk->umem->fq, rcvd, &idx_fq)=
-;
-> 521     }
->
-> It keeps retrying to reserve blocks in FQ but fails. I'm debugging
-> this but any suggestions
-> are welcome.
->
+Hi,
 
-I tried your setup on bpf-next b4b6aa83433e ("selftests: bpf: don't
-depend on hardcoded perf sample_freq"), and it works for me (both with
-and w/o poll).
+There is something I didn't get so much about compiling a bpf object.
 
-What do you get if you run the xdp_rxq_info?
-  # xdp_rxq_info --dev afxdp-p0 --action XDP_DROP
-  # xdp_rxq_info --dev afxdp-p0 -S --action XDP_DROP
+To compile my code for bpf, I need to include some headers from the 
+kernel, which sounds OK.
+On my debian, I understood this is something like this :
+-I/lib/modules/4.19.0-0.bpo.2-amd64/build/include
+-I/lib/modules/4.19.0-0.bpo.2-amd64/build/include/generated/uapi
+(Please tell me if I should include more headers or if this is the 
+minimal set)
 
-I run "ping -fb 10.1.1.255" on the veth pair's other end.
+But I also need to to include some bpf helpers headers, generally called 
+as bpf_helpers.h or bpf_endian.h. I didn't find this files in my 
+distribution and I see a lot of open source examples/projects where 
+those files are provided in the project itself... But as I understand 
+the function helpers available depend of the bpf version and so the 
+kernel version itself.
 
+So why this is not available in my system kernel header ?
+Is it normal ? (all the distribution do that?)
+"adding this kind of file to my src tree for compilation" is the right 
+thing to do ? (That sounds not so good ...)
 
-Bj=C3=B6rn
+I would really appreciate some hints to better understand that !
 
-> Regards,
-> William
+Thx
+
+Simon
+
+(my code is available here : 
+https://github.com/sbernard31/udploadbalancer/tree/bpf_only_without_logs)
