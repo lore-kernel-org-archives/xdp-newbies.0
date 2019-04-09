@@ -1,65 +1,46 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:42338 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728329AbfC0SC1 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 27 Mar 2019 14:02:27 -0400
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 5.0 016/262] xsk: fix to reject invalid flags in xsk_bind
-Date: Wed, 27 Mar 2019 13:57:51 -0400
-Message-Id: <20190327180158.10245-16-sashal@kernel.org>
-In-Reply-To: <20190327180158.10245-1-sashal@kernel.org>
-References: <20190327180158.10245-1-sashal@kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:41311 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726001AbfDIHgt (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 9 Apr 2019 03:36:49 -0400
+From: Huang Rui <huangruippp@gmail.com>
+Subject: [PATCH] net:bridge:bridge mtu auto tuning does not always work
+Date: Tue,  9 Apr 2019 07:36:42 +0000
+Message-Id: <20190409073642.12953-1-huangruiPPP@gmail.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: davem@davemloft.net
+Cc: ast@kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, hawk@kernel.org, john.fastabend@gmail.com, kafai@fb.com, songliubraving@fb.com, yhs@fb.com, jiri@mellanox.com, ecree@solarflare.com, idosch@mellanox.com, petrm@mellanox.com, alexander.h.duyck@intel.com, amritha.nambiar@intel.com, lirongqing@baidu.com, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, huangruiPPP@gmail.com
 
-From: Björn Töpel <bjorn.topel@intel.com>
+If someone setup a bridge and add a port(for example: eth0)
+into the bridge, but configure the bridge's mtu which is equal
+to eth0's mtu, the auto tuning flag will not be set true. But
+the meaning of the auto tuning flag is that it will be set true
+if a user configure bridge's mtu.
 
-[ Upstream commit f54ba391d88f5a5d032175b4c308c176e34b80b7 ]
-
-Passing a non-existing flag in the sxdp_flags member of struct
-sockaddr_xdp was, incorrectly, silently ignored. This patch addresses
-that behavior, and rejects any non-existing flags.
-
-We have examined existing user space code, and to our best knowledge,
-no one is relying on the current incorrect behavior. AF_XDP is still
-in its infancy, so from our perspective, the risk of breakage is very
-low, and addressing this problem now is important.
-
-Fixes: 965a99098443 ("xsk: add support for bind for Rx")
-Signed-off-by: Björn Töpel <bjorn.topel@intel.com>
-Signed-off-by: Daniel Borkmann <daniel@iogearbox.net>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Signed-off-by: Huang Rui <huangruiPPP@gmail.com>
 ---
- net/xdp/xsk.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ net/core/dev.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
-index 85e4fe4f18cc..f3031c8907d9 100644
---- a/net/xdp/xsk.c
-+++ b/net/xdp/xsk.c
-@@ -407,6 +407,10 @@ static int xsk_bind(struct socket *sock, struct sockaddr *addr, int addr_len)
- 	if (sxdp->sxdp_family != AF_XDP)
- 		return -EINVAL;
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 2b67f2a..ba410d7 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -7670,8 +7670,12 @@ int dev_set_mtu_ext(struct net_device *dev, int new_mtu,
+ {
+ 	int err, orig_mtu;
  
-+	flags = sxdp->sxdp_flags;
-+	if (flags & ~(XDP_SHARED_UMEM | XDP_COPY | XDP_ZEROCOPY))
-+		return -EINVAL;
-+
- 	mutex_lock(&xs->mutex);
- 	if (xs->dev) {
- 		err = -EBUSY;
-@@ -425,7 +429,6 @@ static int xsk_bind(struct socket *sock, struct sockaddr *addr, int addr_len)
- 	}
+-	if (new_mtu == dev->mtu)
+-		return 0;
++	if (new_mtu == dev->mtu) {
++		if (dev->priv_flags & IFF_EBRIDGE)
++			return __dev_set_mtu(dev, new_mtu);
++		else
++			return 0;
++	}
  
- 	qid = sxdp->sxdp_queue_id;
--	flags = sxdp->sxdp_flags;
- 
- 	if (flags & XDP_SHARED_UMEM) {
- 		struct xdp_sock *umem_xs;
+ 	/* MTU must be positive, and in range */
+ 	if (new_mtu < 0 || new_mtu < dev->min_mtu) {
 -- 
-2.19.1
+1.8.3.1
