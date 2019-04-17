@@ -1,43 +1,46 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pl1-f194.google.com ([209.85.214.194]:34209 "EHLO
-        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729939AbfDQNVs (ORCPT
+Received: from www62.your-server.de ([213.133.104.62]:60454 "EHLO
+        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729395AbfDQNp6 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 17 Apr 2019 09:21:48 -0400
-Received: by mail-pl1-f194.google.com with SMTP id y6so12068611plt.1
-        for <xdp-newbies@vger.kernel.org>; Wed, 17 Apr 2019 06:21:48 -0700 (PDT)
+        Wed, 17 Apr 2019 09:45:58 -0400
 Subject: Re: XDP chain using tail calls
 References: <CAM-scZOqYquo2X94K0x9FQc4iGwWODuLXKxhAatn5g2H6+ZhQA@mail.gmail.com>
-From: Taeung Song <treeze.taeung@gmail.com>
-Message-ID: <1ea61f36-7270-9f94-2485-ba7257464432@gmail.com>
-Date: Wed, 17 Apr 2019 22:21:44 +0900
+ <87tvewrcel.fsf@toke.dk>
+From: Daniel Borkmann <daniel@iogearbox.net>
+Message-ID: <db4365d4-31d7-6834-bd36-d71568026210@iogearbox.net>
+Date: Wed, 17 Apr 2019 15:29:12 +0200
 MIME-Version: 1.0
-In-Reply-To: <CAM-scZOqYquo2X94K0x9FQc4iGwWODuLXKxhAatn5g2H6+ZhQA@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+In-Reply-To: <87tvewrcel.fsf@toke.dk>
+Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Radu Stoenescu <radu.stoe@gmail.com>, xdp-newbies@vger.kernel.org
+To: =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>, Radu Stoenescu <radu.stoe@gmail.com>, xdp-newbies@vger.kernel.org
 
-Hi Radu Stoenescu,
+On 04/17/2019 03:26 PM, Toke Høiland-Jørgensen wrote:
+> Radu Stoenescu <radu.stoe@gmail.com> writes:
+> 
+>> Hello
+>>
+>> I was recently reading through the XDP documentation from Cilium[1]
+>> and I couldn't really wrap my head around the tail cal section.
+>>
+>> Is there any tutorial/code example of using this feature with XDP?
+> 
+> Hmm, I'm not sure there are any current examples. But you make a good
+> point, we should probably have one. We're building an interactive
+> tutorial here: https://github.com/xdp-project/xdp-tutorial - please feel
+> free to open an issue here requesting it to be added! :)
 
-You can run 'BPF tail call' examples at samples/bpf of kernel source
-That are sockex3_kern.c or tracex5_kern.c
-I think it'd be better to understand it if running tracex5
-that just uses bpf_tail_call() helper function for a BPF prog
-depending on syscall number.
+Wrt iproute2, there's some simple examples to start here:
 
-Thanks,
-Taeung
+  https://git.kernel.org/pub/scm/network/iproute2/iproute2.git/tree/examples/bpf
 
-On 4/17/19 10:11 PM, Radu Stoenescu wrote:
-> Hello
-> 
-> I was recently reading through the XDP documentation from Cilium[1]
-> and I couldn't really wrap my head around the tail cal section.
-> 
-> Is there any tutorial/code example of using this feature with XDP?
-> 
-> Regards
-> 
+If you need more elaborate ones, you might want to check out:
+
+  https://github.com/cilium/cilium/tree/master/bpf
+
+Cheers,
+Daniel
