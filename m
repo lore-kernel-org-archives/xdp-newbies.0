@@ -1,46 +1,57 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:60454 "EHLO
-        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729395AbfDQNp6 (ORCPT
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:36156 "EHLO
+        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729939AbfDQNb2 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 17 Apr 2019 09:45:58 -0400
-Subject: Re: XDP chain using tail calls
-References: <CAM-scZOqYquo2X94K0x9FQc4iGwWODuLXKxhAatn5g2H6+ZhQA@mail.gmail.com>
- <87tvewrcel.fsf@toke.dk>
-From: Daniel Borkmann <daniel@iogearbox.net>
-Message-ID: <db4365d4-31d7-6834-bd36-d71568026210@iogearbox.net>
-Date: Wed, 17 Apr 2019 15:29:12 +0200
+        Wed, 17 Apr 2019 09:31:28 -0400
+Received: by mail-qt1-f194.google.com with SMTP id s15so27328071qtn.3
+        for <xdp-newbies@vger.kernel.org>; Wed, 17 Apr 2019 06:31:27 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <87tvewrcel.fsf@toke.dk>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+References: <CAM-scZOqYquo2X94K0x9FQc4iGwWODuLXKxhAatn5g2H6+ZhQA@mail.gmail.com>
+ <1ea61f36-7270-9f94-2485-ba7257464432@gmail.com> <87r2a0rccb.fsf@toke.dk>
+In-Reply-To: <87r2a0rccb.fsf@toke.dk>
+From: Radu Stoenescu <radu.stoe@gmail.com>
+Date: Wed, 17 Apr 2019 16:31:16 +0300
+Message-ID: <CAM-scZNQw-VZzQbLr9eaDuicgdNQisZy9dhT=otNgXb3j_+cfw@mail.gmail.com>
+Subject: Re: XDP chain using tail calls
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>, Radu Stoenescu <radu.stoe@gmail.com>, xdp-newbies@vger.kernel.org
+To: =?UTF-8?B?VG9rZSBIw7hpbGFuZC1Kw7hyZ2Vuc2Vu?= <toke@redhat.com>
+Cc: Taeung Song <treeze.taeung@gmail.com>, xdp-newbies@vger.kernel.org
 
-On 04/17/2019 03:26 PM, Toke Høiland-Jørgensen wrote:
-> Radu Stoenescu <radu.stoe@gmail.com> writes:
-> 
->> Hello
->>
->> I was recently reading through the XDP documentation from Cilium[1]
->> and I couldn't really wrap my head around the tail cal section.
->>
->> Is there any tutorial/code example of using this feature with XDP?
-> 
-> Hmm, I'm not sure there are any current examples. But you make a good
-> point, we should probably have one. We're building an interactive
-> tutorial here: https://github.com/xdp-project/xdp-tutorial - please feel
-> free to open an issue here requesting it to be added! :)
+Thank you!
 
-Wrt iproute2, there's some simple examples to start here:
+If you think this might be useful, I could bring it to the xdp-tutorial rep=
+o.
 
-  https://git.kernel.org/pub/scm/network/iproute2/iproute2.git/tree/examples/bpf
+It's a bit tricky to find those, I did managed to find the in the
+meantime via the kernel commit that introduced them:
+https://lwn.net/Articles/645169/
 
-If you need more elaborate ones, you might want to check out:
+Best,
+Radu
 
-  https://github.com/cilium/cilium/tree/master/bpf
+On Wed, Apr 17, 2019 at 4:27 PM Toke H=C3=B8iland-J=C3=B8rgensen <toke@redh=
+at.com> wrote:
+>
+> Taeung Song <treeze.taeung@gmail.com> writes:
+>
+> > Hi Radu Stoenescu,
+> >
+> > You can run 'BPF tail call' examples at samples/bpf of kernel source
+> > That are sockex3_kern.c or tracex5_kern.c
+> > I think it'd be better to understand it if running tracex5
+> > that just uses bpf_tail_call() helper function for a BPF prog
+> > depending on syscall number.
+>
+> Oh, there are actually some of the samples that include tail calls.
+> Guess my grepping foo failed me... Cool :)
+>
+> -Toke
 
-Cheers,
-Daniel
+
+
+--=20
+Radu Stoenescu
