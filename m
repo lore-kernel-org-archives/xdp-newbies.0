@@ -1,82 +1,120 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f65.google.com ([209.85.167.65]:36085 "EHLO
-        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1733147AbfDQRuI (ORCPT
+Received: from casper.infradead.org ([85.118.1.10]:49308 "EHLO
+        casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726162AbfDRMmm (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 17 Apr 2019 13:50:08 -0400
-Received: by mail-lf1-f65.google.com with SMTP id u17so19560151lfi.3
-        for <xdp-newbies@vger.kernel.org>; Wed, 17 Apr 2019 10:50:07 -0700 (PDT)
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [RFC PATCH 0/3] net: ethernet: ti: cpsw: Add XDP support
-Date: Wed, 17 Apr 2019 20:49:39 +0300
-Message-Id: <20190417174942.11811-1-ivan.khoronzhuk@linaro.org>
+        Thu, 18 Apr 2019 08:42:42 -0400
+Date: Thu, 18 Apr 2019 09:42:23 -0300
+From: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+Subject: Avoiding merge conflicts while adding new docs - Was: Re: [PATCH
+ 00/57] Convert files to ReST
+Message-ID: <20190418091526.00e074d1@coco.lan>
+In-Reply-To: <cover.1555382110.git.mchehab+samsung@kernel.org>
+References: <cover.1555382110.git.mchehab+samsung@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: grygorii.strashko@ti.com
-Cc: linux-omap@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, ilias.apalodimas@linaro.org, hawk@kernel.org, xdp-newbies@vger.kernel.org, ast@kernel.org, aniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+To: Jonathan Corbet <corbet@lwn.net>
+Cc: Linux Doc Mailing List <linux-doc@vger.kernel.org>, Mauro Carvalho Chehab <mchehab@infradead.org>, linux-kernel@vger.kernel.org, linux-riscv@lists.infradead.org, linux-fbdev@vger.kernel.org, linux-s390@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-watchdog@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-samsung-soc@vger.kernel.org, linux-acpi@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, bpf@vger.kernel.org, linux-ide@vger.kernel.org, linux-pm@vger.kernel.org, dri-devel@lists.freedesktop.org, linux-scsi@vger.kernel.org, linux-gpio@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, x86@kernel.org, dm-devel@redhat.com, target-devel@vger.kernel.org, netdev@vger.kernel.org, kexec@lists.infradead.org, linux-fpga@vger.kernel.org, linux-rdma@vger.kernel.org, linux-kbuild@vger.kernel.org, Thomas Gleixner <tglx@linutronix.de>, linux-security-module@vger.kernel.org, linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org
 
-This patchset is RFC adding XDP support for TI cpsw driver that is
-based on page_pool allocator. It was verified with af_xdp sockets
-and on xdp drop. For XDP redirect to another interface it's under
-verification, still not sure about all cases that should be verified.
-Also regular tests with iperf2 were done in order to verify impact on
-regular netstack performance, compared with base commit from
-net-next/master: 432bc230700f86801cffa5e159e05dea6229f722
+Jon,
 
-It was verified with following configs enabled:
-CONFIG_JIT=y
-CONFIG_BPFILTER=y
-CONFIG_BPF_SYSCALL=y
-CONFIG_XDP_SOCKETS=y
-CONFIG_BPF_EVENTS=y
-CONFIG_HAVE_EBPF_JIT=y
-CONFIG_BPF_JIT=y
-CONFIG_CGROUP_BPF=y
+Em Mon, 15 Apr 2019 23:55:25 -0300
+Mauro Carvalho Chehab <mchehab+samsung@kernel.org> escreveu:
 
-iperf2 UDP RX summary (packet size / Mbps):
-+--------------------------------------------------------------+
-| pkt_size/rate | 1024 | 1500 | 1470 |  64  | 128  | 512 | 256 |
-|---------------+------+------+------+------+------+-----+-----|
-| base commit   | 561  | 470  | 796  |  35  | 70.1 | 281 | 140 |
-|---------------+------+------+------+------+------+-----+-----|
-| XDP patched   | 563  | 455  | 808  |  35  | 70.2 | 282 | 141 |
-+--------------------------------------------------------------+
+> I have a separate patch series with do the actual rename and
+> adjustment of references. I opted to submit this first, as it
+> sounds easier to merge this way, as each subsystem maintainer
+> can apply the conversion directly on their trees (or at docs
+> tree), avoiding merge conflects.
 
-iperf2 UDP TX summary (packet size / Mbps):
-+--------------------------------------------------------------+
-| pkt_size/rate | 1024 | 1500 | 1470 |  64  | 128  | 512 | 256 |
-|---------------+------+------+------+------+------+-----+-----|
-| base commit   | 555  | 666  | 736  | 34.5 | 70.3 | 281 | 140 |
-|---------------+------+------+------+------+------+-----+-----|
-| XDP patched   | 558  | 696  | 759  | 35.2 | 69.2 | 279 | 140 |
-+--------------------------------------------------------------+
+Based on the number of feedbacks we have about this, I'm
+considering to submit a second version of my conversion patch
+series that would be doing the rename together with each patch,
+adding the rst files to an index file.
 
-iperf2 TCP summary (window size / Mbps):
-+------------------------------------------------------------+
-| window size/rate |  16  |  32  |  64  |  128 |  8   | 256  |
-|------------------+------+------+------+------+------+------|
-| base commit      | 753  | 887  | 931  | 932  | 676  | 932  |
-|------------------+------+------+------+------+------+------|
-| XDP patched      | 823  | 888  | 932  | 933  | 669  | 933  |
-+------------------------------------------------------------+
+However, doing that would produce lots of warnings. We have
+already lots of those at linux-next:
 
-For af_xdp socket type verification several generic changes should be added
-that can be seen here (rough fixes, for samples related seems like last version
-of samples is more integrated with libbpf api, so should be rebased,
-witch I will send as RFC separately):
-https://github.com/ikhorn/af_xdp_stuff/tree/af_xdp_armv7
+	checking consistency... 
 
-Ivan Khoronzhuk (3):
-  net: ethernet: ti: davinci_cpdma: add dma mapped submit
-  net: ethernet: ti: davinci_cpdma: return handler status
-  net: ethernet: ti: cpsw: add XDP support
+	docs/Documentation/accelerators/ocxl.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/admin-guide/mm/numaperf.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/allocators.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/attributes.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/bigalloc.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/bitmaps.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/blockgroup.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/blocks.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/checksums.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/directory.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/eainode.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/group_descr.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/ifork.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/inlinedata.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/inodes.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/journal.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/mmp.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/special_inodes.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/filesystems/ext4/super.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/fmc/index.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/gpu/msm-crash-dump.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/interconnect/interconnect.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/laptops/lg-laptop.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/virtual/kvm/amd-memory-encryption.rst: WARNING: document isn't included in any toctree
+	docs/Documentation/virtual/kvm/vcpu-requests.rst: WARNING: document isn't included in any toctree
 
- drivers/net/ethernet/ti/Kconfig         |   1 +
- drivers/net/ethernet/ti/cpsw.c          | 552 +++++++++++++++++++++---
- drivers/net/ethernet/ti/davinci_cpdma.c | 117 +++--
- drivers/net/ethernet/ti/davinci_cpdma.h |   6 +-
- drivers/net/ethernet/ti/davinci_emac.c  |  18 +-
- 5 files changed, 591 insertions(+), 103 deletions(-)
+After thinking a little bit and doing some tests, I think a good solution
+would be to add ":orphan:" markup to the new .rst files that were not
+added yet into the main body (e. g. something like the enclosed example).
 
--- 
-2.17.1
+That will make Sphinx suppress the:
+	"WARNING: document isn't included in any toctree"
+warning for the new files, while they're not included at the main indexes.
+
+This way, maintainers can do all the hard work of doing/applying the ReST
+file conversion/addition patch series on their own trees, and, once
+everything gets merged, submit a patch against the latest docs-next
+tree, removing the :orphan: tag and add them to the common index.rst
+files.
+
+That should largely avoid merging conflicts.
+
+For example, assuming that someone converts the stuff at
+Documentation/accounting and rename the text files there to
+RST (I'm actually doing that), he could add the enclosed change on
+the top of its index file:
+
+	diff --git a/Documentation/accounting/index.rst b/Documentation/accounting/index.rst
+	index e7dda5afa73f..e1f6284b5ff3 100644
+	--- a/Documentation/accounting/index.rst
+	+++ b/Documentation/accounting/index.rst
+	@@ -1,3 +1,5 @@
+	+:orphan:
+	+
+	 ==========
+	 Accounting
+	 ==========
+
+With would make Sphinx to ignore the subdir index file while
+reporting errors. It will still build the documentation, allowing
+the developer to test the changes.
+
+One of the advantages is that checking the orphaned docs is as
+easy as running:
+
+	$ git grep -l ":orphan:" Documentation/
+	...
+	Documentation/accounting/index.rst
+	...
+
+Making easy for people to check the orphaned files and send a fixup
+patch if something got orphaned after the merge window and send a
+fixes patches to be applied upstream.
+
+What do you think?
+
+Regards,
+Mauro
