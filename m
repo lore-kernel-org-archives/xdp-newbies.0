@@ -1,120 +1,74 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:49308 "EHLO
-        casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726162AbfDRMmm (ORCPT
+Received: from mail-lf1-f66.google.com ([209.85.167.66]:40764 "EHLO
+        mail-lf1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727992AbfDSTBK (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 18 Apr 2019 08:42:42 -0400
-Date: Thu, 18 Apr 2019 09:42:23 -0300
-From: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
-Subject: Avoiding merge conflicts while adding new docs - Was: Re: [PATCH
- 00/57] Convert files to ReST
-Message-ID: <20190418091526.00e074d1@coco.lan>
-In-Reply-To: <cover.1555382110.git.mchehab+samsung@kernel.org>
-References: <cover.1555382110.git.mchehab+samsung@kernel.org>
+        Fri, 19 Apr 2019 15:01:10 -0400
+Received: by mail-lf1-f66.google.com with SMTP id a28so4635010lfo.7
+        for <xdp-newbies@vger.kernel.org>; Fri, 19 Apr 2019 12:01:08 -0700 (PDT)
+Date: Fri, 19 Apr 2019 13:42:30 +0300
+From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Subject: Re: [RFC PATCH 3/3] net: ethernet: ti: cpsw: add XDP support
+Message-ID: <20190419104228.GA4268@khorivan>
+References: <20190417174942.11811-1-ivan.khoronzhuk@linaro.org>
+ <20190417174942.11811-4-ivan.khoronzhuk@linaro.org>
+ <20190419083156.GA6687@apalos>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Disposition: inline
+In-Reply-To: <20190419083156.GA6687@apalos>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jonathan Corbet <corbet@lwn.net>
-Cc: Linux Doc Mailing List <linux-doc@vger.kernel.org>, Mauro Carvalho Chehab <mchehab@infradead.org>, linux-kernel@vger.kernel.org, linux-riscv@lists.infradead.org, linux-fbdev@vger.kernel.org, linux-s390@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-watchdog@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-samsung-soc@vger.kernel.org, linux-acpi@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, bpf@vger.kernel.org, linux-ide@vger.kernel.org, linux-pm@vger.kernel.org, dri-devel@lists.freedesktop.org, linux-scsi@vger.kernel.org, linux-gpio@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, x86@kernel.org, dm-devel@redhat.com, target-devel@vger.kernel.org, netdev@vger.kernel.org, kexec@lists.infradead.org, linux-fpga@vger.kernel.org, linux-rdma@vger.kernel.org, linux-kbuild@vger.kernel.org, Thomas Gleixner <tglx@linutronix.de>, linux-security-module@vger.kernel.org, linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org
+To: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Cc: grygorii.strashko@ti.com, linux-omap@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, hawk@kernel.org, xdp-newbies@vger.kernel.org, ast@kernel.org, aniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com
 
-Jon,
+On Fri, Apr 19, 2019 at 11:31:56AM +0300, Ilias Apalodimas wrote:
+>Hi Ivan,
+>
+>> +static struct page *cpsw_alloc_page(struct cpsw_common *cpsw)
+>> +{
+>> +	struct page_pool *pool = cpsw->rx_page_pool;
+>> +	struct page *page;
+>> +	int i = 0;
+>> +
+>> +	do {
+>> +		page = page_pool_dev_alloc_pages(pool);
+>> +		if (!page)
+>> +			return NULL;
+>> +
+>> +		/* skip pages used by skb netstack */
+>I think the comment here is wrong and might confuse people.
+>The page ref cnt is 1, which means the packet was *processed* and netstack is
+>done with it, hence you can re-use it.
+>If it's !=1 then you correctly unmap the buffer and decrease the ref cnt, so it
+>will eventually be freed and not returned to the pool, right?
+It's compensation substitution for page_pool support in skb netsack.
+And should be considered in combine with:
 
-Em Mon, 15 Apr 2019 23:55:25 -0300
-Mauro Carvalho Chehab <mchehab+samsung@kernel.org> escreveu:
+skb = build_skb(xmeta, cpsw_rxbuf_total_len(pkt_size));
+...
+page_pool_recycle_direct(pool, page);
+page_ref_inc(page);
+netif_receive_skb(skb);
 
-> I have a separate patch series with do the actual rename and
-> adjustment of references. I opted to submit this first, as it
-> sounds easier to merge this way, as each subsystem maintainer
-> can apply the conversion directly on their trees (or at docs
-> tree), avoiding merge conflects.
+Here order is important.
 
-Based on the number of feedbacks we have about this, I'm
-considering to submit a second version of my conversion patch
-series that would be doing the rename together with each patch,
-adding the rst files to an index file.
+I will correct comments in final version (w/o overloading) ofc, leaving
+thinking environment for people. I think it's fair enough about this.
 
-However, doing that would produce lots of warnings. We have
-already lots of those at linux-next:
+>> +		if (page_ref_count(page) == 1)
+>> +			break;
+>> +
+>> +		/* it's a pitty, but free page */
+>> +		page_pool_recycle_direct(pool, page);
+>> +	} while (++i < descs_pool_size);
+>> +
+>> +	return page;
+>> +}
+>> +
+>
+> /Ilias
 
-	checking consistency... 
-
-	docs/Documentation/accelerators/ocxl.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/admin-guide/mm/numaperf.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/allocators.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/attributes.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/bigalloc.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/bitmaps.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/blockgroup.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/blocks.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/checksums.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/directory.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/eainode.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/group_descr.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/ifork.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/inlinedata.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/inodes.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/journal.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/mmp.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/special_inodes.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/filesystems/ext4/super.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/fmc/index.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/gpu/msm-crash-dump.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/interconnect/interconnect.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/laptops/lg-laptop.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/virtual/kvm/amd-memory-encryption.rst: WARNING: document isn't included in any toctree
-	docs/Documentation/virtual/kvm/vcpu-requests.rst: WARNING: document isn't included in any toctree
-
-After thinking a little bit and doing some tests, I think a good solution
-would be to add ":orphan:" markup to the new .rst files that were not
-added yet into the main body (e. g. something like the enclosed example).
-
-That will make Sphinx suppress the:
-	"WARNING: document isn't included in any toctree"
-warning for the new files, while they're not included at the main indexes.
-
-This way, maintainers can do all the hard work of doing/applying the ReST
-file conversion/addition patch series on their own trees, and, once
-everything gets merged, submit a patch against the latest docs-next
-tree, removing the :orphan: tag and add them to the common index.rst
-files.
-
-That should largely avoid merging conflicts.
-
-For example, assuming that someone converts the stuff at
-Documentation/accounting and rename the text files there to
-RST (I'm actually doing that), he could add the enclosed change on
-the top of its index file:
-
-	diff --git a/Documentation/accounting/index.rst b/Documentation/accounting/index.rst
-	index e7dda5afa73f..e1f6284b5ff3 100644
-	--- a/Documentation/accounting/index.rst
-	+++ b/Documentation/accounting/index.rst
-	@@ -1,3 +1,5 @@
-	+:orphan:
-	+
-	 ==========
-	 Accounting
-	 ==========
-
-With would make Sphinx to ignore the subdir index file while
-reporting errors. It will still build the documentation, allowing
-the developer to test the changes.
-
-One of the advantages is that checking the orphaned docs is as
-easy as running:
-
-	$ git grep -l ":orphan:" Documentation/
-	...
-	Documentation/accounting/index.rst
-	...
-
-Making easy for people to check the orphaned files and send a fixup
-patch if something got orphaned after the merge window and send a
-fixes patches to be applied upstream.
-
-What do you think?
-
+-- 
 Regards,
-Mauro
+Ivan Khoronzhuk
