@@ -1,121 +1,115 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:47236 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:38570 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729755AbfDVTpa (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 22 Apr 2019 15:45:30 -0400
+        id S1731105AbfDXOem (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 24 Apr 2019 10:34:42 -0400
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.19 07/68] xsk: fix umem memory leak on cleanup
-Date: Mon, 22 Apr 2019 15:44:15 -0400
-Message-Id: <20190422194516.11634-7-sashal@kernel.org>
-In-Reply-To: <20190422194516.11634-1-sashal@kernel.org>
-References: <20190422194516.11634-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.0 23/66] xdp: fix cpumap redirect SKB creation bug
+Date: Wed, 24 Apr 2019 10:32:57 -0400
+Message-Id: <20190424143341.27665-23-sashal@kernel.org>
+In-Reply-To: <20190424143341.27665-1-sashal@kernel.org>
+References: <20190424143341.27665-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Alexei Starovoitov <ast@kernel.org>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
 
-From: Björn Töpel <bjorn.topel@intel.com>
+From: Jesper Dangaard Brouer <brouer@redhat.com>
 
-[ Upstream commit 044175a06706d516aa42874bb44dbbfc3c4d20eb ]
+[ Upstream commit 676e4a6fe703f2dae699ee9d56f14516f9ada4ea ]
 
-When the umem is cleaned up, the task that created it might already be
-gone. If the task was gone, the xdp_umem_release function did not free
-the pages member of struct xdp_umem.
+We want to avoid leaking pointer info from xdp_frame (that is placed in
+top of frame) like commit 6dfb970d3dbd ("xdp: avoid leaking info stored in
+frame data on page reuse"), and followup commit 97e19cce05e5 ("bpf:
+reserve xdp_frame size in xdp headroom") that reserve this headroom.
 
-It turned out that the task lookup was not needed at all; The code was
-a left-over when we moved from task accounting to user accounting [1].
+These changes also affected how cpumap constructed SKBs, as xdpf->headroom
+size changed, the skb data starting point were in-effect shifted with 32
+bytes (sizeof xdp_frame). This was still okay, as the cpumap frame_size
+calculation also included xdpf->headroom which were reduced by same amount.
 
-This patch fixes the memory leak by removing the task lookup logic
-completely.
+A bug was introduced in commit 77ea5f4cbe20 ("bpf/cpumap: make sure
+frame_size for build_skb is aligned if headroom isn't"), where the
+xdpf->headroom became part of the SKB_DATA_ALIGN rounding up. This
+round-up to find the frame_size is in principle still correct as it does
+not exceed the 2048 bytes frame_size (which is max for ixgbe and i40e),
+but the 32 bytes offset of pkt_data_start puts this over the 2048 bytes
+limit. This cause skb_shared_info to spill into next frame. It is a little
+hard to trigger, as the SKB need to use above 15 skb_shinfo->frags[] as
+far as I calculate. This does happen in practise for TCP streams when
+skb_try_coalesce() kicks in.
 
-[1] https://lore.kernel.org/netdev/20180131135356.19134-3-bjorn.topel@gmail.com/
+KASAN can be used to detect these wrong memory accesses, I've seen:
+ BUG: KASAN: use-after-free in skb_try_coalesce+0x3cb/0x760
+ BUG: KASAN: wild-memory-access in skb_release_data+0xe2/0x250
 
-Link: https://lore.kernel.org/netdev/c1cb2ca8-6a14-3980-8672-f3de0bb38dfd@suse.cz/
-Fixes: c0c77d8fb787 ("xsk: add user memory registration support sockopt")
-Reported-by: Jiri Slaby <jslaby@suse.cz>
-Signed-off-by: Björn Töpel <bjorn.topel@intel.com>
-Signed-off-by: Daniel Borkmann <daniel@iogearbox.net>
+Driver veth also construct a SKB from xdp_frame in this way, but is not
+affected, as it doesn't reserve/deduct the room (used by xdp_frame) from
+the SKB headroom. Instead is clears the pointers via xdp_scrub_frame(),
+and allows SKB to use this area.
+
+The fix in this patch is to do like veth and instead allow SKB to (re)use
+the area occupied by xdp_frame, by clearing via xdp_scrub_frame().  (This
+does kill the idea of the SKB being able to access (mem) info from this
+area, but I guess it was a bad idea anyhow, and it was already killed by
+the veth changes.)
+
+Fixes: 77ea5f4cbe20 ("bpf/cpumap: make sure frame_size for build_skb is aligned if headroom isn't")
+Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Signed-off-by: Alexei Starovoitov <ast@kernel.org>
 Signed-off-by: Sasha Levin (Microsoft) <sashal@kernel.org>
 ---
- include/net/xdp_sock.h |  1 -
- net/xdp/xdp_umem.c     | 19 +------------------
- 2 files changed, 1 insertion(+), 19 deletions(-)
+ kernel/bpf/cpumap.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/include/net/xdp_sock.h b/include/net/xdp_sock.h
-index 7161856bcf9c..c2c10cc9ffa0 100644
---- a/include/net/xdp_sock.h
-+++ b/include/net/xdp_sock.h
-@@ -34,7 +34,6 @@ struct xdp_umem {
- 	u32 headroom;
- 	u32 chunk_size_nohr;
- 	struct user_struct *user;
--	struct pid *pid;
- 	unsigned long address;
- 	refcount_t users;
- 	struct work_struct work;
-diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
-index bfe2dbea480b..a3b037fbfecd 100644
---- a/net/xdp/xdp_umem.c
-+++ b/net/xdp/xdp_umem.c
-@@ -152,9 +152,6 @@ static void xdp_umem_unaccount_pages(struct xdp_umem *umem)
- 
- static void xdp_umem_release(struct xdp_umem *umem)
+diff --git a/kernel/bpf/cpumap.c b/kernel/bpf/cpumap.c
+index 8974b3755670..3c18260403dd 100644
+--- a/kernel/bpf/cpumap.c
++++ b/kernel/bpf/cpumap.c
+@@ -162,10 +162,14 @@ static void cpu_map_kthread_stop(struct work_struct *work)
+ static struct sk_buff *cpu_map_build_skb(struct bpf_cpu_map_entry *rcpu,
+ 					 struct xdp_frame *xdpf)
  {
--	struct task_struct *task;
--	struct mm_struct *mm;
--
- 	xdp_umem_clear_dev(umem);
++	unsigned int hard_start_headroom;
+ 	unsigned int frame_size;
+ 	void *pkt_data_start;
+ 	struct sk_buff *skb;
  
- 	if (umem->fq) {
-@@ -169,21 +166,10 @@ static void xdp_umem_release(struct xdp_umem *umem)
++	/* Part of headroom was reserved to xdpf */
++	hard_start_headroom = sizeof(struct xdp_frame) +  xdpf->headroom;
++
+ 	/* build_skb need to place skb_shared_info after SKB end, and
+ 	 * also want to know the memory "truesize".  Thus, need to
+ 	 * know the memory frame size backing xdp_buff.
+@@ -183,15 +187,15 @@ static struct sk_buff *cpu_map_build_skb(struct bpf_cpu_map_entry *rcpu,
+ 	 * is not at a fixed memory location, with mixed length
+ 	 * packets, which is bad for cache-line hotness.
+ 	 */
+-	frame_size = SKB_DATA_ALIGN(xdpf->len + xdpf->headroom) +
++	frame_size = SKB_DATA_ALIGN(xdpf->len + hard_start_headroom) +
+ 		SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
  
- 	xdp_umem_unpin_pages(umem);
+-	pkt_data_start = xdpf->data - xdpf->headroom;
++	pkt_data_start = xdpf->data - hard_start_headroom;
+ 	skb = build_skb(pkt_data_start, frame_size);
+ 	if (!skb)
+ 		return NULL;
  
--	task = get_pid_task(umem->pid, PIDTYPE_PID);
--	put_pid(umem->pid);
--	if (!task)
--		goto out;
--	mm = get_task_mm(task);
--	put_task_struct(task);
--	if (!mm)
--		goto out;
--
--	mmput(mm);
- 	kfree(umem->pages);
- 	umem->pages = NULL;
+-	skb_reserve(skb, xdpf->headroom);
++	skb_reserve(skb, hard_start_headroom);
+ 	__skb_put(skb, xdpf->len);
+ 	if (xdpf->metasize)
+ 		skb_metadata_set(skb, xdpf->metasize);
+@@ -205,6 +209,9 @@ static struct sk_buff *cpu_map_build_skb(struct bpf_cpu_map_entry *rcpu,
+ 	 * - RX ring dev queue index	(skb_record_rx_queue)
+ 	 */
  
- 	xdp_umem_unaccount_pages(umem);
--out:
- 	kfree(umem);
- }
- 
-@@ -312,7 +298,6 @@ static int xdp_umem_reg(struct xdp_umem *umem, struct xdp_umem_reg *mr)
- 	if (size_chk < 0)
- 		return -EINVAL;
- 
--	umem->pid = get_task_pid(current, PIDTYPE_PID);
- 	umem->address = (unsigned long)addr;
- 	umem->props.chunk_mask = ~((u64)chunk_size - 1);
- 	umem->props.size = size;
-@@ -328,7 +313,7 @@ static int xdp_umem_reg(struct xdp_umem *umem, struct xdp_umem_reg *mr)
- 
- 	err = xdp_umem_account_pages(umem);
- 	if (err)
--		goto out;
-+		return err;
- 
- 	err = xdp_umem_pin_pages(umem);
- 	if (err)
-@@ -347,8 +332,6 @@ static int xdp_umem_reg(struct xdp_umem *umem, struct xdp_umem_reg *mr)
- 
- out_account:
- 	xdp_umem_unaccount_pages(umem);
--out:
--	put_pid(umem->pid);
- 	return err;
++	/* Allow SKB to reuse area used by xdp_frame */
++	xdp_scrub_frame(xdpf);
++
+ 	return skb;
  }
  
 -- 
