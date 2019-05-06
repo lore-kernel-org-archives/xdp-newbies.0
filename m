@@ -1,116 +1,100 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:38570 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731105AbfDXOem (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 24 Apr 2019 10:34:42 -0400
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 5.0 23/66] xdp: fix cpumap redirect SKB creation bug
-Date: Wed, 24 Apr 2019 10:32:57 -0400
-Message-Id: <20190424143341.27665-23-sashal@kernel.org>
-In-Reply-To: <20190424143341.27665-1-sashal@kernel.org>
-References: <20190424143341.27665-1-sashal@kernel.org>
+Received: from vulcan.natalenko.name ([104.207.131.136]:35728 "EHLO
+        vulcan.natalenko.name" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726175AbfEFTsZ (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 6 May 2019 15:48:25 -0400
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
 Content-Transfer-Encoding: 8bit
+Date: Mon, 06 May 2019 21:40:07 +0200
+From: Oleksandr Natalenko <oleksandr@natalenko.name>
+Subject: netronome/nfp/bpf/jit.c cannot be build with -O3
+Message-ID: <673b885183fb64f1cbb3ed2387524077@natalenko.name>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, Alexei Starovoitov <ast@kernel.org>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+To: Jakub Kicinski <jakub.kicinski@netronome.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, bpf@vger.kernel.org, oss-drivers@netronome.com, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org, valdis@vt.edu
 
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+Hi.
 
-[ Upstream commit 676e4a6fe703f2dae699ee9d56f14516f9ada4ea ]
+Obligatory disclaimer: building the kernel with -O3 is a non-standard 
+thing done via this patch [1], but I've asked people in #kernelnewbies, 
+and it was suggested that the issue should be still investigated.
 
-We want to avoid leaking pointer info from xdp_frame (that is placed in
-top of frame) like commit 6dfb970d3dbd ("xdp: avoid leaking info stored in
-frame data on page reuse"), and followup commit 97e19cce05e5 ("bpf:
-reserve xdp_frame size in xdp headroom") that reserve this headroom.
+So, with v5.1 kernel release I cannot build the kernel with -O3 anymore. 
+It fails as shown below:
 
-These changes also affected how cpumap constructed SKBs, as xdpf->headroom
-size changed, the skb data starting point were in-effect shifted with 32
-bytes (sizeof xdp_frame). This was still okay, as the cpumap frame_size
-calculation also included xdpf->headroom which were reduced by same amount.
+===
+   CC      drivers/net/ethernet/netronome/nfp/bpf/jit.o
+In file included from ./include/asm-generic/bug.h:5,
+                  from ./arch/x86/include/asm/bug.h:83,
+                  from ./include/linux/bug.h:5,
+                  from drivers/net/ethernet/netronome/nfp/bpf/jit.c:6:
+In function ‘__emit_shf’,
+     inlined from ‘emit_shf.constprop’ at 
+drivers/net/ethernet/netronome/nfp/bpf/jit.c:364:2,
+     inlined from ‘shl_reg64_lt32_low’ at 
+drivers/net/ethernet/netronome/nfp/bpf/jit.c:379:2,
+     inlined from ‘shl_reg’ at 
+drivers/net/ethernet/netronome/nfp/bpf/jit.c:2506:2:
+./include/linux/compiler.h:344:38: error: call to 
+‘__compiletime_assert_341’ declared with attribute error: BUILD_BUG_ON 
+failed: (((0x001f0000000ULL) + (1ULL << 
+(__builtin_ffsll(0x001f0000000ULL) - 1))) & (((0x001f0000000ULL) + (1ULL 
+<< (__builtin_ffsll(0x001f0000000ULL) - 1))) - 1)) != 0
+   _compiletime_assert(condition, msg, __compiletime_assert_, __LINE__)
+                                       ^
+./include/linux/compiler.h:325:4: note: in definition of macro 
+‘__compiletime_assert’
+     prefix ## suffix();    \
+     ^~~~~~
+./include/linux/compiler.h:344:2: note: in expansion of macro 
+‘_compiletime_assert’
+   _compiletime_assert(condition, msg, __compiletime_assert_, __LINE__)
+   ^~~~~~~~~~~~~~~~~~~
+./include/linux/build_bug.h:39:37: note: in expansion of macro 
+‘compiletime_assert’
+  #define BUILD_BUG_ON_MSG(cond, msg) compiletime_assert(!(cond), msg)
+                                      ^~~~~~~~~~~~~~~~~~
+./include/linux/bitfield.h:57:3: note: in expansion of macro 
+‘BUILD_BUG_ON_MSG’
+    BUILD_BUG_ON_MSG(__builtin_constant_p(_val) ?  \
+    ^~~~~~~~~~~~~~~~
+./include/linux/bitfield.h:89:3: note: in expansion of macro 
+‘__BF_FIELD_CHECK’
+    __BF_FIELD_CHECK(_mask, 0ULL, _val, "FIELD_PREP: "); \
+    ^~~~~~~~~~~~~~~~
+drivers/net/ethernet/netronome/nfp/bpf/jit.c:341:3: note: in expansion 
+of macro ‘FIELD_PREP’
+    FIELD_PREP(OP_SHF_SHIFT, shift) |
+    ^~~~~~~~~~
+make[1]: *** [scripts/Makefile.build:276: 
+drivers/net/ethernet/netronome/nfp/bpf/jit.o] Error 1
+make: *** [Makefile:1726: drivers/net/ethernet/netronome/nfp/bpf/jit.o] 
+Error 2
+===
 
-A bug was introduced in commit 77ea5f4cbe20 ("bpf/cpumap: make sure
-frame_size for build_skb is aligned if headroom isn't"), where the
-xdpf->headroom became part of the SKB_DATA_ALIGN rounding up. This
-round-up to find the frame_size is in principle still correct as it does
-not exceed the 2048 bytes frame_size (which is max for ixgbe and i40e),
-but the 32 bytes offset of pkt_data_start puts this over the 2048 bytes
-limit. This cause skb_shared_info to spill into next frame. It is a little
-hard to trigger, as the SKB need to use above 15 skb_shinfo->frags[] as
-far as I calculate. This does happen in practise for TCP streams when
-skb_try_coalesce() kicks in.
+Needless to say, with -O2 this file is built just fine. My compiler is:
 
-KASAN can be used to detect these wrong memory accesses, I've seen:
- BUG: KASAN: use-after-free in skb_try_coalesce+0x3cb/0x760
- BUG: KASAN: wild-memory-access in skb_release_data+0xe2/0x250
+===
+$ gcc --version
+gcc (GCC) 8.3.0
+Copyright (C) 2018 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is 
+NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+PURPOSE.
+===
 
-Driver veth also construct a SKB from xdp_frame in this way, but is not
-affected, as it doesn't reserve/deduct the room (used by xdp_frame) from
-the SKB headroom. Instead is clears the pointers via xdp_scrub_frame(),
-and allows SKB to use this area.
+I had no issues with -O3 before, so, maybe, this deserves a peek.
 
-The fix in this patch is to do like veth and instead allow SKB to (re)use
-the area occupied by xdp_frame, by clearing via xdp_scrub_frame().  (This
-does kill the idea of the SKB being able to access (mem) info from this
-area, but I guess it was a bad idea anyhow, and it was already killed by
-the veth changes.)
+I'm open to testing patches and providing more info if needed.
 
-Fixes: 77ea5f4cbe20 ("bpf/cpumap: make sure frame_size for build_skb is aligned if headroom isn't")
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
-Signed-off-by: Alexei Starovoitov <ast@kernel.org>
-Signed-off-by: Sasha Levin (Microsoft) <sashal@kernel.org>
----
- kernel/bpf/cpumap.c | 13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
+Thanks.
 
-diff --git a/kernel/bpf/cpumap.c b/kernel/bpf/cpumap.c
-index 8974b3755670..3c18260403dd 100644
---- a/kernel/bpf/cpumap.c
-+++ b/kernel/bpf/cpumap.c
-@@ -162,10 +162,14 @@ static void cpu_map_kthread_stop(struct work_struct *work)
- static struct sk_buff *cpu_map_build_skb(struct bpf_cpu_map_entry *rcpu,
- 					 struct xdp_frame *xdpf)
- {
-+	unsigned int hard_start_headroom;
- 	unsigned int frame_size;
- 	void *pkt_data_start;
- 	struct sk_buff *skb;
- 
-+	/* Part of headroom was reserved to xdpf */
-+	hard_start_headroom = sizeof(struct xdp_frame) +  xdpf->headroom;
-+
- 	/* build_skb need to place skb_shared_info after SKB end, and
- 	 * also want to know the memory "truesize".  Thus, need to
- 	 * know the memory frame size backing xdp_buff.
-@@ -183,15 +187,15 @@ static struct sk_buff *cpu_map_build_skb(struct bpf_cpu_map_entry *rcpu,
- 	 * is not at a fixed memory location, with mixed length
- 	 * packets, which is bad for cache-line hotness.
- 	 */
--	frame_size = SKB_DATA_ALIGN(xdpf->len + xdpf->headroom) +
-+	frame_size = SKB_DATA_ALIGN(xdpf->len + hard_start_headroom) +
- 		SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
- 
--	pkt_data_start = xdpf->data - xdpf->headroom;
-+	pkt_data_start = xdpf->data - hard_start_headroom;
- 	skb = build_skb(pkt_data_start, frame_size);
- 	if (!skb)
- 		return NULL;
- 
--	skb_reserve(skb, xdpf->headroom);
-+	skb_reserve(skb, hard_start_headroom);
- 	__skb_put(skb, xdpf->len);
- 	if (xdpf->metasize)
- 		skb_metadata_set(skb, xdpf->metasize);
-@@ -205,6 +209,9 @@ static struct sk_buff *cpu_map_build_skb(struct bpf_cpu_map_entry *rcpu,
- 	 * - RX ring dev queue index	(skb_record_rx_queue)
- 	 */
- 
-+	/* Allow SKB to reuse area used by xdp_frame */
-+	xdp_scrub_frame(xdpf);
-+
- 	return skb;
- }
- 
+[1] 
+https://gitlab.com/post-factum/pf-kernel/commit/7fef93015ff1776d08119ef3d057a9e9433954a9
+
 -- 
-2.19.1
+   Oleksandr Natalenko (post-factum)
