@@ -1,47 +1,120 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk1-f171.google.com ([209.85.222.171]:39394 "EHLO
-        mail-qk1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726046AbfEFVgI (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 6 May 2019 17:36:08 -0400
-Received: by mail-qk1-f171.google.com with SMTP id z128so6284017qkb.6
-        for <xdp-newbies@vger.kernel.org>; Mon, 06 May 2019 14:36:07 -0700 (PDT)
-Date: Mon, 6 May 2019 14:35:59 -0700
-From: Jakub Kicinski <jakub.kicinski@netronome.com>
-Subject: Re: netronome/nfp/bpf/jit.c cannot be build with -O3
-Message-ID: <20190506143559.31e7c968@cakuba.hsd1.ca.comcast.net>
-In-Reply-To: <2a3761669e4ec13847205d30384c0a17@natalenko.name>
+Received: from mail-wm1-f65.google.com ([209.85.128.65]:50523 "EHLO
+        mail-wm1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726197AbfEFWBJ (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 6 May 2019 18:01:09 -0400
+Received: by mail-wm1-f65.google.com with SMTP id p21so17666336wmc.0
+        for <xdp-newbies@vger.kernel.org>; Mon, 06 May 2019 15:01:07 -0700 (PDT)
 References: <673b885183fb64f1cbb3ed2387524077@natalenko.name>
-        <20190506140022.188d2b84@cakuba.hsd1.ca.comcast.net>
-        <2a3761669e4ec13847205d30384c0a17@natalenko.name>
+From: Jiong Wang <jiong.wang@netronome.com>
+Subject: Re: [oss-drivers] netronome/nfp/bpf/jit.c cannot be build with -O3
+In-reply-to: <673b885183fb64f1cbb3ed2387524077@natalenko.name>
+Date: Mon, 06 May 2019 23:01:03 +0100
+Message-ID: <87mujzutsw.fsf@netronome.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: Oleksandr Natalenko <oleksandr@natalenko.name>
-Cc: "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, bpf@vger.kernel.org, oss-drivers@netronome.com, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org, valdis@vt.edu
+Cc: Jakub Kicinski <jakub.kicinski@netronome.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, bpf@vger.kernel.org, oss-drivers@netronome.com, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org, valdis@vt.edu
 
-On Mon, 06 May 2019 23:24:39 +0200, Oleksandr Natalenko wrote:
+
+'Oleksandr Natalenko' via OSS Drivers writes:
+
 > Hi.
-> 
-> On 06.05.2019 23:00, Jakub Kicinski wrote:
-> > Any chance you could try different compiler versions?  The code in
-> > question does not look too unusual.  Could you try if removing
-> > FIELD_FIT() on line 326 makes a difference?  
-> 
-> If building with gcc from CentOS 7:
-> 
-> gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-36)
-> 
-> the issue is not reproducible.
+>
+> Obligatory disclaimer: building the kernel with -O3 is a non-standard 
+> thing done via this patch [1], but I've asked people in #kernelnewbies, 
+> and it was suggested that the issue should be still investigated.
+>
+> So, with v5.1 kernel release I cannot build the kernel with -O3 anymore. 
+> It fails as shown below:
 
-I just did a make CC=gcc-8 CFLAGS=-O3 with GCC 8.2 here, and doesn't
-seem to trigger either.
+I guess it's because constant prop. Could you try the following change to
+__emit_shift?
 
-> Also, commenting out the whole "if" block with FIELD_FIT() prevents the 
-> issue from occurring too.
+drivers/net/ethernet/netronome/nfp/bpf/jit.c
+__emit_shift:331
+-       if (sc == SHF_SC_L_SHF)
++       if (sc == SHF_SC_L_SHF && shift)
+                shift = 32 - shift;
 
-Hm, could it be that GCC 8.3 has some constant propagation bug which
-breaks BUILD_BUG_ON()?  My uneducated guess it tries to pull the mask
-validation out of FIELD_FIT() and FIELD_PREP() into one place but in
-doing so loses some information.
+emit_shf_indir is passing "0" as shift to __emit_shift which will
+eventually be turned into 32 and it was OK because we truncate to 5-bit,
+but before truncation, it will overflow the shift mask.
+
+Regards,
+Jiong
+
+>
+> ===
+>    CC      drivers/net/ethernet/netronome/nfp/bpf/jit.o
+> In file included from ./include/asm-generic/bug.h:5,
+>                   from ./arch/x86/include/asm/bug.h:83,
+>                   from ./include/linux/bug.h:5,
+>                   from drivers/net/ethernet/netronome/nfp/bpf/jit.c:6:
+> In function ‘__emit_shf’,
+>      inlined from ‘emit_shf.constprop’ at 
+> drivers/net/ethernet/netronome/nfp/bpf/jit.c:364:2,
+>      inlined from ‘shl_reg64_lt32_low’ at 
+> drivers/net/ethernet/netronome/nfp/bpf/jit.c:379:2,
+>      inlined from ‘shl_reg’ at 
+> drivers/net/ethernet/netronome/nfp/bpf/jit.c:2506:2:
+> ./include/linux/compiler.h:344:38: error: call to 
+> ‘__compiletime_assert_341’ declared with attribute error: BUILD_BUG_ON 
+> failed: (((0x001f0000000ULL) + (1ULL << 
+> (__builtin_ffsll(0x001f0000000ULL) - 1))) & (((0x001f0000000ULL) + (1ULL 
+> << (__builtin_ffsll(0x001f0000000ULL) - 1))) - 1)) != 0
+>    _compiletime_assert(condition, msg, __compiletime_assert_, __LINE__)
+>                                        ^
+> ./include/linux/compiler.h:325:4: note: in definition of macro 
+> ‘__compiletime_assert’
+>      prefix ## suffix();    \
+>      ^~~~~~
+> ./include/linux/compiler.h:344:2: note: in expansion of macro 
+> ‘_compiletime_assert’
+>    _compiletime_assert(condition, msg, __compiletime_assert_, __LINE__)
+>    ^~~~~~~~~~~~~~~~~~~
+> ./include/linux/build_bug.h:39:37: note: in expansion of macro 
+> ‘compiletime_assert’
+>   #define BUILD_BUG_ON_MSG(cond, msg) compiletime_assert(!(cond), msg)
+>                                       ^~~~~~~~~~~~~~~~~~
+> ./include/linux/bitfield.h:57:3: note: in expansion of macro 
+> ‘BUILD_BUG_ON_MSG’
+>     BUILD_BUG_ON_MSG(__builtin_constant_p(_val) ?  \
+>     ^~~~~~~~~~~~~~~~
+> ./include/linux/bitfield.h:89:3: note: in expansion of macro 
+> ‘__BF_FIELD_CHECK’
+>     __BF_FIELD_CHECK(_mask, 0ULL, _val, "FIELD_PREP: "); \
+>     ^~~~~~~~~~~~~~~~
+> drivers/net/ethernet/netronome/nfp/bpf/jit.c:341:3: note: in expansion 
+> of macro ‘FIELD_PREP’
+>     FIELD_PREP(OP_SHF_SHIFT, shift) |
+>     ^~~~~~~~~~
+> make[1]: *** [scripts/Makefile.build:276: 
+> drivers/net/ethernet/netronome/nfp/bpf/jit.o] Error 1
+> make: *** [Makefile:1726: drivers/net/ethernet/netronome/nfp/bpf/jit.o] 
+> Error 2
+> ===
+>
+> Needless to say, with -O2 this file is built just fine. My compiler is:
+>
+> ===
+> $ gcc --version
+> gcc (GCC) 8.3.0
+> Copyright (C) 2018 Free Software Foundation, Inc.
+> This is free software; see the source for copying conditions.  There is 
+> NO
+> warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+> PURPOSE.
+> ===
+>
+> I had no issues with -O3 before, so, maybe, this deserves a peek.
+>
+> I'm open to testing patches and providing more info if needed.
+>
+> Thanks.
+>
+> [1] 
+> https://gitlab.com/post-factum/pf-kernel/commit/7fef93015ff1776d08119ef3d057a9e9433954a9
