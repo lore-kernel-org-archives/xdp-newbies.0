@@ -1,16 +1,21 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from vulcan.natalenko.name ([104.207.131.136]:35728 "EHLO
+Received: from vulcan.natalenko.name ([104.207.131.136]:56084 "EHLO
         vulcan.natalenko.name" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726175AbfEFTsZ (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 6 May 2019 15:48:25 -0400
+        with ESMTP id S1726008AbfEGFBG (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 7 May 2019 01:01:06 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
+Content-Type: text/plain; charset=US-ASCII;
  format=flowed
-Content-Transfer-Encoding: 8bit
-Date: Mon, 06 May 2019 21:40:07 +0200
+Content-Transfer-Encoding: 7bit
+Date: Tue, 07 May 2019 07:01:02 +0200
 From: Oleksandr Natalenko <oleksandr@natalenko.name>
-Subject: netronome/nfp/bpf/jit.c cannot be build with -O3
-Message-ID: <673b885183fb64f1cbb3ed2387524077@natalenko.name>
+Subject: Re: netronome/nfp/bpf/jit.c cannot be build with -O3
+In-Reply-To: <20190506143559.31e7c968@cakuba.hsd1.ca.comcast.net>
+References: <673b885183fb64f1cbb3ed2387524077@natalenko.name>
+ <20190506140022.188d2b84@cakuba.hsd1.ca.comcast.net>
+ <2a3761669e4ec13847205d30384c0a17@natalenko.name>
+ <20190506143559.31e7c968@cakuba.hsd1.ca.comcast.net>
+Message-ID: <a3e3339dd813d471b6c81fea0171f220@natalenko.name>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: Jakub Kicinski <jakub.kicinski@netronome.com>
@@ -18,83 +23,12 @@ Cc: "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>
 
 Hi.
 
-Obligatory disclaimer: building the kernel with -O3 is a non-standard 
-thing done via this patch [1], but I've asked people in #kernelnewbies, 
-and it was suggested that the issue should be still investigated.
+On 06.05.2019 23:35, Jakub Kicinski wrote:
+> I just did a make CC=gcc-8 CFLAGS=-O3 with GCC 8.2 here, and doesn't
+> seem to trigger either.
 
-So, with v5.1 kernel release I cannot build the kernel with -O3 anymore. 
-It fails as shown below:
-
-===
-   CC      drivers/net/ethernet/netronome/nfp/bpf/jit.o
-In file included from ./include/asm-generic/bug.h:5,
-                  from ./arch/x86/include/asm/bug.h:83,
-                  from ./include/linux/bug.h:5,
-                  from drivers/net/ethernet/netronome/nfp/bpf/jit.c:6:
-In function ‘__emit_shf’,
-     inlined from ‘emit_shf.constprop’ at 
-drivers/net/ethernet/netronome/nfp/bpf/jit.c:364:2,
-     inlined from ‘shl_reg64_lt32_low’ at 
-drivers/net/ethernet/netronome/nfp/bpf/jit.c:379:2,
-     inlined from ‘shl_reg’ at 
-drivers/net/ethernet/netronome/nfp/bpf/jit.c:2506:2:
-./include/linux/compiler.h:344:38: error: call to 
-‘__compiletime_assert_341’ declared with attribute error: BUILD_BUG_ON 
-failed: (((0x001f0000000ULL) + (1ULL << 
-(__builtin_ffsll(0x001f0000000ULL) - 1))) & (((0x001f0000000ULL) + (1ULL 
-<< (__builtin_ffsll(0x001f0000000ULL) - 1))) - 1)) != 0
-   _compiletime_assert(condition, msg, __compiletime_assert_, __LINE__)
-                                       ^
-./include/linux/compiler.h:325:4: note: in definition of macro 
-‘__compiletime_assert’
-     prefix ## suffix();    \
-     ^~~~~~
-./include/linux/compiler.h:344:2: note: in expansion of macro 
-‘_compiletime_assert’
-   _compiletime_assert(condition, msg, __compiletime_assert_, __LINE__)
-   ^~~~~~~~~~~~~~~~~~~
-./include/linux/build_bug.h:39:37: note: in expansion of macro 
-‘compiletime_assert’
-  #define BUILD_BUG_ON_MSG(cond, msg) compiletime_assert(!(cond), msg)
-                                      ^~~~~~~~~~~~~~~~~~
-./include/linux/bitfield.h:57:3: note: in expansion of macro 
-‘BUILD_BUG_ON_MSG’
-    BUILD_BUG_ON_MSG(__builtin_constant_p(_val) ?  \
-    ^~~~~~~~~~~~~~~~
-./include/linux/bitfield.h:89:3: note: in expansion of macro 
-‘__BF_FIELD_CHECK’
-    __BF_FIELD_CHECK(_mask, 0ULL, _val, "FIELD_PREP: "); \
-    ^~~~~~~~~~~~~~~~
-drivers/net/ethernet/netronome/nfp/bpf/jit.c:341:3: note: in expansion 
-of macro ‘FIELD_PREP’
-    FIELD_PREP(OP_SHF_SHIFT, shift) |
-    ^~~~~~~~~~
-make[1]: *** [scripts/Makefile.build:276: 
-drivers/net/ethernet/netronome/nfp/bpf/jit.o] Error 1
-make: *** [Makefile:1726: drivers/net/ethernet/netronome/nfp/bpf/jit.o] 
-Error 2
-===
-
-Needless to say, with -O2 this file is built just fine. My compiler is:
-
-===
-$ gcc --version
-gcc (GCC) 8.3.0
-Copyright (C) 2018 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is 
-NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-PURPOSE.
-===
-
-I had no issues with -O3 before, so, maybe, this deserves a peek.
-
-I'm open to testing patches and providing more info if needed.
-
-Thanks.
-
-[1] 
-https://gitlab.com/post-factum/pf-kernel/commit/7fef93015ff1776d08119ef3d057a9e9433954a9
+I think passing CFLAGS like this is inefficient, and you should do it 
+via Makefile directly.
 
 -- 
    Oleksandr Natalenko (post-factum)
