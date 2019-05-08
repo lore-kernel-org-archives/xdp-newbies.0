@@ -1,53 +1,86 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-wm1-f43.google.com ([209.85.128.43]:55847 "EHLO
-        mail-wm1-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725843AbfEGLbe (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 7 May 2019 07:31:34 -0400
-Received: by mail-wm1-f43.google.com with SMTP id y2so19678345wmi.5
-        for <xdp-newbies@vger.kernel.org>; Tue, 07 May 2019 04:31:33 -0700 (PDT)
-References: <673b885183fb64f1cbb3ed2387524077@natalenko.name> <87mujzutsw.fsf@netronome.com> <4414f1798ea3c0f70128b7e4caa14edc@natalenko.name>
-From: Jiong Wang <jiong.wang@netronome.com>
-Subject: Re: [oss-drivers] netronome/nfp/bpf/jit.c cannot be build with -O3
-In-reply-to: <4414f1798ea3c0f70128b7e4caa14edc@natalenko.name>
-Date: Tue, 07 May 2019 12:31:29 +0100
-Message-ID: <87ef5abiwe.fsf@netronome.com>
+Received: from mail-it1-f200.google.com ([209.85.166.200]:59343 "EHLO
+        mail-it1-f200.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726718AbfEHDgI (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 7 May 2019 23:36:08 -0400
+Received: by mail-it1-f200.google.com with SMTP id h136so1026935ita.8
+        for <xdp-newbies@vger.kernel.org>; Tue, 07 May 2019 20:36:07 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+Date: Tue, 07 May 2019 20:36:07 -0700
+Message-ID: <000000000000a8fa360588580820@google.com>
+Subject: WARNING in bpf_prog_kallsyms_find
+From: syzbot <syzbot+89d1ce6e80218a6192d8@syzkaller.appspotmail.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Oleksandr Natalenko <oleksandr@natalenko.name>
-Cc: Jiong Wang <jiong.wang@netronome.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, bpf@vger.kernel.org, oss-drivers@netronome.com, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org, valdis@vt.edu
+To: ast@kernel.org, bpf@vger.kernel.org, daniel@iogearbox.net, davem@davemloft.net, hawk@kernel.org, jakub.kicinski@netronome.com, john.fastabend@gmail.com, kafai@fb.com, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, songliubraving@fb.com, syzkaller-bugs@googlegroups.com, xdp-newbies@vger.kernel.org, yhs@fb.com
+
+Hello,
+
+syzbot found the following crash on:
+
+HEAD commit:    8ff468c2 Merge branch 'x86-fpu-for-linus' of git://git.ker..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=13e51ef0a00000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=5d0ca84763a42813
+dashboard link: https://syzkaller.appspot.com/bug?extid=89d1ce6e80218a6192d8
+compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1723cef0a00000
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+89d1ce6e80218a6192d8@syzkaller.appspotmail.com
+
+WARNING: CPU: 0 PID: 7933 at kernel/bpf/core.c:853 bpf_jit_free+0x157/0x1b0
+Kernel panic - not syncing: panic_on_warn set ...
+CPU: 0 PID: 7933 Comm: kworker/0:4 Not tainted 5.1.0+ #2
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Workqueue: events bpf_prog_free_deferred
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x172/0x1f0 lib/dump_stack.c:113
+  panic+0x2cb/0x65c kernel/panic.c:214
+BUG: unable to handle page fault for address: fffffbfff4007000
+#PF: supervisor read access in kernel mode
+#PF: error_code(0x0000) - not-present page
+PGD 21ffee067 P4D 21ffee067 PUD 21ffed067 PMD 95fcc067 PTE 0
+Oops: 0000 [#1] PREEMPT SMP KASAN
+CPU: 0 PID: 7933 Comm: kworker/0:4 Not tainted 5.1.0+ #2
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Workqueue: events bpf_prog_free_deferred
+RIP: 0010:bpf_get_prog_addr_region kernel/bpf/core.c:539 [inline]
+RIP: 0010:bpf_tree_comp kernel/bpf/core.c:602 [inline]
+RIP: 0010:__lt_find include/linux/rbtree_latch.h:115 [inline]
+RIP: 0010:latch_tree_find include/linux/rbtree_latch.h:208 [inline]
+RIP: 0010:bpf_prog_kallsyms_find kernel/bpf/core.c:676 [inline]
+RIP: 0010:bpf_prog_kallsyms_find+0x1a0/0x2c0 kernel/bpf/core.c:669
+Code: 75 07 e8 03 16 f5 ff 0f 0b e8 fc 15 f5 ff 48 89 de 4c 89 f7 e8 11 17  
+f5 ff 49 39 de 72 71 e8 e7 15 f5 ff 48 89 d8 48 c1 e8 03 <42> 0f b6 04 28  
+84 c0 74 08 3c 03 0f 8e e6 00 00 00 8b 33 4c 89 f7
+RSP: 0018:ffff888098ef7850 EFLAGS: 00010806
+RAX: 1ffffffff4007000 RBX: ffffffffa0038000 RCX: ffffffff817b5f0f
+RDX: 0000000000000000 RSI: ffffffff817b5f19 RDI: 0000000000000006
+RBP: ffff888098ef7890 R08: ffff88808fda0040 R09: ffffed1015d06be0
+R10: ffffed1015d06bdf R11: ffff8880ae835efb R12: ffff88808f9be878
+R13: dffffc0000000000 R14: ffffffffffffffff R15: ffff88808f9be878
+FS:  0000000000000000(0000) GS:ffff8880ae800000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: fffffbfff4007000 CR3: 0000000096d4c000 CR4: 00000000001406f0
+Call Trace:
+BUG: unable to handle page fault for address: fffffbfff4007000
+#PF: supervisor read access in kernel mode
+#PF: error_code(0x0000) - not-present page
+PGD 21ffee067 P4D 21ffee067 PUD 21ffed067 PMD 95fcc067 PTE 0
+Oops: 0000 [#2] PREEMPT SMP KASAN
 
 
-Oleksandr Natalenko writes:
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-> Hi.
->
-> On 07.05.2019 00:01, Jiong Wang wrote:
->> I guess it's because constant prop. Could you try the following change 
->> to
->> __emit_shift?
->> 
->> drivers/net/ethernet/netronome/nfp/bpf/jit.c
->> __emit_shift:331
->> -       if (sc == SHF_SC_L_SHF)
->> +       if (sc == SHF_SC_L_SHF && shift)
->>                 shift = 32 - shift;
->> 
->> emit_shf_indir is passing "0" as shift to __emit_shift which will
->> eventually be turned into 32 and it was OK because we truncate to 
->> 5-bit,
->> but before truncation, it will overflow the shift mask.
->
-> Yup, it silences the error for me.
-
-Thanks for the testing.
-
-I have also reproduced this issue after switching to gcc 8.3, and confirmed
-the error is triggered from "value too large for the field" check inside
-__BF_FIELD_CHECK due to immediate "32" is out of range for mask 0x1f.
-
-Will send out a fix.
-
-Regards,
-Jiong
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
