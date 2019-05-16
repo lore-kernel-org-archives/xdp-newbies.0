@@ -1,27 +1,26 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34038 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:44918 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726383AbfEPLVu (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 16 May 2019 07:21:50 -0400
+        id S1728747AbfEPRCY (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 16 May 2019 13:02:24 -0400
 From: Michal Rostecki <mrostecki@opensuse.org>
-Subject: [PATCH bpf-next 2/2] samples: bpf: Do not define bpf_printk macro
-Date: Thu, 16 May 2019 13:20:58 +0200
-Message-Id: <20190516112105.12887-3-mrostecki@opensuse.org>
-In-Reply-To: <20190516112105.12887-1-mrostecki@opensuse.org>
-References: <20190516112105.12887-1-mrostecki@opensuse.org>
+Subject: [PATCH bpf-next v2 2/2] samples: bpf: Do not define bpf_printk macro
+Date: Thu, 16 May 2019 19:01:53 +0200
+Message-Id: <20190516170152.24542-3-mrostecki@opensuse.org>
+In-Reply-To: <20190516170152.24542-1-mrostecki@opensuse.org>
+References: <20190516170152.24542-1-mrostecki@opensuse.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Cc: Michal Rostecki <mrostecki@opensuse.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Shuah Khan <shuah@kernel.org>, Jiong Wang <jiong.wang@netronome.com>, Mathieu Xhonneux <m.xhonneux@gmail.com>, netdev@vger.kernel.org, bpf@vger.kernel.org, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-kselftest@vger.kernel.org
+Cc: Michal Rostecki <mrostecki@opensuse.org>, Shuah Khan <shuah@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, linux-kselftest@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org
 
 The bpf_printk macro was moved to bpf_helpers.h which is included in all
 example programs.
 
 Signed-off-by: Michal Rostecki <mrostecki@opensuse.org>
 ---
- samples/bpf/hbm_kern.h             | 12 +++---------
- samples/bpf/hbm_out_kern.c         |  2 ++
+ samples/bpf/hbm_kern.h             | 11 ++---------
  samples/bpf/tcp_basertt_kern.c     |  7 -------
  samples/bpf/tcp_bufs_kern.c        |  7 -------
  samples/bpf/tcp_clamp_kern.c       |  7 -------
@@ -31,18 +30,17 @@ Signed-off-by: Michal Rostecki <mrostecki@opensuse.org>
  samples/bpf/tcp_synrto_kern.c      |  7 -------
  samples/bpf/tcp_tos_reflect_kern.c |  7 -------
  samples/bpf/xdp_sample_pkts_kern.c |  7 -------
- 11 files changed, 5 insertions(+), 72 deletions(-)
+ 10 files changed, 2 insertions(+), 72 deletions(-)
 
 diff --git a/samples/bpf/hbm_kern.h b/samples/bpf/hbm_kern.h
-index c5635d924193..0ac6823abbb7 100644
+index c5635d924193..41384be233b9 100644
 --- a/samples/bpf/hbm_kern.h
 +++ b/samples/bpf/hbm_kern.h
-@@ -30,16 +30,8 @@
+@@ -30,15 +30,8 @@
  #define ALLOW_PKT	1
  #define TCP_ECN_OK	1
  
-+#ifndef HBM_DEBUG
- #define HBM_DEBUG 0  // Set to 1 to enable debugging
+-#define HBM_DEBUG 0  // Set to 1 to enable debugging
 -#if HBM_DEBUG
 -#define bpf_printk(fmt, ...)					\
 -({								\
@@ -51,36 +49,11 @@ index c5635d924193..0ac6823abbb7 100644
 -			 ##__VA_ARGS__);			\
 -})
 -#else
--#define bpf_printk(fmt, ...)
++#ifndef HBM_DEBUG  // Define HBM_DEBUG to enable debugging
++#undef bpf_printk
+ #define bpf_printk(fmt, ...)
  #endif
  
- #define INITIAL_CREDIT_PACKETS	100
-@@ -102,7 +94,9 @@ static __always_inline void hbm_get_pkt_info(struct __sk_buff *skb,
- 
- static __always_inline void hbm_init_vqueue(struct hbm_vqueue *qdp, int rate)
- {
-+#if HBM_DEBUG
- 		bpf_printk("Initializing queue_state, rate:%d\n", rate * 128);
-+#endif
- 		qdp->lasttime = bpf_ktime_get_ns();
- 		qdp->credit = INIT_CREDIT;
- 		qdp->rate = rate * 128;
-diff --git a/samples/bpf/hbm_out_kern.c b/samples/bpf/hbm_out_kern.c
-index f806863d0b79..4374583b4242 100644
---- a/samples/bpf/hbm_out_kern.c
-+++ b/samples/bpf/hbm_out_kern.c
-@@ -111,9 +111,11 @@ int _hbm_out_cg(struct __sk_buff *skb)
- 	// Check if we should update rate
- 	if (qsp != NULL && (qsp->rate * 128) != qdp->rate) {
- 		qdp->rate = qsp->rate * 128;
-+#if HBM_DEBUG
- 		bpf_printk("Updating rate: %d (1sec:%llu bits)\n",
- 			   (int)qdp->rate,
- 			   CREDIT_PER_NS(1000000000, qdp->rate) * 8);
-+#endif
- 	}
- 
- 	// Set flags (drop, congestion, cwr)
 diff --git a/samples/bpf/tcp_basertt_kern.c b/samples/bpf/tcp_basertt_kern.c
 index 6ef1625e8b2c..9dba48c2b920 100644
 --- a/samples/bpf/tcp_basertt_kern.c
