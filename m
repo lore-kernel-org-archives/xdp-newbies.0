@@ -1,43 +1,63 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from vulcan.natalenko.name ([104.207.131.136]:56392 "EHLO
-        vulcan.natalenko.name" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725839AbfEGFFW (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 7 May 2019 01:05:22 -0400
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:36601 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728895AbfEPVy3 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 16 May 2019 17:54:29 -0400
+Received: by mail-pf1-f196.google.com with SMTP id v80so2544613pfa.3
+        for <xdp-newbies@vger.kernel.org>; Thu, 16 May 2019 14:54:29 -0700 (PDT)
+From: Stephen Hemminger <stephen@networkplumber.org>
+Subject: [PATCH net 2/3] net: core: generic XDP support for stacked device
+Date: Thu, 16 May 2019 14:54:22 -0700
+Message-Id: <20190516215423.14185-3-sthemmin@microsoft.com>
+In-Reply-To: <20190516215423.14185-1-sthemmin@microsoft.com>
+References: <20190516215423.14185-1-sthemmin@microsoft.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Content-Transfer-Encoding: 7bit
-Date: Tue, 07 May 2019 07:05:18 +0200
-From: Oleksandr Natalenko <oleksandr@natalenko.name>
-Subject: Re: [oss-drivers] netronome/nfp/bpf/jit.c cannot be build with -O3
-In-Reply-To: <87mujzutsw.fsf@netronome.com>
-References: <673b885183fb64f1cbb3ed2387524077@natalenko.name>
- <87mujzutsw.fsf@netronome.com>
-Message-ID: <4414f1798ea3c0f70128b7e4caa14edc@natalenko.name>
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jiong Wang <jiong.wang@netronome.com>
-Cc: Jakub Kicinski <jakub.kicinski@netronome.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, bpf@vger.kernel.org, oss-drivers@netronome.com, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org, valdis@vt.edu
+To: netdev@vger.kernel.org, davem@davemloft.net
+Cc: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>, Jason Wang <jasowang@redhat.com>
 
-Hi.
+When a device is stacked like (team, bonding, failsafe or netvsc) the
+XDP generic program for the parent device is not called.  In these
+cases, the rx handler changes skb->dev to its own in the receive
+handler, and returns RX_HANDLER_ANOTHER.  Fix this by calling
+do_xdp_generic if necessary before starting another round.
 
-On 07.05.2019 00:01, Jiong Wang wrote:
-> I guess it's because constant prop. Could you try the following change 
-> to
-> __emit_shift?
-> 
-> drivers/net/ethernet/netronome/nfp/bpf/jit.c
-> __emit_shift:331
-> -       if (sc == SHF_SC_L_SHF)
-> +       if (sc == SHF_SC_L_SHF && shift)
->                 shift = 32 - shift;
-> 
-> emit_shf_indir is passing "0" as shift to __emit_shift which will
-> eventually be turned into 32 and it was OK because we truncate to 
-> 5-bit,
-> but before truncation, it will overflow the shift mask.
+Review of all the places RX_HANDLER_ANOTHER is returned
+show that the current devices do correctly change skb->dev.
 
-Yup, it silences the error for me.
+There was an older patch that got abandoned that did the
+same thing, this is just a rewrite.
 
+Suggested-by: Jason Wang <jasowang@redhat.com>
+Fixes: d445516966dc ("net: xdp: support xdp generic on virtual devices")
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+---
+ net/core/dev.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 108ac8137b9b..9165fd3c9e90 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -4921,6 +4921,16 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc,
+ 			ret = NET_RX_SUCCESS;
+ 			goto out;
+ 		case RX_HANDLER_ANOTHER:
++			if (static_branch_unlikely(&generic_xdp_needed_key)) {
++				struct bpf_prog *xdp_prog;
++
++				xdp_prog = rcu_dereference(skb->dev->xdp_prog);
++				ret = do_xdp_generic(xdp_prog, skb);
++				if (ret != XDP_PASS) {
++					ret = NET_RX_SUCCESS;
++					goto out;
++				}
++			}
+ 			goto another_round;
+ 		case RX_HANDLER_EXACT:
+ 			deliver_exact = true;
 -- 
-   Oleksandr Natalenko (post-factum)
+2.20.1
