@@ -1,48 +1,66 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:33970 "EHLO
-        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726801AbfEPXZ1 (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 16 May 2019 19:25:27 -0400
-Received: by mail-pg1-f193.google.com with SMTP id c13so2312262pgt.1
-        for <xdp-newbies@vger.kernel.org>; Thu, 16 May 2019 16:25:27 -0700 (PDT)
-Date: Thu, 16 May 2019 16:25:19 -0700
-From: Stephen Hemminger <stephen@networkplumber.org>
-Subject: Re: [PATCH net 3/3] netdevice: clarify meaning of rx_handler_result
-Message-ID: <20190516162519.06910fa9@hermes.lan>
-In-Reply-To: <20190516152543.729c6cb0@cakuba.netronome.com>
+Received: from mx1.redhat.com ([209.132.183.28]:39942 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725920AbfEQBJa (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 16 May 2019 21:09:30 -0400
+Subject: Re: [PATCH net 2/3] net: core: generic XDP support for stacked device
 References: <20190516215423.14185-1-sthemmin@microsoft.com>
-        <20190516215423.14185-4-sthemmin@microsoft.com>
-        <20190516152543.729c6cb0@cakuba.netronome.com>
+ <20190516215423.14185-3-sthemmin@microsoft.com>
+From: Jason Wang <jasowang@redhat.com>
+Message-ID: <cb8e4c5a-0455-abf8-3211-72e5226df3a4@redhat.com>
+Date: Fri, 17 May 2019 09:09:27 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <20190516215423.14185-3-sthemmin@microsoft.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jakub Kicinski <jakub.kicinski@netronome.com>
-Cc: netdev@vger.kernel.org, davem@davemloft.net, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>
+To: Stephen Hemminger <stephen@networkplumber.org>, netdev@vger.kernel.org, davem@davemloft.net
+Cc: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>
 
-On Thu, 16 May 2019 15:25:43 -0700
-Jakub Kicinski <jakub.kicinski@netronome.com> wrote:
 
-> On Thu, 16 May 2019 14:54:23 -0700, Stephen Hemminger wrote:
-> > diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-> > index 44b47e9df94a..56f613561909 100644
-> > --- a/include/linux/netdevice.h
-> > +++ b/include/linux/netdevice.h
-> > @@ -374,10 +374,10 @@ typedef enum gro_result gro_result_t;
-> >  
-> >  /*
-> >   * enum rx_handler_result - Possible return values for rx_handlers.
-> > - * @RX_HANDLER_CONSUMED: skb was consumed by rx_handler, do not process it
-> > - * further.
-> > - * @RX_HANDLER_ANOTHER: Do another round in receive path. This is indicated in
-> > - * case skb->dev was changed by rx_handler.
-> > + * @RX_HANDLER_CONSUMED: skb was consumed by rx_handler.
-> > + *  Do not process it further.
-> > + * @RX_HANDLER_ANOTHER: skb->dev was modified by rx_handler,
-> > + *  Do another round in receive path. This is indicated in  
-> 
-> s/ This is indicated in//
+On 2019/5/17 上午5:54, Stephen Hemminger wrote:
+> When a device is stacked like (team, bonding, failsafe or netvsc) the
+> XDP generic program for the parent device is not called.  In these
+> cases, the rx handler changes skb->dev to its own in the receive
+> handler, and returns RX_HANDLER_ANOTHER.  Fix this by calling
+> do_xdp_generic if necessary before starting another round.
+>
+> Review of all the places RX_HANDLER_ANOTHER is returned
+> show that the current devices do correctly change skb->dev.
+>
+> There was an older patch that got abandoned that did the
+> same thing, this is just a rewrite.
+>
+> Suggested-by: Jason Wang <jasowang@redhat.com>
+> Fixes: d445516966dc ("net: xdp: support xdp generic on virtual devices")
+> Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+> ---
+>   net/core/dev.c | 10 ++++++++++
+>   1 file changed, 10 insertions(+)
+>
+> diff --git a/net/core/dev.c b/net/core/dev.c
+> index 108ac8137b9b..9165fd3c9e90 100644
+> --- a/net/core/dev.c
+> +++ b/net/core/dev.c
+> @@ -4921,6 +4921,16 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc,
+>   			ret = NET_RX_SUCCESS;
+>   			goto out;
+>   		case RX_HANDLER_ANOTHER:
+> +			if (static_branch_unlikely(&generic_xdp_needed_key)) {
+> +				struct bpf_prog *xdp_prog;
+> +
+> +				xdp_prog = rcu_dereference(skb->dev->xdp_prog);
+> +				ret = do_xdp_generic(xdp_prog, skb);
+> +				if (ret != XDP_PASS) {
+> +					ret = NET_RX_SUCCESS;
+> +					goto out;
+> +				}
+> +			}
+>   			goto another_round;
+>   		case RX_HANDLER_EXACT:
+>   			deliver_exact = true;
 
-Thanks, left over from previous version forgot to trim.
+
+Acked-by: Jason Wang <jasowang@redhat.com>
