@@ -1,15 +1,15 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-wm1-f67.google.com ([209.85.128.67]:36507 "EHLO
-        mail-wm1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729195AbfERAq5 (ORCPT
+Received: from mail-wr1-f68.google.com ([209.85.221.68]:39581 "EHLO
+        mail-wr1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729314AbfERArU (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 17 May 2019 20:46:57 -0400
-Received: by mail-wm1-f67.google.com with SMTP id j187so8214371wmj.1
-        for <xdp-newbies@vger.kernel.org>; Fri, 17 May 2019 17:46:55 -0700 (PDT)
+        Fri, 17 May 2019 20:47:20 -0400
+Received: by mail-wr1-f68.google.com with SMTP id w8so8789756wrl.6
+        for <xdp-newbies@vger.kernel.org>; Fri, 17 May 2019 17:47:19 -0700 (PDT)
 From: Matteo Croce <mcroce@redhat.com>
-Subject: [PATCH 2/5] libbpf: add missing typedef
-Date: Sat, 18 May 2019 02:46:36 +0200
-Message-Id: <20190518004639.20648-2-mcroce@redhat.com>
+Subject: [PATCH 4/5] samples/bpf: fix tracex5_user build error
+Date: Sat, 18 May 2019 02:46:38 +0200
+Message-Id: <20190518004639.20648-4-mcroce@redhat.com>
 In-Reply-To: <20190518004639.20648-1-mcroce@redhat.com>
 References: <20190518004639.20648-1-mcroce@redhat.com>
 MIME-Version: 1.0
@@ -20,35 +20,87 @@ List-ID: <xdp-newbies.vger.kernel.org>
 To: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
 
-Sync tools/include/linux/types.h with the UAPI one to fix this build error:
+Add missing symbols to tools/include/linux/filter.h to fix a build failure:
 
 make -C samples/bpf/../../tools/lib/bpf/ RM='rm -rf' LDFLAGS= srctree=samples/bpf/../../ O=
-  HOSTCC  samples/bpf/sock_example
-In file included from samples/bpf/sock_example.c:27:
-/usr/include/linux/ip.h:102:2: error: unknown type name ‘__sum16’
-  102 |  __sum16 check;
-      |  ^~~~~~~
-make[2]: *** [scripts/Makefile.host:92: samples/bpf/sock_example] Error 1
+  HOSTCC  samples/bpf/tracex5_user.o
+samples/bpf/tracex5_user.c: In function ‘install_accept_all_seccomp’:
+samples/bpf/tracex5_user.c:17:21: error: array type has incomplete element type ‘struct sock_filter’
+   17 |  struct sock_filter filter[] = {
+      |                     ^~~~~~
+samples/bpf/tracex5_user.c:18:3: warning: implicit declaration of function ‘BPF_STMT’; did you mean ‘BPF_STX’? [-Wimplicit-function-declaration]
+   18 |   BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_ALLOW),
+      |   ^~~~~~~~
+      |   BPF_STX
+samples/bpf/tracex5_user.c:20:9: error: variable ‘prog’ has initializer but incomplete type
+   20 |  struct sock_fprog prog = {
+      |         ^~~~~~~~~~
+samples/bpf/tracex5_user.c:21:4: error: ‘struct sock_fprog’ has no member named ‘len’
+   21 |   .len = (unsigned short)(sizeof(filter)/sizeof(filter[0])),
+      |    ^~~
+samples/bpf/tracex5_user.c:21:10: warning: excess elements in struct initializer
+   21 |   .len = (unsigned short)(sizeof(filter)/sizeof(filter[0])),
+      |          ^
+samples/bpf/tracex5_user.c:21:10: note: (near initialization for ‘prog’)
+samples/bpf/tracex5_user.c:22:4: error: ‘struct sock_fprog’ has no member named ‘filter’
+   22 |   .filter = filter,
+      |    ^~~~~~
+samples/bpf/tracex5_user.c:22:13: warning: excess elements in struct initializer
+   22 |   .filter = filter,
+      |             ^~~~~~
+samples/bpf/tracex5_user.c:22:13: note: (near initialization for ‘prog’)
+samples/bpf/tracex5_user.c:20:20: error: storage size of ‘prog’ isn’t known
+   20 |  struct sock_fprog prog = {
+      |                    ^~~~
+samples/bpf/tracex5_user.c:20:20: warning: unused variable ‘prog’ [-Wunused-variable]
+samples/bpf/tracex5_user.c:17:21: warning: unused variable ‘filter’ [-Wunused-variable]
+   17 |  struct sock_filter filter[] = {
+      |                     ^~~~~~
+make[2]: *** [scripts/Makefile.host:109: samples/bpf/tracex5_user.o] Error 1
 make[1]: *** [Makefile:1763: samples/bpf/] Error 2
 
 Signed-off-by: Matteo Croce <mcroce@redhat.com>
 ---
- tools/include/linux/types.h | 3 +++
- 1 file changed, 3 insertions(+)
+ tools/include/linux/filter.h | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
-diff --git a/tools/include/linux/types.h b/tools/include/linux/types.h
-index 154eb4e3ca7c..5266dbfee945 100644
---- a/tools/include/linux/types.h
-+++ b/tools/include/linux/types.h
-@@ -58,6 +58,9 @@ typedef __u32 __bitwise __be32;
- typedef __u64 __bitwise __le64;
- typedef __u64 __bitwise __be64;
+diff --git a/tools/include/linux/filter.h b/tools/include/linux/filter.h
+index ca28b6ab8db7..6b2ed7eccfa5 100644
+--- a/tools/include/linux/filter.h
++++ b/tools/include/linux/filter.h
+@@ -7,6 +7,33 @@
  
-+typedef __u16 __bitwise __sum16;
-+typedef __u32 __bitwise __wsum;
+ #include <linux/bpf.h>
+ 
++/*
++ *	Try and keep these values and structures similar to BSD, especially
++ *	the BPF code definitions which need to match so you can share filters
++ */
 +
- typedef struct {
- 	int counter;
- } atomic_t;
++struct sock_filter {	/* Filter block */
++	__u16	code;   /* Actual filter code */
++	__u8	jt;	/* Jump true */
++	__u8	jf;	/* Jump false */
++	__u32	k;      /* Generic multiuse field */
++};
++
++struct sock_fprog {	/* Required for SO_ATTACH_FILTER. */
++	unsigned short		len;	/* Number of filter blocks */
++	struct sock_filter __user *filter;
++};
++
++/*
++ * Macros for filter block array initializers.
++ */
++#ifndef BPF_STMT
++#define BPF_STMT(code, k) { (unsigned short)(code), 0, 0, k }
++#endif
++#ifndef BPF_JUMP
++#define BPF_JUMP(code, k, jt, jf) { (unsigned short)(code), jt, jf, k }
++#endif
++
+ /* ArgX, context and stack frame pointer register positions. Note,
+  * Arg1, Arg2, Arg3, etc are used as argument mappings of function
+  * calls in BPF_CALL instruction.
 -- 
 2.21.0
