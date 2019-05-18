@@ -1,63 +1,75 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf1-f196.google.com ([209.85.210.196]:36601 "EHLO
-        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728895AbfEPVy3 (ORCPT
+Received: from mail-wr1-f66.google.com ([209.85.221.66]:36466 "EHLO
+        mail-wr1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729262AbfERArI (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 16 May 2019 17:54:29 -0400
-Received: by mail-pf1-f196.google.com with SMTP id v80so2544613pfa.3
-        for <xdp-newbies@vger.kernel.org>; Thu, 16 May 2019 14:54:29 -0700 (PDT)
-From: Stephen Hemminger <stephen@networkplumber.org>
-Subject: [PATCH net 2/3] net: core: generic XDP support for stacked device
-Date: Thu, 16 May 2019 14:54:22 -0700
-Message-Id: <20190516215423.14185-3-sthemmin@microsoft.com>
-In-Reply-To: <20190516215423.14185-1-sthemmin@microsoft.com>
-References: <20190516215423.14185-1-sthemmin@microsoft.com>
+        Fri, 17 May 2019 20:47:08 -0400
+Received: by mail-wr1-f66.google.com with SMTP id s17so8815213wru.3
+        for <xdp-newbies@vger.kernel.org>; Fri, 17 May 2019 17:47:07 -0700 (PDT)
+From: Matteo Croce <mcroce@redhat.com>
+Subject: [PATCH 3/5] samples/bpf: fix xdpsock_user build error
+Date: Sat, 18 May 2019 02:46:37 +0200
+Message-Id: <20190518004639.20648-3-mcroce@redhat.com>
+In-Reply-To: <20190518004639.20648-1-mcroce@redhat.com>
+References: <20190518004639.20648-1-mcroce@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: netdev@vger.kernel.org, davem@davemloft.net
-Cc: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>, Jason Wang <jasowang@redhat.com>
+To: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
 
-When a device is stacked like (team, bonding, failsafe or netvsc) the
-XDP generic program for the parent device is not called.  In these
-cases, the rx handler changes skb->dev to its own in the receive
-handler, and returns RX_HANDLER_ANOTHER.  Fix this by calling
-do_xdp_generic if necessary before starting another round.
+Remove duplicate typedef, and use PRIu64 to be both 32 and 64 bit aware.
+Fix the following error:
 
-Review of all the places RX_HANDLER_ANOTHER is returned
-show that the current devices do correctly change skb->dev.
+samples/bpf/xdpsock_user.c:52:15: error: conflicting types for ‘u64’
+   52 | typedef __u64 u64;
+      |               ^~~
+In file included from ./tools/include/linux/compiler.h:87,
+                 from ./tools/include/asm/barrier.h:2,
+                 from samples/bpf/xdpsock_user.c:4:
+./tools/include/linux/types.h:30:18: note: previous declaration of ‘u64’ was here
+   30 | typedef uint64_t u64;
+      |                  ^~~
+make[2]: *** [scripts/Makefile.host:109: samples/bpf/xdpsock_user.o] Error 1
+make[1]: *** [Makefile:1763: samples/bpf/] Error 2
 
-There was an older patch that got abandoned that did the
-same thing, this is just a rewrite.
-
-Suggested-by: Jason Wang <jasowang@redhat.com>
-Fixes: d445516966dc ("net: xdp: support xdp generic on virtual devices")
-Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+Signed-off-by: Matteo Croce <mcroce@redhat.com>
 ---
- net/core/dev.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ samples/bpf/xdpsock_user.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/net/core/dev.c b/net/core/dev.c
-index 108ac8137b9b..9165fd3c9e90 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -4921,6 +4921,16 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc,
- 			ret = NET_RX_SUCCESS;
- 			goto out;
- 		case RX_HANDLER_ANOTHER:
-+			if (static_branch_unlikely(&generic_xdp_needed_key)) {
-+				struct bpf_prog *xdp_prog;
-+
-+				xdp_prog = rcu_dereference(skb->dev->xdp_prog);
-+				ret = do_xdp_generic(xdp_prog, skb);
-+				if (ret != XDP_PASS) {
-+					ret = NET_RX_SUCCESS;
-+					goto out;
-+				}
-+			}
- 			goto another_round;
- 		case RX_HANDLER_EXACT:
- 			deliver_exact = true;
+diff --git a/samples/bpf/xdpsock_user.c b/samples/bpf/xdpsock_user.c
+index d08ee1ab7bb4..a4cd42c2f0b0 100644
+--- a/samples/bpf/xdpsock_user.c
++++ b/samples/bpf/xdpsock_user.c
+@@ -24,6 +24,7 @@
+ #include <sys/resource.h>
+ #include <sys/socket.h>
+ #include <sys/types.h>
++#include <inttypes.h>
+ #include <time.h>
+ #include <unistd.h>
+ 
+@@ -49,9 +50,6 @@
+ #define DEBUG_HEXDUMP 0
+ #define MAX_SOCKS 8
+ 
+-typedef __u64 u64;
+-typedef __u32 u32;
+-
+ static unsigned long prev_time;
+ 
+ enum benchmark_type {
+@@ -243,7 +241,7 @@ static void hex_dump(void *pkt, size_t length, u64 addr)
+ 	if (!DEBUG_HEXDUMP)
+ 		return;
+ 
+-	sprintf(buf, "addr=%llu", addr);
++	sprintf(buf, "addr=%" PRIu64, addr);
+ 	printf("length = %zu\n", length);
+ 	printf("%s | ", buf);
+ 	while (length-- > 0) {
 -- 
-2.20.1
+2.21.0
