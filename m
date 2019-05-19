@@ -1,71 +1,38 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-wr1-f65.google.com ([209.85.221.65]:41101 "EHLO
-        mail-wr1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727714AbfERArb (ORCPT
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:35228 "EHLO
+        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726542AbfESTRo (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 17 May 2019 20:47:31 -0400
-Received: by mail-wr1-f65.google.com with SMTP id g12so8498364wro.8
-        for <xdp-newbies@vger.kernel.org>; Fri, 17 May 2019 17:47:30 -0700 (PDT)
-From: Matteo Croce <mcroce@redhat.com>
-Subject: [PATCH 5/5] samples/bpf: fix hbm build error
-Date: Sat, 18 May 2019 02:46:39 +0200
-Message-Id: <20190518004639.20648-5-mcroce@redhat.com>
-In-Reply-To: <20190518004639.20648-1-mcroce@redhat.com>
-References: <20190518004639.20648-1-mcroce@redhat.com>
+        Sun, 19 May 2019 15:17:44 -0400
+Received: by mail-pg1-f193.google.com with SMTP id t1so4278305pgc.2
+        for <xdp-newbies@vger.kernel.org>; Sun, 19 May 2019 12:17:44 -0700 (PDT)
+From: Stephen Hemminger <stephen@networkplumber.org>
+Subject: [PATCH v2 net 0/2] XDP generic related fixes
+Date: Sat, 18 May 2019 20:10:44 -0700
+Message-Id: <20190519031046.4049-1-sthemmin@microsoft.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
+To: netdev@vger.kernel.org, davem@davemloft.net
+Cc: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>
 
-Fix the following build error by declaring bpf_spin_lock in hbm.c.
-Including the UAPI header generates tons of redefined symbol errors,
-and including it in hbm.h breaks hbm_out_kern.c.
+This set of patches came about while investigating XDP
+generic on Azure. The split brain nature of the accelerated
+networking exposed issues with the stack device model.
 
-make -C samples/bpf/../../tools/lib/bpf/ RM='rm -rf' LDFLAGS= srctree=samples/bpf/../../ O=
-  HOSTCC  samples/bpf/hbm.o
-In file included from samples/bpf/hbm.c:49:
-samples/bpf/hbm.h:12:23: error: field ‘lock’ has incomplete type
-   12 |  struct bpf_spin_lock lock;
-      |                       ^~~~
-make[2]: *** [scripts/Makefile.host:109: samples/bpf/hbm.o] Error 1
-make[1]: *** [Makefile:1763: samples/bpf/] Error 2
+The real fix is in the second patch which is a redo
+of earlier patch from Jason Wang.
 
-Signed-off-by: Matteo Croce <mcroce@redhat.com>
----
- samples/bpf/hbm.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+v2 - hold off the comment fixes for net-next
 
-diff --git a/samples/bpf/hbm.c b/samples/bpf/hbm.c
-index a79828ab273f..ca8e567b63c3 100644
---- a/samples/bpf/hbm.c
-+++ b/samples/bpf/hbm.c
-@@ -40,17 +40,22 @@
- #include <fcntl.h>
- #include <linux/unistd.h>
- 
--#include <linux/bpf.h>
- #include <bpf/bpf.h>
-+#include <linux/bpf.h>
- 
- #include "bpf_load.h"
- #include "bpf_rlimit.h"
- #include "cgroup_helpers.h"
--#include "hbm.h"
- #include "bpf_util.h"
- #include "bpf/bpf.h"
- #include "bpf/libbpf.h"
- 
-+struct bpf_spin_lock {
-+	__u32	val;
-+};
-+
-+#include "hbm.h"
-+
- bool outFlag = true;
- int minRate = 1000;		/* cgroup rate limit in Mbps */
- int rate = 1000;		/* can grow if rate conserving is enabled */
+Stephen Hemminger (2):
+  netvsc: unshare skb in VF rx handler
+  net: core: generic XDP support for stacked device
+
+ drivers/net/hyperv/netvsc_drv.c |  6 ++++++
+ net/core/dev.c                  | 10 ++++++++++
+ 2 files changed, 16 insertions(+)
+
 -- 
-2.21.0
+2.20.1
