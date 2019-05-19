@@ -1,75 +1,54 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-wr1-f66.google.com ([209.85.221.66]:36466 "EHLO
-        mail-wr1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729262AbfERArI (ORCPT
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:36435 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725766AbfESRP7 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 17 May 2019 20:47:08 -0400
-Received: by mail-wr1-f66.google.com with SMTP id s17so8815213wru.3
-        for <xdp-newbies@vger.kernel.org>; Fri, 17 May 2019 17:47:07 -0700 (PDT)
-From: Matteo Croce <mcroce@redhat.com>
-Subject: [PATCH 3/5] samples/bpf: fix xdpsock_user build error
-Date: Sat, 18 May 2019 02:46:37 +0200
-Message-Id: <20190518004639.20648-3-mcroce@redhat.com>
-In-Reply-To: <20190518004639.20648-1-mcroce@redhat.com>
-References: <20190518004639.20648-1-mcroce@redhat.com>
+        Sun, 19 May 2019 13:15:59 -0400
+Received: by mail-pg1-f196.google.com with SMTP id a3so5626958pgb.3
+        for <xdp-newbies@vger.kernel.org>; Sun, 19 May 2019 10:15:58 -0700 (PDT)
+From: Stephen Hemminger <stephen@networkplumber.org>
+Subject: [PATCH v2 net 1/2] netvsc: unshare skb in VF rx handler
+Date: Sat, 18 May 2019 20:10:45 -0700
+Message-Id: <20190519031046.4049-2-sthemmin@microsoft.com>
+In-Reply-To: <20190519031046.4049-1-sthemmin@microsoft.com>
+References: <20190519031046.4049-1-sthemmin@microsoft.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
+To: netdev@vger.kernel.org, davem@davemloft.net
+Cc: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>
 
-Remove duplicate typedef, and use PRIu64 to be both 32 and 64 bit aware.
-Fix the following error:
+The netvsc VF skb handler should make sure that skb is not
+shared. Similar logic already exists in bonding and team device
+drivers.
 
-samples/bpf/xdpsock_user.c:52:15: error: conflicting types for ‘u64’
-   52 | typedef __u64 u64;
-      |               ^~~
-In file included from ./tools/include/linux/compiler.h:87,
-                 from ./tools/include/asm/barrier.h:2,
-                 from samples/bpf/xdpsock_user.c:4:
-./tools/include/linux/types.h:30:18: note: previous declaration of ‘u64’ was here
-   30 | typedef uint64_t u64;
-      |                  ^~~
-make[2]: *** [scripts/Makefile.host:109: samples/bpf/xdpsock_user.o] Error 1
-make[1]: *** [Makefile:1763: samples/bpf/] Error 2
+This is not an issue in practice because the VF devicex
+does not send up shared skb's. But the netvsc driver
+should do the right thing if it did.
 
-Signed-off-by: Matteo Croce <mcroce@redhat.com>
+Fixes: 0c195567a8f6 ("netvsc: transparent VF management")
+Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 ---
- samples/bpf/xdpsock_user.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ drivers/net/hyperv/netvsc_drv.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/samples/bpf/xdpsock_user.c b/samples/bpf/xdpsock_user.c
-index d08ee1ab7bb4..a4cd42c2f0b0 100644
---- a/samples/bpf/xdpsock_user.c
-+++ b/samples/bpf/xdpsock_user.c
-@@ -24,6 +24,7 @@
- #include <sys/resource.h>
- #include <sys/socket.h>
- #include <sys/types.h>
-+#include <inttypes.h>
- #include <time.h>
- #include <unistd.h>
+diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
+index 06393b215102..9873b8679f81 100644
+--- a/drivers/net/hyperv/netvsc_drv.c
++++ b/drivers/net/hyperv/netvsc_drv.c
+@@ -2000,6 +2000,12 @@ static rx_handler_result_t netvsc_vf_handle_frame(struct sk_buff **pskb)
+ 	struct netvsc_vf_pcpu_stats *pcpu_stats
+ 		 = this_cpu_ptr(ndev_ctx->vf_stats);
  
-@@ -49,9 +50,6 @@
- #define DEBUG_HEXDUMP 0
- #define MAX_SOCKS 8
++	skb = skb_share_check(skb, GFP_ATOMIC);
++	if (unlikely(!skb))
++		return RX_HANDLER_CONSUMED;
++
++	*pskb = skb;
++
+ 	skb->dev = ndev;
  
--typedef __u64 u64;
--typedef __u32 u32;
--
- static unsigned long prev_time;
- 
- enum benchmark_type {
-@@ -243,7 +241,7 @@ static void hex_dump(void *pkt, size_t length, u64 addr)
- 	if (!DEBUG_HEXDUMP)
- 		return;
- 
--	sprintf(buf, "addr=%llu", addr);
-+	sprintf(buf, "addr=%" PRIu64, addr);
- 	printf("length = %zu\n", length);
- 	printf("%s | ", buf);
- 	while (length-- > 0) {
+ 	u64_stats_update_begin(&pcpu_stats->syncp);
 -- 
-2.21.0
+2.20.1
