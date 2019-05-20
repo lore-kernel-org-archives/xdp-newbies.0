@@ -1,64 +1,58 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:41785 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725799AbfESRGm (ORCPT
+Received: from mail-wr1-f68.google.com ([209.85.221.68]:36936 "EHLO
+        mail-wr1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725989AbfETVtl (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Sun, 19 May 2019 13:06:42 -0400
-Received: by mail-pf1-f195.google.com with SMTP id q17so6029758pfq.8
-        for <xdp-newbies@vger.kernel.org>; Sun, 19 May 2019 10:06:41 -0700 (PDT)
-From: Stephen Hemminger <stephen@networkplumber.org>
-Subject: [PATCH v2 net 2/2] net: core: generic XDP support for stacked device
-Date: Sat, 18 May 2019 20:10:46 -0700
-Message-Id: <20190519031046.4049-3-sthemmin@microsoft.com>
-In-Reply-To: <20190519031046.4049-1-sthemmin@microsoft.com>
-References: <20190519031046.4049-1-sthemmin@microsoft.com>
+        Mon, 20 May 2019 17:49:41 -0400
+Received: by mail-wr1-f68.google.com with SMTP id e15so16241746wrs.4
+        for <xdp-newbies@vger.kernel.org>; Mon, 20 May 2019 14:49:40 -0700 (PDT)
+From: Matteo Croce <mcroce@redhat.com>
+Subject: [PATCH bpf] samples/bpf: suppress compiler warning
+Date: Mon, 20 May 2019 23:49:38 +0200
+Message-Id: <20190520214938.16889-1-mcroce@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: netdev@vger.kernel.org, davem@davemloft.net
-Cc: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>, Jason Wang <jasowang@redhat.com>
+To: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
 
-When a device is stacked like (team, bonding, failsafe or netvsc) the
-XDP generic program for the parent device is not called.  In these
-cases, the rx handler changes skb->dev to its own in the receive
-handler, and returns RX_HANDLER_ANOTHER.  Fix this by calling
-do_xdp_generic if necessary before starting another round.
+GCC 9 fails to calculate the size of local constant strings and produces a
+false positive:
 
-Review of all the places RX_HANDLER_ANOTHER is returned
-show that the current devices do correctly change skb->dev.
+samples/bpf/task_fd_query_user.c: In function ‘test_debug_fs_uprobe’:
+samples/bpf/task_fd_query_user.c:242:67: warning: ‘%s’ directive output may be truncated writing up to 255 bytes into a region of size 215 [-Wformat-truncation=]
+  242 |  snprintf(buf, sizeof(buf), "/sys/kernel/debug/tracing/events/%ss/%s/id",
+      |                                                                   ^~
+  243 |    event_type, event_alias);
+      |                ~~~~~~~~~~~
+samples/bpf/task_fd_query_user.c:242:2: note: ‘snprintf’ output between 45 and 300 bytes into a destination of size 256
+  242 |  snprintf(buf, sizeof(buf), "/sys/kernel/debug/tracing/events/%ss/%s/id",
+      |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  243 |    event_type, event_alias);
+      |    ~~~~~~~~~~~~~~~~~~~~~~~~
 
-There was an older patch that got abandoned that did the
-same thing, this is just a rewrite.
+Workaround this by lowering the buffer size to a reasonable value.
+Related GCC Bugzilla: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=83431
 
-Suggested-by: Jason Wang <jasowang@redhat.com>
-Fixes: d445516966dc ("net: xdp: support xdp generic on virtual devices")
-Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
-Acked-by: Jason Wang <jasowang@redhat.com>
+Signed-off-by: Matteo Croce <mcroce@redhat.com>
 ---
- net/core/dev.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ samples/bpf/task_fd_query_user.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/core/dev.c b/net/core/dev.c
-index b6b8505cfb3e..240d0b2de1a8 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -4921,6 +4921,16 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc,
- 			ret = NET_RX_SUCCESS;
- 			goto out;
- 		case RX_HANDLER_ANOTHER:
-+			if (static_branch_unlikely(&generic_xdp_needed_key)) {
-+				struct bpf_prog *xdp_prog;
-+
-+				xdp_prog = rcu_dereference(skb->dev->xdp_prog);
-+				ret = do_xdp_generic(xdp_prog, skb);
-+				if (ret != XDP_PASS) {
-+					ret = NET_RX_SUCCESS;
-+					goto out;
-+				}
-+			}
- 			goto another_round;
- 		case RX_HANDLER_EXACT:
- 			deliver_exact = true;
+diff --git a/samples/bpf/task_fd_query_user.c b/samples/bpf/task_fd_query_user.c
+index aff2b4ae914e..e39938058223 100644
+--- a/samples/bpf/task_fd_query_user.c
++++ b/samples/bpf/task_fd_query_user.c
+@@ -216,7 +216,7 @@ static int test_debug_fs_uprobe(char *binary_path, long offset, bool is_return)
+ {
+ 	const char *event_type = "uprobe";
+ 	struct perf_event_attr attr = {};
+-	char buf[256], event_alias[256];
++	char buf[256], event_alias[sizeof("test_1234567890")];
+ 	__u64 probe_offset, probe_addr;
+ 	__u32 len, prog_id, fd_type;
+ 	int err, res, kfd, efd;
 -- 
-2.20.1
+2.21.0
