@@ -1,16 +1,16 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:46990 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732739AbfETPxn (ORCPT
+Received: from mail-pl1-f195.google.com ([209.85.214.195]:35946 "EHLO
+        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2392519AbfETQEM (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 20 May 2019 11:53:43 -0400
-Received: by mail-pl1-f196.google.com with SMTP id r18so6898911pls.13
-        for <xdp-newbies@vger.kernel.org>; Mon, 20 May 2019 08:53:43 -0700 (PDT)
-Date: Mon, 20 May 2019 08:53:40 -0700
+        Mon, 20 May 2019 12:04:12 -0400
+Received: by mail-pl1-f195.google.com with SMTP id d21so6938702plr.3
+        for <xdp-newbies@vger.kernel.org>; Mon, 20 May 2019 09:04:12 -0700 (PDT)
+Date: Mon, 20 May 2019 09:04:05 -0700
 From: Stephen Hemminger <stephen@networkplumber.org>
 Subject: Re: [PATCH v2 net 2/2] net: core: generic XDP support for stacked
  device
-Message-ID: <20190520085340.4f44ac8b@hermes.lan>
+Message-ID: <20190520090405.69b419e5@hermes.lan>
 In-Reply-To: <20190520091105.GA2142@nanopsycho>
 References: <20190519031046.4049-1-sthemmin@microsoft.com>
         <20190519031046.4049-3-sthemmin@microsoft.com>
@@ -44,19 +44,35 @@ Jiri Pirko <jiri@resnulli.us> wrote:
 > >Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
 > >Acked-by: Jason Wang <jasowang@redhat.com>
 > >---
-
+> > net/core/dev.c | 10 ++++++++++
+> > 1 file changed, 10 insertions(+)
+> >
+> >diff --git a/net/core/dev.c b/net/core/dev.c
+> >index b6b8505cfb3e..240d0b2de1a8 100644
+> >--- a/net/core/dev.c
+> >+++ b/net/core/dev.c
+> >@@ -4921,6 +4921,16 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc,
+> > 			ret = NET_RX_SUCCESS;
+> > 			goto out;
+> > 		case RX_HANDLER_ANOTHER:
+> >+			if (static_branch_unlikely(&generic_xdp_needed_key)) {
+> >+				struct bpf_prog *xdp_prog;
+> >+
+> >+				xdp_prog = rcu_dereference(skb->dev->xdp_prog);
+> >+				ret = do_xdp_generic(xdp_prog, skb);
+> >+				if (ret != XDP_PASS) {
+> >+					ret = NET_RX_SUCCESS;
+> >+					goto out;
+> >+				}
+> >+			}  
+> 
 > I'm always scarred of changes like this. The history tells us that this
 > codepaths are very fragile. It took us non-trivial efford to fix bonding
 > here, not to mention vlans (that was pain).
 > 
 > The reason for troubles was often fact that different flows were treated
 > differently (vlan accel/non-accel).
-
-Yes, this is a sensitive path. Another alternative is to fix it
-inside each device (netvsc). That is what my earlier patch did and that
-is what is being done now (probably will make it into the RHEL on Azure
-drivers).
- 
+> 
 > This patch calls do_xdp_generic for master device in different point in
 > the receive patch comparing to lower device. Would it be possible to
 > unify this? E.g. by moving do_xdp_generice() call from
@@ -64,8 +80,9 @@ drivers).
 > to the beginning of __netif_receive_skb_core()?
 > 
 
-That could work, but has the question about doing XDP farther down
-call stack (lower performance).
+I am trying that now. But one problem is that it would break the case
+where XDP was being run on one leg of a bridge. For example if eth1 is
+part of br0; then it would no longer be possible to run XDP on eth1.
 
-There is also the case what if both paths support XDP in driver.
-This would be the ideal case, how would this work?
+Running XDP on eth1 might be used to do some kind of ILA or overlay
+network. That change would break it.
