@@ -1,272 +1,109 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:58986 "EHLO
+Received: from www62.your-server.de ([213.133.104.62]:59412 "EHLO
         www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728099AbfEUPU6 (ORCPT
+        with ESMTP id S1728127AbfEUPWa (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 21 May 2019 11:20:58 -0400
-Subject: Re: [PATCH 1/5] samples/bpf: fix test_lru_dist build
+        Tue, 21 May 2019 11:22:30 -0400
+Subject: Re: [PATCH 4/5] samples/bpf: fix tracex5_user build error
 References: <20190518004639.20648-1-mcroce@redhat.com>
- <CAGnkfhxt=nq-JV+D5Rrquvn8BVOjHswEJmuVVZE78p9HvAg9qQ@mail.gmail.com>
- <20190520133830.1ac11fc8@cakuba.netronome.com>
+ <20190518004639.20648-4-mcroce@redhat.com>
 From: Daniel Borkmann <daniel@iogearbox.net>
-Message-ID: <dfb6cf40-81f4-237e-9a43-646077e020f7@iogearbox.net>
-Date: Tue, 21 May 2019 17:20:43 +0200
+Message-ID: <3accecfb-4743-4ac0-1a35-053c25f00e7e@iogearbox.net>
+Date: Tue, 21 May 2019 17:22:26 +0200
 MIME-Version: 1.0
-In-Reply-To: <20190520133830.1ac11fc8@cakuba.netronome.com>
+In-Reply-To: <20190518004639.20648-4-mcroce@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jakub Kicinski <jakub.kicinski@netronome.com>, Matteo Croce <mcroce@redhat.com>
-Cc: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>, netdev <netdev@vger.kernel.org>, Alexei Starovoitov <ast@kernel.org>
+To: Matteo Croce <mcroce@redhat.com>, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>
 
-On 05/20/2019 10:38 PM, Jakub Kicinski wrote:
-> On Mon, 20 May 2019 19:46:27 +0200, Matteo Croce wrote:
->> On Sat, May 18, 2019 at 2:46 AM Matteo Croce <mcroce@redhat.com> wrote:
->>>
->>> Fix the following error by removing a duplicate struct definition:
->>
->> Hi all,
->>
->> I forget to send a cover letter for this series, but basically what I
->> wanted to say is that while patches 1-3 are very straightforward,
->> patches 4-5 are a bit rough and I accept suggstions to make a cleaner
->> work.
+On 05/18/2019 02:46 AM, Matteo Croce wrote:
+> Add missing symbols to tools/include/linux/filter.h to fix a build failure:
 > 
-> samples depend on headers being locally installed:
+> make -C samples/bpf/../../tools/lib/bpf/ RM='rm -rf' LDFLAGS= srctree=samples/bpf/../../ O=
+>   HOSTCC  samples/bpf/tracex5_user.o
+> samples/bpf/tracex5_user.c: In function ‘install_accept_all_seccomp’:
+> samples/bpf/tracex5_user.c:17:21: error: array type has incomplete element type ‘struct sock_filter’
+>    17 |  struct sock_filter filter[] = {
+>       |                     ^~~~~~
+> samples/bpf/tracex5_user.c:18:3: warning: implicit declaration of function ‘BPF_STMT’; did you mean ‘BPF_STX’? [-Wimplicit-function-declaration]
+>    18 |   BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_ALLOW),
+>       |   ^~~~~~~~
+>       |   BPF_STX
+> samples/bpf/tracex5_user.c:20:9: error: variable ‘prog’ has initializer but incomplete type
+>    20 |  struct sock_fprog prog = {
+>       |         ^~~~~~~~~~
+> samples/bpf/tracex5_user.c:21:4: error: ‘struct sock_fprog’ has no member named ‘len’
+>    21 |   .len = (unsigned short)(sizeof(filter)/sizeof(filter[0])),
+>       |    ^~~
+> samples/bpf/tracex5_user.c:21:10: warning: excess elements in struct initializer
+>    21 |   .len = (unsigned short)(sizeof(filter)/sizeof(filter[0])),
+>       |          ^
+> samples/bpf/tracex5_user.c:21:10: note: (near initialization for ‘prog’)
+> samples/bpf/tracex5_user.c:22:4: error: ‘struct sock_fprog’ has no member named ‘filter’
+>    22 |   .filter = filter,
+>       |    ^~~~~~
+> samples/bpf/tracex5_user.c:22:13: warning: excess elements in struct initializer
+>    22 |   .filter = filter,
+>       |             ^~~~~~
+> samples/bpf/tracex5_user.c:22:13: note: (near initialization for ‘prog’)
+> samples/bpf/tracex5_user.c:20:20: error: storage size of ‘prog’ isn’t known
+>    20 |  struct sock_fprog prog = {
+>       |                    ^~~~
+> samples/bpf/tracex5_user.c:20:20: warning: unused variable ‘prog’ [-Wunused-variable]
+> samples/bpf/tracex5_user.c:17:21: warning: unused variable ‘filter’ [-Wunused-variable]
+>    17 |  struct sock_filter filter[] = {
+>       |                     ^~~~~~
+> make[2]: *** [scripts/Makefile.host:109: samples/bpf/tracex5_user.o] Error 1
+> make[1]: *** [Makefile:1763: samples/bpf/] Error 2
 > 
-> make headers_install
+> Signed-off-by: Matteo Croce <mcroce@redhat.com>
+> ---
+>  tools/include/linux/filter.h | 27 +++++++++++++++++++++++++++
+>  1 file changed, 27 insertions(+)
 > 
-> Are you intending to change that?
+> diff --git a/tools/include/linux/filter.h b/tools/include/linux/filter.h
+> index ca28b6ab8db7..6b2ed7eccfa5 100644
+> --- a/tools/include/linux/filter.h
+> +++ b/tools/include/linux/filter.h
+> @@ -7,6 +7,33 @@
+>  
+>  #include <linux/bpf.h>
 
-+1, Matteo, could you elaborate?
+This here is also mixing UAPI code below into non-UAPI headers in
+tooling infrastructure ..
 
-On latest bpf tree, everything compiles just fine:
-
-[root@linux bpf]# make headers_install
-[root@linux bpf]# make -C samples/bpf/
-make: Entering directory '/home/darkstar/trees/bpf/samples/bpf'
-make -C ../../ /home/darkstar/trees/bpf/samples/bpf/ BPF_SAMPLES_PATH=/home/darkstar/trees/bpf/samples/bpf
-make[1]: Entering directory '/home/darkstar/trees/bpf'
-  CALL    scripts/checksyscalls.sh
-  CALL    scripts/atomic/check-atomics.sh
-  DESCEND  objtool
-make -C /home/darkstar/trees/bpf/samples/bpf/../../tools/lib/bpf/ RM='rm -rf' LDFLAGS= srctree=/home/darkstar/trees/bpf/samples/bpf/../../ O=
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_lru_dist
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/sock_example
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/fds_example.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/fds_example
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/sockex1_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/sockex1
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/sockex2_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/sockex2
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/bpf_load.o
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/sockex3_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/sockex3
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/tracex1_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/tracex1
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/tracex2_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/tracex2
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/tracex3_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/tracex3
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/tracex4_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/tracex4
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/tracex5_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/tracex5
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/tracex6_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/tracex6
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/tracex7_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/tracex7
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_probe_write_user_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/test_probe_write_user
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/trace_output_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/trace_output
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/lathist_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/lathist
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/offwaketime_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/offwaketime
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/spintest_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/spintest
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/map_perf_test_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/map_perf_test
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_overhead_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/test_overhead
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_array_pin.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_array_pin
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_attach.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_attach
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_attach2.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_attach2
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_sock.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_sock
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_sock2.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_sock2
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp1_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp1
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp2
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_router_ipv4_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_router_ipv4
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_current_task_under_cgroup_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/test_current_task_under_cgroup
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/trace_event_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/trace_event
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/sampleip_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/sampleip
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/tc_l2_redirect_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/tc_l2_redirect
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/lwt_len_hist_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/lwt_len_hist
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_tx_iptunnel_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_tx_iptunnel
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/test_map_in_map_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/test_map_in_map
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/cookie_uid_helper_example.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/per_socket_stats_example
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_redirect
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_map_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_map
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_cpu_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_cpu
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_monitor_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_monitor
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_rxq_info_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_rxq_info
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/syscall_tp_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/syscall_tp
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/cpustat_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/cpustat
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_adjust_tail_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_adjust_tail
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdpsock_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdpsock
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_fwd_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_fwd
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/task_fd_query_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/task_fd_query
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/xdp_sample_pkts_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/xdp_sample_pkts
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/ibumad_user.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/ibumad
-  HOSTCC  /home/darkstar/trees/bpf/samples/bpf/hbm.o
-  HOSTLD  /home/darkstar/trees/bpf/samples/bpf/hbm
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/sockex1_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/sockex1_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/sockex2_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/sockex2_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/sockex3_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/sockex3_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tracex1_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tracex1_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tracex2_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tracex2_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tracex3_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tracex3_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tracex4_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tracex4_kern.o
-  CC      /home/darkstar/trees/bpf/samples/bpf/syscall_nrs.s
-  UPD     /home/darkstar/trees/bpf/samples/bpf/syscall_nrs.h
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tracex5_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tracex5_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tracex6_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tracex6_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tracex7_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tracex7_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/sock_flags_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/sock_flags_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/test_probe_write_user_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/test_probe_write_user_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/trace_output_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/trace_output_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tcbpf1_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tcbpf1_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tc_l2_redirect_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tc_l2_redirect_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/lathist_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/lathist_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/offwaketime_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/offwaketime_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/spintest_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/spintest_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/map_perf_test_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/map_perf_test_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/test_overhead_tp_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/test_overhead_tp_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/test_overhead_raw_tp_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/test_overhead_raw_tp_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/test_overhead_kprobe_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/test_overhead_kprobe_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/parse_varlen.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/parse_varlen.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/parse_simple.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/parse_simple.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/parse_ldabs.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/parse_ldabs.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_tc_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/test_cgrp2_tc_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp1_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp1_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp2_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp2_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_router_ipv4_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_router_ipv4_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/test_current_task_under_cgroup_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/test_current_task_under_cgroup_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/trace_event_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/trace_event_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/sampleip_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/sampleip_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/lwt_len_hist_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/lwt_len_hist_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_tx_iptunnel_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_tx_iptunnel_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/test_map_in_map_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/test_map_in_map_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tcp_synrto_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tcp_synrto_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tcp_rwnd_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tcp_rwnd_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tcp_bufs_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tcp_bufs_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tcp_cong_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tcp_cong_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tcp_iw_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tcp_iw_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tcp_clamp_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tcp_clamp_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tcp_basertt_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tcp_basertt_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/tcp_tos_reflect_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/tcp_tos_reflect_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_map_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_map_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_cpu_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_redirect_cpu_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_monitor_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_monitor_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_rxq_info_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_rxq_info_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp2skb_meta_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp2skb_meta_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/syscall_tp_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/syscall_tp_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/cpustat_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/cpustat_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_adjust_tail_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_adjust_tail_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_fwd_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_fwd_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/task_fd_query_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/task_fd_query_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/xdp_sample_pkts_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/xdp_sample_pkts_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/ibumad_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/ibumad_kern.o
-  CLANG-bpf  /home/darkstar/trees/bpf/samples/bpf/hbm_out_kern.o
-pahole -J /home/darkstar/trees/bpf/samples/bpf/hbm_out_kern.o
-make[1]: Leaving directory '/home/darkstar/trees/bpf'
-make: Leaving directory '/home/darkstar/trees/bpf/samples/bpf'
-[root@linux bpf]#
+> +/*
+> + *	Try and keep these values and structures similar to BSD, especially
+> + *	the BPF code definitions which need to match so you can share filters
+> + */
+> +
+> +struct sock_filter {	/* Filter block */
+> +	__u16	code;   /* Actual filter code */
+> +	__u8	jt;	/* Jump true */
+> +	__u8	jf;	/* Jump false */
+> +	__u32	k;      /* Generic multiuse field */
+> +};
+> +
+> +struct sock_fprog {	/* Required for SO_ATTACH_FILTER. */
+> +	unsigned short		len;	/* Number of filter blocks */
+> +	struct sock_filter __user *filter;
+> +};
+> +
+> +/*
+> + * Macros for filter block array initializers.
+> + */
+> +#ifndef BPF_STMT
+> +#define BPF_STMT(code, k) { (unsigned short)(code), 0, 0, k }
+> +#endif
+> +#ifndef BPF_JUMP
+> +#define BPF_JUMP(code, k, jt, jf) { (unsigned short)(code), jt, jf, k }
+> +#endif
+> +
+>  /* ArgX, context and stack frame pointer register positions. Note,
+>   * Arg1, Arg2, Arg3, etc are used as argument mappings of function
+>   * calls in BPF_CALL instruction.
+> 
