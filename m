@@ -1,58 +1,120 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-wr1-f68.google.com ([209.85.221.68]:36936 "EHLO
-        mail-wr1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725989AbfETVtl (ORCPT
+Received: from mail-wm1-f65.google.com ([209.85.128.65]:36031 "EHLO
+        mail-wm1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725885AbfEUGI4 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 20 May 2019 17:49:41 -0400
-Received: by mail-wr1-f68.google.com with SMTP id e15so16241746wrs.4
-        for <xdp-newbies@vger.kernel.org>; Mon, 20 May 2019 14:49:40 -0700 (PDT)
-From: Matteo Croce <mcroce@redhat.com>
-Subject: [PATCH bpf] samples/bpf: suppress compiler warning
-Date: Mon, 20 May 2019 23:49:38 +0200
-Message-Id: <20190520214938.16889-1-mcroce@redhat.com>
+        Tue, 21 May 2019 02:08:56 -0400
+Received: by mail-wm1-f65.google.com with SMTP id j187so1498690wmj.1
+        for <xdp-newbies@vger.kernel.org>; Mon, 20 May 2019 23:08:55 -0700 (PDT)
+Date: Tue, 21 May 2019 08:08:53 +0200
+From: Jiri Pirko <jiri@resnulli.us>
+Subject: Re: [PATCH v2 net 2/2] net: core: generic XDP support for stacked
+ device
+Message-ID: <20190521060853.GA2210@nanopsycho.orion>
+References: <20190519031046.4049-1-sthemmin@microsoft.com>
+ <20190519031046.4049-3-sthemmin@microsoft.com>
+ <20190520091105.GA2142@nanopsycho>
+ <cdfec194-30f3-f040-3bb2-98bb08add759@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
+In-Reply-To: <cdfec194-30f3-f040-3bb2-98bb08add759@redhat.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
+To: Jason Wang <jasowang@redhat.com>
+Cc: Stephen Hemminger <stephen@networkplumber.org>, netdev@vger.kernel.org, davem@davemloft.net, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>
 
-GCC 9 fails to calculate the size of local constant strings and produces a
-false positive:
+Tue, May 21, 2019 at 06:47:23AM CEST, jasowang@redhat.com wrote:
+>
+>On 2019/5/20 下午5:11, Jiri Pirko wrote:
+>> Sun, May 19, 2019 at 05:10:46AM CEST, stephen@networkplumber.org wrote:
+>> > When a device is stacked like (team, bonding, failsafe or netvsc) the
+>> > XDP generic program for the parent device is not called.  In these
+>> > cases, the rx handler changes skb->dev to its own in the receive
+>> > handler, and returns RX_HANDLER_ANOTHER.  Fix this by calling
+>> > do_xdp_generic if necessary before starting another round.
+>> > 
+>> > Review of all the places RX_HANDLER_ANOTHER is returned
+>> > show that the current devices do correctly change skb->dev.
+>> > 
+>> > There was an older patch that got abandoned that did the
+>> > same thing, this is just a rewrite.
+>> > 
+>> > Suggested-by: Jason Wang <jasowang@redhat.com>
+>> > Fixes: d445516966dc ("net: xdp: support xdp generic on virtual devices")
+>> > Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
+>> > Acked-by: Jason Wang <jasowang@redhat.com>
+>> > ---
+>> > net/core/dev.c | 10 ++++++++++
+>> > 1 file changed, 10 insertions(+)
+>> > 
+>> > diff --git a/net/core/dev.c b/net/core/dev.c
+>> > index b6b8505cfb3e..240d0b2de1a8 100644
+>> > --- a/net/core/dev.c
+>> > +++ b/net/core/dev.c
+>> > @@ -4921,6 +4921,16 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc,
+>> > 			ret = NET_RX_SUCCESS;
+>> > 			goto out;
+>> > 		case RX_HANDLER_ANOTHER:
+>> > +			if (static_branch_unlikely(&generic_xdp_needed_key)) {
+>> > +				struct bpf_prog *xdp_prog;
+>> > +
+>> > +				xdp_prog = rcu_dereference(skb->dev->xdp_prog);
+>> > +				ret = do_xdp_generic(xdp_prog, skb);
+>> > +				if (ret != XDP_PASS) {
+>> > +					ret = NET_RX_SUCCESS;
+>> > +					goto out;
+>> > +				}
+>> > +			}
+>> I'm always scarred of changes like this. The history tells us that this
+>> codepaths are very fragile. It took us non-trivial efford to fix bonding
+>> here, not to mention vlans (that was pain).
+>
+>
+>I may miss something, did you see any issue for bonding with this patch?
 
-samples/bpf/task_fd_query_user.c: In function ‘test_debug_fs_uprobe’:
-samples/bpf/task_fd_query_user.c:242:67: warning: ‘%s’ directive output may be truncated writing up to 255 bytes into a region of size 215 [-Wformat-truncation=]
-  242 |  snprintf(buf, sizeof(buf), "/sys/kernel/debug/tracing/events/%ss/%s/id",
-      |                                                                   ^~
-  243 |    event_type, event_alias);
-      |                ~~~~~~~~~~~
-samples/bpf/task_fd_query_user.c:242:2: note: ‘snprintf’ output between 45 and 300 bytes into a destination of size 256
-  242 |  snprintf(buf, sizeof(buf), "/sys/kernel/debug/tracing/events/%ss/%s/id",
-      |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  243 |    event_type, event_alias);
-      |    ~~~~~~~~~~~~~~~~~~~~~~~~
+No, I was talking about past.
 
-Workaround this by lowering the buffer size to a reasonable value.
-Related GCC Bugzilla: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=83431
 
-Signed-off-by: Matteo Croce <mcroce@redhat.com>
----
- samples/bpf/task_fd_query_user.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+>
+>
+>> 
+>> The reason for troubles was often fact that different flows were treated
+>> differently (vlan accel/non-accel).
+>
+>
+>Do you mean we need do something similar after vlan_do_receive() returns
+>true?
 
-diff --git a/samples/bpf/task_fd_query_user.c b/samples/bpf/task_fd_query_user.c
-index aff2b4ae914e..e39938058223 100644
---- a/samples/bpf/task_fd_query_user.c
-+++ b/samples/bpf/task_fd_query_user.c
-@@ -216,7 +216,7 @@ static int test_debug_fs_uprobe(char *binary_path, long offset, bool is_return)
- {
- 	const char *event_type = "uprobe";
- 	struct perf_event_attr attr = {};
--	char buf[256], event_alias[256];
-+	char buf[256], event_alias[sizeof("test_1234567890")];
- 	__u64 probe_offset, probe_addr;
- 	__u32 len, prog_id, fd_type;
- 	int err, res, kfd, efd;
--- 
-2.21.0
+No.
+
+
+>
+>
+>> This patch calls do_xdp_generic for master device in different point in
+>> the receive patch comparing to lower device. Would it be possible to
+>> unify this? E.g. by moving do_xdp_generice() call from
+>> netif_rx_internal()/netif_receive_skb_internal() here,
+>> to the beginning of __netif_receive_skb_core()?
+>
+>
+>Probably just after another_round label. And this means generic XDP is done
+>after RPS which could be even better.
+
+Yes. That is exactly the place I have in mind.
+
+
+>
+>Thanks
+>
+>
+>> 
+>> 
+>> 
+>> > 			goto another_round;
+>> > 		case RX_HANDLER_EXACT:
+>> > 			deliver_exact = true;
+>> > -- 
+>> > 2.20.1
+>> > 
