@@ -1,99 +1,58 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:34070 "EHLO
-        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730323AbfEWNvi (ORCPT
+Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:56550 "EHLO
+        mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1731138AbfEWROB (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 23 May 2019 09:51:38 -0400
-Subject: Re: [PATCH bpf-next 3/3] veth: Support bulk XDP_TX
-References: <1558609008-2590-1-git-send-email-makita.toshiaki@lab.ntt.co.jp>
- <1558609008-2590-4-git-send-email-makita.toshiaki@lab.ntt.co.jp>
- <87zhnd1kg9.fsf@toke.dk> <599302b2-96d2-b571-01ee-f4914acaf765@lab.ntt.co.jp>
- <20190523152927.14bf7ed1@carbon>
-From: Toshiaki Makita <toshiaki.makita1@gmail.com>
-Message-ID: <c902c0f4-947b-ba9e-7baa-628ba87a8f01@gmail.com>
-Date: Thu, 23 May 2019 22:51:34 +0900
-MIME-Version: 1.0
-In-Reply-To: <20190523152927.14bf7ed1@carbon>
-Content-Type: text/plain; charset=utf-8; format=flowed
+        Thu, 23 May 2019 13:14:01 -0400
+From: Yonghong Song <yhs@fb.com>
+Subject: Re: [PATCH bpf-next v2 RESEND 0/2] Move bpf_printk to bpf_helpers.h
+Date: Thu, 23 May 2019 16:51:20 +0000
+Message-ID: <4642ca96-22ab-ad61-a6a1-1d2ef7239cb8@fb.com>
+References: <20190523125355.18437-1-mrostecki@opensuse.org>
+In-Reply-To: <20190523125355.18437-1-mrostecki@opensuse.org>
 Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <BD6A272AAD7B7F488C08810609D42B8E@namprd15.prod.outlook.com>
+MIME-Version: 1.0
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>, Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>
-Cc: =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+To: Michal Rostecki <mrostecki@opensuse.org>
+Cc: Shuah Khan <shuah@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, "open list:KERNEL SELFTEST FRAMEWORK" <linux-kselftest@vger.kernel.org>, "open list:BPF (Safe dynamic programs and tools)" <netdev@vger.kernel.org>, "open list:BPF (Safe dynamic programs and tools)" <bpf@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>, "open list:XDP (eXpress Data Path)" <xdp-newbies@vger.kernel.org>
 
-On 19/05/23 (木) 22:29:27, Jesper Dangaard Brouer wrote:
-> On Thu, 23 May 2019 20:35:50 +0900
-> Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp> wrote:
-> 
->> On 2019/05/23 20:25, Toke Høiland-Jørgensen wrote:
->>> Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp> writes:
->>>    
->>>> This improves XDP_TX performance by about 8%.
->>>>
->>>> Here are single core XDP_TX test results. CPU consumptions are taken
->>>> from "perf report --no-child".
->>>>
->>>> - Before:
->>>>
->>>>    7.26 Mpps
->>>>
->>>>    _raw_spin_lock  7.83%
->>>>    veth_xdp_xmit  12.23%
->>>>
->>>> - After:
->>>>
->>>>    7.84 Mpps
->>>>
->>>>    _raw_spin_lock  1.17%
->>>>    veth_xdp_xmit   6.45%
->>>>
->>>> Signed-off-by: Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>
->>>> ---
->>>>   drivers/net/veth.c | 26 +++++++++++++++++++++++++-
->>>>   1 file changed, 25 insertions(+), 1 deletion(-)
->>>>
->>>> diff --git a/drivers/net/veth.c b/drivers/net/veth.c
->>>> index 52110e5..4edc75f 100644
->>>> --- a/drivers/net/veth.c
->>>> +++ b/drivers/net/veth.c
->>>> @@ -442,6 +442,23 @@ static int veth_xdp_xmit(struct net_device *dev, int n,
->>>>   	return ret;
->>>>   }
->>>>   
->>>> +static void veth_xdp_flush_bq(struct net_device *dev)
->>>> +{
->>>> +	struct xdp_tx_bulk_queue *bq = this_cpu_ptr(&xdp_tx_bq);
->>>> +	int sent, i, err = 0;
->>>> +
->>>> +	sent = veth_xdp_xmit(dev, bq->count, bq->q, 0);
->>>
->>> Wait, veth_xdp_xmit() is just putting frames on a pointer ring. So
->>> you're introducing an additional per-cpu bulk queue, only to avoid lock
->>> contention around the existing pointer ring. But the pointer ring is
->>> per-rq, so if you have lock contention, this means you must have
->>> multiple CPUs servicing the same rq, no?
->>
->> Yes, it's possible. Not recommended though.
->>
-> 
-> I think the general per-cpu TX bulk queue is overkill.  There is a loop
-> over packets in veth_xdp_rcv(struct veth_rq *rq, budget, *status), and
-> the caller veth_poll() will call veth_xdp_flush(rq->dev).
-> 
-> Why can't you store this "temp" bulk array in struct veth_rq ?
 
-Of course I can. But I thought tun has the same problem and we can 
-decrease memory footprint by sharing the same storage between devices.
-Or if other devices want to reduce queues so that we can use XDP on 
-many-cpu servers and introduce locks, we can use this storage for that 
-case as well.
 
-Still do you prefer veth-specific solution?
-
+On 5/23/19 5:53 AM, Michal Rostecki wrote:
+> This series of patches move the commonly used bpf_printk macro to
+> bpf_helpers.h which is already included in all BPF programs which
+> defined that macro on their own.
 > 
-> You could even alloc/create it on the stack of veth_poll() and send it
-> along via a pointer to veth_xdp_rcv).
+> v1->v2:
+> - If HBM_DEBUG is not defined in hbm sample, undefine bpf_printk and set
+>    an empty macro for it.
 > 
+> Michal Rostecki (2):
+>    selftests: bpf: Move bpf_printk to bpf_helpers.h
+>    samples: bpf: Do not define bpf_printk macro
+> 
+>   samples/bpf/hbm_kern.h                                | 11 ++---------
+>   samples/bpf/tcp_basertt_kern.c                        |  7 -------
+>   samples/bpf/tcp_bufs_kern.c                           |  7 -------
+>   samples/bpf/tcp_clamp_kern.c                          |  7 -------
+>   samples/bpf/tcp_cong_kern.c                           |  7 -------
+>   samples/bpf/tcp_iw_kern.c                             |  7 -------
+>   samples/bpf/tcp_rwnd_kern.c                           |  7 -------
+>   samples/bpf/tcp_synrto_kern.c                         |  7 -------
+>   samples/bpf/tcp_tos_reflect_kern.c                    |  7 -------
+>   samples/bpf/xdp_sample_pkts_kern.c                    |  7 -------
+>   tools/testing/selftests/bpf/bpf_helpers.h             |  8 ++++++++
+>   .../testing/selftests/bpf/progs/sockmap_parse_prog.c  |  7 -------
+>   .../selftests/bpf/progs/sockmap_tcp_msg_prog.c        |  7 -------
+>   .../selftests/bpf/progs/sockmap_verdict_prog.c        |  7 -------
+>   .../testing/selftests/bpf/progs/test_lwt_seg6local.c  |  7 -------
+>   tools/testing/selftests/bpf/progs/test_xdp_noinline.c |  7 -------
+>   tools/testing/selftests/bpf/test_sockmap_kern.h       |  7 -------
+>   17 files changed, 10 insertions(+), 114 deletions(-)
 
-Toshiaki Makita
+Ack for the whole series.
+Acked-by: Yonghong Song <yhs@fb.com>
