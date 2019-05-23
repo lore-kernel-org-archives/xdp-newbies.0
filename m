@@ -1,161 +1,119 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39524 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1730323AbfEWMxA (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 23 May 2019 08:53:00 -0400
-From: Michal Rostecki <mrostecki@opensuse.org>
-Subject: [PATCH bpf-next v2 RESEND 1/2] selftests: bpf: Move bpf_printk to bpf_helpers.h
-Date: Thu, 23 May 2019 14:53:54 +0200
-Message-Id: <20190523125355.18437-2-mrostecki@opensuse.org>
-In-Reply-To: <20190523125355.18437-1-mrostecki@opensuse.org>
-References: <20190523125355.18437-1-mrostecki@opensuse.org>
+Received: from mx1.redhat.com ([209.132.183.28]:47432 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729430AbfEWNMr (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 23 May 2019 09:12:47 -0400
+Date: Thu, 23 May 2019 15:12:37 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: [PATCH bpf-next 2/3] xdp: Add tracepoint for bulk XDP_TX
+Message-ID: <20190523151237.190fe76e@carbon>
+In-Reply-To: <1558609008-2590-3-git-send-email-makita.toshiaki@lab.ntt.co.jp>
+References: <1558609008-2590-1-git-send-email-makita.toshiaki@lab.ntt.co.jp>
+        <1558609008-2590-3-git-send-email-makita.toshiaki@lab.ntt.co.jp>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Cc: Michal Rostecki <mrostecki@opensuse.org>, Shuah Khan <shuah@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, "open list:KERNEL SELFTEST FRAMEWORK" <linux-kselftest@vger.kernel.org>, "open list:BPF Safe dynamic programs and tools" <netdev@vger.kernel.org>, "open list:BPF Safe dynamic programs and tools" <bpf@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>, "open list:XDP eXpress Data Path" <xdp-newbies@vger.kernel.org>
+To: Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>
+Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, brouer@redhat.com
 
-bpf_printk is a macro which is commonly used to print out debug messages
-in BPF programs and it was copied in many selftests and samples. Since
-all of them include bpf_helpers.h, this change moves the macro there.
+On Thu, 23 May 2019 19:56:47 +0900
+Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp> wrote:
 
-Signed-off-by: Michal Rostecki <mrostecki@opensuse.org>
----
- tools/testing/selftests/bpf/bpf_helpers.h                | 8 ++++++++
- tools/testing/selftests/bpf/progs/sockmap_parse_prog.c   | 7 -------
- tools/testing/selftests/bpf/progs/sockmap_tcp_msg_prog.c | 7 -------
- tools/testing/selftests/bpf/progs/sockmap_verdict_prog.c | 7 -------
- tools/testing/selftests/bpf/progs/test_lwt_seg6local.c   | 7 -------
- tools/testing/selftests/bpf/progs/test_xdp_noinline.c    | 7 -------
- tools/testing/selftests/bpf/test_sockmap_kern.h          | 7 -------
- 7 files changed, 8 insertions(+), 42 deletions(-)
+> This is introduced for admins to check what is happening on XDP_TX when
+> bulk XDP_TX is in use.
+> 
+> Signed-off-by: Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>
+> ---
+>  include/trace/events/xdp.h | 25 +++++++++++++++++++++++++
+>  kernel/bpf/core.c          |  1 +
+>  2 files changed, 26 insertions(+)
+> 
+> diff --git a/include/trace/events/xdp.h b/include/trace/events/xdp.h
+> index e95cb86..e06ea65 100644
+> --- a/include/trace/events/xdp.h
+> +++ b/include/trace/events/xdp.h
+> @@ -50,6 +50,31 @@
+>  		  __entry->ifindex)
+>  );
+>  
+> +TRACE_EVENT(xdp_bulk_tx,
+> +
 
-diff --git a/tools/testing/selftests/bpf/bpf_helpers.h b/tools/testing/selftests/bpf/bpf_helpers.h
-index 5f6f9e7aba2a..4b27840b8109 100644
---- a/tools/testing/selftests/bpf/bpf_helpers.h
-+++ b/tools/testing/selftests/bpf/bpf_helpers.h
-@@ -8,6 +8,14 @@
-  */
- #define SEC(NAME) __attribute__((section(NAME), used))
- 
-+/* helper macro to print out debug messages */
-+#define bpf_printk(fmt, ...)				\
-+({							\
-+	char ____fmt[] = fmt;				\
-+	bpf_trace_printk(____fmt, sizeof(____fmt),	\
-+			 ##__VA_ARGS__);		\
-+})
-+
- /* helper functions called from eBPF programs written in C */
- static void *(*bpf_map_lookup_elem)(void *map, const void *key) =
- 	(void *) BPF_FUNC_map_lookup_elem;
-diff --git a/tools/testing/selftests/bpf/progs/sockmap_parse_prog.c b/tools/testing/selftests/bpf/progs/sockmap_parse_prog.c
-index 0f92858f6226..ed3e4a551c57 100644
---- a/tools/testing/selftests/bpf/progs/sockmap_parse_prog.c
-+++ b/tools/testing/selftests/bpf/progs/sockmap_parse_prog.c
-@@ -5,13 +5,6 @@
- 
- int _version SEC("version") = 1;
- 
--#define bpf_printk(fmt, ...)					\
--({								\
--	       char ____fmt[] = fmt;				\
--	       bpf_trace_printk(____fmt, sizeof(____fmt),	\
--				##__VA_ARGS__);			\
--})
--
- SEC("sk_skb1")
- int bpf_prog1(struct __sk_buff *skb)
- {
-diff --git a/tools/testing/selftests/bpf/progs/sockmap_tcp_msg_prog.c b/tools/testing/selftests/bpf/progs/sockmap_tcp_msg_prog.c
-index 12a7b5c82ed6..65fbfdb6cd3a 100644
---- a/tools/testing/selftests/bpf/progs/sockmap_tcp_msg_prog.c
-+++ b/tools/testing/selftests/bpf/progs/sockmap_tcp_msg_prog.c
-@@ -5,13 +5,6 @@
- 
- int _version SEC("version") = 1;
- 
--#define bpf_printk(fmt, ...)					\
--({								\
--	       char ____fmt[] = fmt;				\
--	       bpf_trace_printk(____fmt, sizeof(____fmt),	\
--				##__VA_ARGS__);			\
--})
--
- SEC("sk_msg1")
- int bpf_prog1(struct sk_msg_md *msg)
- {
-diff --git a/tools/testing/selftests/bpf/progs/sockmap_verdict_prog.c b/tools/testing/selftests/bpf/progs/sockmap_verdict_prog.c
-index 2ce7634a4012..bdc22be46f2e 100644
---- a/tools/testing/selftests/bpf/progs/sockmap_verdict_prog.c
-+++ b/tools/testing/selftests/bpf/progs/sockmap_verdict_prog.c
-@@ -5,13 +5,6 @@
- 
- int _version SEC("version") = 1;
- 
--#define bpf_printk(fmt, ...)					\
--({								\
--	       char ____fmt[] = fmt;				\
--	       bpf_trace_printk(____fmt, sizeof(____fmt),	\
--				##__VA_ARGS__);			\
--})
--
- struct bpf_map_def SEC("maps") sock_map_rx = {
- 	.type = BPF_MAP_TYPE_SOCKMAP,
- 	.key_size = sizeof(int),
-diff --git a/tools/testing/selftests/bpf/progs/test_lwt_seg6local.c b/tools/testing/selftests/bpf/progs/test_lwt_seg6local.c
-index 0575751bc1bc..7c7cb3177463 100644
---- a/tools/testing/selftests/bpf/progs/test_lwt_seg6local.c
-+++ b/tools/testing/selftests/bpf/progs/test_lwt_seg6local.c
-@@ -6,13 +6,6 @@
- #include "bpf_helpers.h"
- #include "bpf_endian.h"
- 
--#define bpf_printk(fmt, ...)				\
--({							\
--	char ____fmt[] = fmt;				\
--	bpf_trace_printk(____fmt, sizeof(____fmt),	\
--			##__VA_ARGS__);			\
--})
--
- /* Packet parsing state machine helpers. */
- #define cursor_advance(_cursor, _len) \
- 	({ void *_tmp = _cursor; _cursor += _len; _tmp; })
-diff --git a/tools/testing/selftests/bpf/progs/test_xdp_noinline.c b/tools/testing/selftests/bpf/progs/test_xdp_noinline.c
-index 5e4aac74f9d0..4fe6aaad22a4 100644
---- a/tools/testing/selftests/bpf/progs/test_xdp_noinline.c
-+++ b/tools/testing/selftests/bpf/progs/test_xdp_noinline.c
-@@ -15,13 +15,6 @@
- #include <linux/udp.h>
- #include "bpf_helpers.h"
- 
--#define bpf_printk(fmt, ...)				\
--({							\
--	char ____fmt[] = fmt;				\
--	bpf_trace_printk(____fmt, sizeof(____fmt),	\
--			##__VA_ARGS__);			\
--})
--
- static __u32 rol32(__u32 word, unsigned int shift)
- {
- 	return (word << shift) | (word >> ((-shift) & 31));
-diff --git a/tools/testing/selftests/bpf/test_sockmap_kern.h b/tools/testing/selftests/bpf/test_sockmap_kern.h
-index e7639f66a941..4e7d3da21357 100644
---- a/tools/testing/selftests/bpf/test_sockmap_kern.h
-+++ b/tools/testing/selftests/bpf/test_sockmap_kern.h
-@@ -28,13 +28,6 @@
-  * are established and verdicts are decided.
-  */
- 
--#define bpf_printk(fmt, ...)					\
--({								\
--	       char ____fmt[] = fmt;				\
--	       bpf_trace_printk(____fmt, sizeof(____fmt),	\
--				##__VA_ARGS__);			\
--})
--
- struct bpf_map_def SEC("maps") sock_map = {
- 	.type = TEST_MAP_TYPE,
- 	.key_size = sizeof(int),
+You are using this tracepoint like/instead of trace_xdp_devmap_xmit if
+I understand correctly?  Or maybe the trace_xdp_redirect tracepoint.
+
+The point is that is will be good if the tracepoints can share the
+TP_STRUCT layout beginning, as it allows for attaching and reusing eBPF
+code that is only interested in the top part of the struct.
+
+I would also want to see some identifier, that trace programs can use
+to group and corrolate these events, you do have ifindex, but most
+other XDP tracepoints also have "prog_id".
+
+> +	TP_PROTO(const struct net_device *dev,
+> +		 int sent, int drops, int err),
+> +
+> +	TP_ARGS(dev, sent, drops, err),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(int, ifindex)
+> +		__field(int, drops)
+> +		__field(int, sent)
+> +		__field(int, err)
+> +	),
+
+The xdp_redirect_template have:
+
+	TP_STRUCT__entry(
+		__field(int, prog_id)
+		__field(u32, act)
+		__field(int, ifindex)
+		__field(int, err)
+		__field(int, to_ifindex)
+		__field(u32, map_id)
+		__field(int, map_index)
+	),
+
+And e.g. TRACE_EVENT xdp_exception have:
+
+	TP_STRUCT__entry(
+		__field(int, prog_id)
+		__field(u32, act)
+		__field(int, ifindex)
+	),
+
+
+> +
+> +	TP_fast_assign(
+> +		__entry->ifindex	= dev->ifindex;
+> +		__entry->drops		= drops;
+> +		__entry->sent		= sent;
+> +		__entry->err		= err;
+> +	),
+> +
+> +	TP_printk("ifindex=%d sent=%d drops=%d err=%d",
+> +		  __entry->ifindex, __entry->sent, __entry->drops, __entry->err)
+> +);
+> +
+>  DECLARE_EVENT_CLASS(xdp_redirect_template,
+>  
+>  	TP_PROTO(const struct net_device *dev,
+> diff --git a/kernel/bpf/core.c b/kernel/bpf/core.c
+> index 242a643..7687488 100644
+> --- a/kernel/bpf/core.c
+> +++ b/kernel/bpf/core.c
+> @@ -2108,3 +2108,4 @@ int __weak skb_copy_bits(const struct sk_buff *skb, int offset, void *to,
+>  #include <linux/bpf_trace.h>
+>  
+>  EXPORT_TRACEPOINT_SYMBOL_GPL(xdp_exception);
+> +EXPORT_TRACEPOINT_SYMBOL_GPL(xdp_bulk_tx);
+
+
+
 -- 
-2.21.0
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
