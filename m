@@ -1,33 +1,34 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg1-f196.google.com ([209.85.215.196]:45991 "EHLO
-        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729902AbfEWNkP (ORCPT
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:34070 "EHLO
+        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730323AbfEWNvi (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 23 May 2019 09:40:15 -0400
+        Thu, 23 May 2019 09:51:38 -0400
 Subject: Re: [PATCH bpf-next 3/3] veth: Support bulk XDP_TX
 References: <1558609008-2590-1-git-send-email-makita.toshiaki@lab.ntt.co.jp>
  <1558609008-2590-4-git-send-email-makita.toshiaki@lab.ntt.co.jp>
  <87zhnd1kg9.fsf@toke.dk> <599302b2-96d2-b571-01ee-f4914acaf765@lab.ntt.co.jp>
- <87sgt51i0e.fsf@toke.dk>
+ <20190523152927.14bf7ed1@carbon>
 From: Toshiaki Makita <toshiaki.makita1@gmail.com>
-Message-ID: <0439f845-16cd-20ef-65e2-ebe6da11d57a@gmail.com>
-Date: Thu, 23 May 2019 22:40:09 +0900
+Message-ID: <c902c0f4-947b-ba9e-7baa-628ba87a8f01@gmail.com>
+Date: Thu, 23 May 2019 22:51:34 +0900
 MIME-Version: 1.0
-In-Reply-To: <87sgt51i0e.fsf@toke.dk>
+In-Reply-To: <20190523152927.14bf7ed1@carbon>
 Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Language: en-US
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>, Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>
-Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+To: Jesper Dangaard Brouer <brouer@redhat.com>, Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>
+Cc: =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
 
-On 19/05/23 (木) 21:18:25, Toke Høiland-Jørgensen wrote:
-> Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp> writes:
+On 19/05/23 (木) 22:29:27, Jesper Dangaard Brouer wrote:
+> On Thu, 23 May 2019 20:35:50 +0900
+> Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp> wrote:
 > 
 >> On 2019/05/23 20:25, Toke Høiland-Jørgensen wrote:
 >>> Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp> writes:
->>>
+>>>    
 >>>> This improves XDP_TX performance by about 8%.
 >>>>
 >>>> Here are single core XDP_TX test results. CPU consumptions are taken
@@ -75,19 +76,24 @@ On 19/05/23 (木) 21:18:25, Toke Høiland-Jørgensen wrote:
 >>
 >> Yes, it's possible. Not recommended though.
 >>
->>> So why not just fix that instead?
->>
->> The queues are shared with packets from stack sent from peer. That's
->> because I needed the lock. I have tried to separate the queues, one for
->> redirect and one for stack, but receiver side got too complicated and it
->> ended up with worse performance.
 > 
-> I meant fix it with configuration. Now many receive queues are you
-> running on the veth device in your benchmarks, and how have you
-> configured the RPS?
+> I think the general per-cpu TX bulk queue is overkill.  There is a loop
+> over packets in veth_xdp_rcv(struct veth_rq *rq, budget, *status), and
+> the caller veth_poll() will call veth_xdp_flush(rq->dev).
+> 
+> Why can't you store this "temp" bulk array in struct veth_rq ?
 
-As I wrote this test is a single queue test and does not have any 
-contention.
-Per packet lock has some overhead even in that configuration.
+Of course I can. But I thought tun has the same problem and we can 
+decrease memory footprint by sharing the same storage between devices.
+Or if other devices want to reduce queues so that we can use XDP on 
+many-cpu servers and introduce locks, we can use this storage for that 
+case as well.
+
+Still do you prefer veth-specific solution?
+
+> 
+> You could even alloc/create it on the stack of veth_poll() and send it
+> along via a pointer to veth_xdp_rcv).
+> 
 
 Toshiaki Makita
