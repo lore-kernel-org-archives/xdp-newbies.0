@@ -1,27 +1,43 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f65.google.com ([209.85.167.65]:38917 "EHLO
-        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726452AbfEYC7B (ORCPT
+Received: from mail-pl1-f196.google.com ([209.85.214.196]:37326 "EHLO
+        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726376AbfEYJDE (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 24 May 2019 22:59:01 -0400
+        Sat, 25 May 2019 05:03:04 -0400
+Date: Sat, 25 May 2019 14:32:57 +0530
+From: Hariprasad Kelam <hariprasad.kelam@gmail.com>
+Subject: [PATCH] libbpf: fix warning PTR_ERR_OR_ZERO can be used
+Message-ID: <20190525090257.GA12104@hari-Inspiron-1545>
 MIME-Version: 1.0
-References: <20190524195912.4966-1-mcroce@redhat.com>
-In-Reply-To: <20190524195912.4966-1-mcroce@redhat.com>
-From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Date: Fri, 24 May 2019 19:58:47 -0700
-Message-ID: <CAADnVQJzb7ruKZu1Wr8=S6J4Yp9tw_kX0tKEL1FrZroUwy4j7Q@mail.gmail.com>
-Subject: Re: [PATCH bpf] samples: bpf: add ibumad sample to .gitignore
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Matteo Croce <mcroce@redhat.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>, bpf <bpf@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Network Development <netdev@vger.kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
+To: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, bpf@vger.kernel.org, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-On Fri, May 24, 2019 at 12:59 PM Matteo Croce <mcroce@redhat.com> wrote:
->
-> This commit adds ibumad to .gitignore which is
-> currently ommited from the ignore file.
->
-> Signed-off-by: Matteo Croce <mcroce@redhat.com>
+fix below warning reported by coccicheck
 
-Applied. Thanks
+/tools/lib/bpf/libbpf.c:3461:1-3: WARNING: PTR_ERR_OR_ZERO can be used
+
+Signed-off-by: Hariprasad Kelam <hariprasad.kelam@gmail.com>
+---
+ tools/lib/bpf/libbpf.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/tools/lib/bpf/libbpf.c b/tools/lib/bpf/libbpf.c
+index 197b574..33c25b6 100644
+--- a/tools/lib/bpf/libbpf.c
++++ b/tools/lib/bpf/libbpf.c
+@@ -3458,9 +3458,7 @@ bpf_object__find_map_by_offset(struct bpf_object *obj, size_t offset)
+ 
+ long libbpf_get_error(const void *ptr)
+ {
+-	if (IS_ERR(ptr))
+-		return PTR_ERR(ptr);
+-	return 0;
++	return PTR_ERR_OR_ZERO(ptr);
+ }
+ 
+ int bpf_prog_load(const char *file, enum bpf_prog_type type,
+-- 
+2.7.4
