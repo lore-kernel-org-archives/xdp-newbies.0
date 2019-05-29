@@ -1,54 +1,76 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:41499 "EHLO
-        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726418AbfE1Sru (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 28 May 2019 14:47:50 -0400
-Received: by mail-pg1-f193.google.com with SMTP id z3so6893772pgp.8
-        for <xdp-newbies@vger.kernel.org>; Tue, 28 May 2019 11:47:49 -0700 (PDT)
-From: Stephen Hemminger <stephen@networkplumber.org>
-Subject: [PATCH PATCH v4 1/2] netvsc: unshare skb in VF rx handler
-Date: Tue, 28 May 2019 11:47:30 -0700
-Message-Id: <20190528184731.7464-2-sthemmin@microsoft.com>
-In-Reply-To: <20190528184731.7464-1-sthemmin@microsoft.com>
-References: <20190528184731.7464-1-sthemmin@microsoft.com>
+Received: from mx1.redhat.com ([209.132.183.28]:34218 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725956AbfE2IRR (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 29 May 2019 04:17:17 -0400
+Date: Wed, 29 May 2019 10:16:59 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: [PATCH net-next 3/3] net: ethernet: ti: cpsw: add XDP support
+Message-ID: <20190529101659.2aa714b8@carbon>
+In-Reply-To: <20190523182035.9283-4-ivan.khoronzhuk@linaro.org>
+References: <20190523182035.9283-1-ivan.khoronzhuk@linaro.org>
+        <20190523182035.9283-4-ivan.khoronzhuk@linaro.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: davem@davemloft.net, saeedm@mellanox.com, jasowang@redhat.com, brouer@redhat.com
-Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>
+To: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Cc: grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net, ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, brouer@redhat.com
 
-The netvsc VF skb handler should make sure that skb is not
-shared. Similar logic already exists in bonding and team device
-drivers.
+On Thu, 23 May 2019 21:20:35 +0300
+Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org> wrote:
 
-This is not an issue in practice because the VF devicex
-does not send up shared skb's. But the netvsc driver
-should do the right thing if it did.
+> +static struct page *cpsw_alloc_page(struct cpsw_common *cpsw)
+> +{
+> +	struct page_pool *pool = cpsw->rx_page_pool;
+> +	struct page *page, *prev_page = NULL;
+> +	int try = pool->p.pool_size << 2;
+> +	int start_free = 0, ret;
+> +
+> +	do {
+> +		page = page_pool_dev_alloc_pages(pool);
+> +		if (!page)
+> +			return NULL;
+> +
+> +		/* if netstack has page_pool recycling remove the rest */
+> +		if (page_ref_count(page) == 1)
+> +			break;
+> +
+> +		/* start free pages in use, shouldn't happen */
+> +		if (prev_page == page || start_free) {
+> +			/* dma unmap/puts page if rfcnt != 1 */
+> +			page_pool_recycle_direct(pool, page);
+> +			start_free = 1;
+> +			continue;
+> +		}
+> +
+> +		/* if refcnt > 1, page has been holding by netstack, it's pity,
+> +		 * so put it to the ring to be consumed later when fast cash is
+> +		 * empty. If ring is full then free page by recycling as above.
+> +		 */
+> +		ret = ptr_ring_produce(&pool->ring, page);
 
-Fixes: 0c195567a8f6 ("netvsc: transparent VF management")
-Signed-off-by: Stephen Hemminger <sthemmin@microsoft.com>
----
- drivers/net/hyperv/netvsc_drv.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+This looks very wrong to me!  First of all you are manipulation
+directly with the internal pool->ring and not using the API, which
+makes this code un-maintainable.  Second this is wrong, as page_pool
+assume the in-variance that pages on the ring have refcnt==1.
 
-diff --git a/drivers/net/hyperv/netvsc_drv.c b/drivers/net/hyperv/netvsc_drv.c
-index 06393b215102..9873b8679f81 100644
---- a/drivers/net/hyperv/netvsc_drv.c
-+++ b/drivers/net/hyperv/netvsc_drv.c
-@@ -2000,6 +2000,12 @@ static rx_handler_result_t netvsc_vf_handle_frame(struct sk_buff **pskb)
- 	struct netvsc_vf_pcpu_stats *pcpu_stats
- 		 = this_cpu_ptr(ndev_ctx->vf_stats);
- 
-+	skb = skb_share_check(skb, GFP_ATOMIC);
-+	if (unlikely(!skb))
-+		return RX_HANDLER_CONSUMED;
-+
-+	*pskb = skb;
-+
- 	skb->dev = ndev;
- 
- 	u64_stats_update_begin(&pcpu_stats->syncp);
+> +		if (ret) {
+> +			page_pool_recycle_direct(pool, page);
+> +			continue;
+> +		}
+> +
+> +		if (!prev_page)
+> +			prev_page = page;
+> +	} while (try--);
+> +
+> +	return page;
+> +}
+
+
 -- 
-2.20.1
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
