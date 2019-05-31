@@ -1,34 +1,91 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([23.128.96.9]:47390 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726359AbfEaSAv (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 31 May 2019 14:00:51 -0400
-Date: Fri, 31 May 2019 11:00:50 -0700 (PDT)
-Message-Id: <20190531.110050.517935401011629843.davem@davemloft.net>
+Received: from mx1.redhat.com ([209.132.183.28]:58528 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726531AbfEaV6C (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 31 May 2019 17:58:02 -0400
+Date: Fri, 31 May 2019 23:57:53 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
 Subject: Re: Bad XDP performance with mlx5
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20190531181817.34039c9f@carbon>
-References: <d695d08a-9ee1-0228-2cbb-4b2538a1d2f8@kth.se>
+Message-ID: <20190531235753.3cf8b199@carbon>
+In-Reply-To: <19ca7cd9a878b2ecc593cd2838b8ae0412463593.camel@mellanox.com>
+References: <d7968b89-7218-1e76-86bf-c452b2f8d0c2@kth.se>
+        <20190529191602.71eb6c87@carbon>
+        <0836bd30-828a-9126-5d99-1d35b931e3ab@kth.se>
+        <20190530094053.364b1147@carbon>
+        <d695d08a-9ee1-0228-2cbb-4b2538a1d2f8@kth.se>
         <2218141a-7026-1cb8-c594-37e38eef7b15@kth.se>
         <20190531181817.34039c9f@carbon>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+        <19ca7cd9a878b2ecc593cd2838b8ae0412463593.camel@mellanox.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: brouer@redhat.com
-Cc: barbette@kth.se, xdp-newbies@vger.kernel.org, toke@redhat.com, saeedm@mellanox.com, leonro@mellanox.com, tariqt@mellanox.com, netdev@vger.kernel.org
+To: Saeed Mahameed <saeedm@mellanox.com>
+Cc: "barbette@kth.se" <barbette@kth.se>, "toke@redhat.com" <toke@redhat.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, Leon Romanovsky <leonro@mellanox.com>, Tariq Toukan <tariqt@mellanox.com>, brouer@redhat.com
 
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Date: Fri, 31 May 2019 18:18:17 +0200
 
-> On Fri, 31 May 2019 08:51:43 +0200 Tom Barbette <barbette@kth.se> wrote:
+On Fri, 31 May 2019 18:06:01 +0000 Saeed Mahameed <saeedm@mellanox.com> wrote:
+
+> On Fri, 2019-05-31 at 18:18 +0200, Jesper Dangaard Brouer wrote:
+[...]
+> > 
+> > To understand why this is happening, you first have to know that the
+> > difference is between the two RX-memory modes used by mlx5 for non-
+> > XDP vs XDP. With non-XDP two frames are stored per memory-page,
+> > while for XDP only a single frame per page is used.  The packets
+> > available in the RX- rings are  actually the same, as the ring
+> > sizes are non-XDP=512 vs. XDP=1024. 
 > 
->> I wonder if it doesn't simply come from mlx5/en_main.c:
->> rq->buff.map_dir = rq->xdp_prog ? DMA_BIDIRECTIONAL : DMA_FROM_DEVICE;
->> 
+> Thanks Jesper ! this was a well put together explanation.
+> I want to point out that some other drivers are using alloc_skb APIs
+> which provide a good caching mechanism, which is even better than the
+> mlx5 internal one (which uses the alloc_page APIs directly), this can
+> explain the difference, and your explanation shows the root cause of
+> the higher cpu util with XDP on mlx5, since the mlx5 page cache works
+> with half of its capacity when enabling XDP.
 > 
-> Nope, that is not the problem.
+> Now do we really need to keep this page per packet in mlx5 when XDP is
+> enabled ? i think it is time to drop that .. 
 
-And it's easy to test this theory by forcing DMA_FROM_DEVICE.
+No, we need to keep the page per packet (at least until, I've solved
+some corner-cases with page_pool, which could likely require getting a
+page-flag).
+
+> > I believe, the real issue is that TCP use the SKB->truesize (based
+> > on frame size) for different memory pressure and window
+> > calculations, which is why it solved the issue to increase the
+> > window size manually. 
+
+The TCP performance issue is not solely a SKB->truesize issue, but also
+an issue with how the driver level page-cache works.  It is actually
+very fragile, as single page with elevated refcnt can block the cache
+(see mlx5e_rx_cache_get()).  Which easily happens with TCP packets
+that is waiting to be re-transmitted in-case of loss.  This is
+happening here, as indicated by the rx_cache_busy and rx_cache_full
+being the same.
+
+We (Ilias, Tariq and I) have been planning to remove this small driver
+cache, and instead use the page_pool, and create a page-return path for
+SKBs.  Which should make this problem go away.  I'm going to be working
+on this the next couple of weeks (the tricky part is all the corner
+cases).
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
+
+On Fri, 31 May 2019 18:18:17 +0200
+Jesper Dangaard Brouer <brouer@redhat.com> wrote:
+
+> It was clear that the mlx5 driver page-cache was not working:
+>  Ethtool(mlx5p1  ) stat:     6653761 (   6,653,761) <= rx_cache_busy /sec
+>  Ethtool(mlx5p1  ) stat:     6653732 (   6,653,732) <= rx_cache_full /sec
+>  Ethtool(mlx5p1  ) stat:      669481 (     669,481) <= rx_cache_reuse /sec
+>  Ethtool(mlx5p1  ) stat:           1 (           1) <= rx_congst_umr /sec
+>  Ethtool(mlx5p1  ) stat:     7323230 (   7,323,230) <= rx_csum_unnecessary /sec
+>  Ethtool(mlx5p1  ) stat:        1034 (       1,034) <= rx_discards_phy /sec
+>  Ethtool(mlx5p1  ) stat:     7323230 (   7,323,230) <= rx_packets /sec
+>  Ethtool(mlx5p1  ) stat:     7324244 (   7,324,244) <= rx_packets_phy /sec
