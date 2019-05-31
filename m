@@ -1,64 +1,48 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f66.google.com ([209.85.167.66]:33496 "EHLO
-        mail-lf1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726670AbfE3SUy (ORCPT
+Received: from smtp-3.sys.kth.se ([130.237.48.192]:40480 "EHLO
+        smtp-3.sys.kth.se" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726002AbfEaGvs (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 30 May 2019 14:20:54 -0400
-Received: by mail-lf1-f66.google.com with SMTP id y17so5803776lfe.0
-        for <xdp-newbies@vger.kernel.org>; Thu, 30 May 2019 11:20:53 -0700 (PDT)
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH v2 net-next 2/7] net: page_pool: add helper function to unmap dma addresses
-Date: Thu, 30 May 2019 21:20:34 +0300
-Message-Id: <20190530182039.4945-3-ivan.khoronzhuk@linaro.org>
-In-Reply-To: <20190530182039.4945-1-ivan.khoronzhuk@linaro.org>
-References: <20190530182039.4945-1-ivan.khoronzhuk@linaro.org>
+        Fri, 31 May 2019 02:51:48 -0400
+Subject: Re: Bad XDP performance with mlx5
+From: Tom Barbette <barbette@kth.se>
+References: <d7968b89-7218-1e76-86bf-c452b2f8d0c2@kth.se>
+ <20190529191602.71eb6c87@carbon>
+ <0836bd30-828a-9126-5d99-1d35b931e3ab@kth.se>
+ <20190530094053.364b1147@carbon>
+ <d695d08a-9ee1-0228-2cbb-4b2538a1d2f8@kth.se>
+Message-ID: <2218141a-7026-1cb8-c594-37e38eef7b15@kth.se>
+Date: Fri, 31 May 2019 08:51:43 +0200
+MIME-Version: 1.0
+In-Reply-To: <d695d08a-9ee1-0228-2cbb-4b2538a1d2f8@kth.se>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net
-Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Jesper Dangaard Brouer <brouer@redhat.com>, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: xdp-newbies@vger.kernel.org, =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>, Saeed Mahameed <saeedm@mellanox.com>, Leon Romanovsky <leonro@mellanox.com>, Tariq Toukan <tariqt@mellanox.com>Saeed Mahameed <saeedm@mellanox.com>
 
-From: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+CCing mlx5 maintainers and commiters of bce2b2b. TLDK: there is a huge 
+CPU increase on CX5 when introducing a XDP program. See 
+https://www.youtube.com/watch?v=o5hlJZbN4Tk&feature=youtu.be around 
+0:40. We're talking something like 15% while it's near 0 for other 
+drivers. The machine is a recent Skylake. For us it makes XDP unusable. 
+Is that a known problem?
 
-On a previous patch dma addr was stored in 'struct page'.
-Use that to unmap DMA addresses used by network drivers
+I wonder if it doesn't simply come from mlx5/en_main.c:
 
-Signed-off-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
-Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
----
- include/net/page_pool.h | 1 +
- net/core/page_pool.c    | 7 +++++++
- 2 files changed, 8 insertions(+)
+rq->buff.map_dir = rq->xdp_prog ? DMA_BIDIRECTIONAL : DMA_FROM_DEVICE;
 
-diff --git a/include/net/page_pool.h b/include/net/page_pool.h
-index b885d86cb7a1..ad218cef88c5 100644
---- a/include/net/page_pool.h
-+++ b/include/net/page_pool.h
-@@ -110,6 +110,7 @@ static inline struct page *page_pool_dev_alloc_pages(struct page_pool *pool)
- struct page_pool *page_pool_create(const struct page_pool_params *params);
- 
- void page_pool_destroy(struct page_pool *pool);
-+void page_pool_unmap_page(struct page_pool *pool, struct page *page);
- 
- /* Never call this directly, use helpers below */
- void __page_pool_put_page(struct page_pool *pool,
-diff --git a/net/core/page_pool.c b/net/core/page_pool.c
-index 5b2252c6d49b..205af7bd6d09 100644
---- a/net/core/page_pool.c
-+++ b/net/core/page_pool.c
-@@ -190,6 +190,13 @@ static void __page_pool_clean_page(struct page_pool *pool,
- 	page->dma_addr = 0;
- }
- 
-+/* unmap the page and clean our state */
-+void page_pool_unmap_page(struct page_pool *pool, struct page *page)
-+{
-+	__page_pool_clean_page(pool, page);
-+}
-+EXPORT_SYMBOL(page_pool_unmap_page);
-+
- /* Return a page to the page allocator, cleaning up our state */
- static void __page_pool_return_page(struct page_pool *pool, struct page *page)
- {
--- 
-2.17.1
+Which would be inline from my observation that memory access seems 
+heavier. I guess this is for the XDP_TX case.
+
+If this is indeed the problem. Any chance we can:
+a) detect automatically that a program will not return XDP_TX (I'm not 
+quite sure about what the BPF limitations allow to guess in advance) or
+b) add a flag to such as XDP_FLAGS_NO_TX to avoid such hit in 
+performance when not needed?
+
+Thanks,
+
+Tom
