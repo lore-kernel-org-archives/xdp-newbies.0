@@ -1,49 +1,66 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from smtp-4.sys.kth.se ([130.237.48.193]:43794 "EHLO
-        smtp-4.sys.kth.se" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726589AbfFDH23 (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 4 Jun 2019 03:28:29 -0400
-From: Tom Barbette <barbette@kth.se>
-Subject: Re: Bad XDP performance with mlx5
-References: <d7968b89-7218-1e76-86bf-c452b2f8d0c2@kth.se>
- <20190529191602.71eb6c87@carbon>
- <0836bd30-828a-9126-5d99-1d35b931e3ab@kth.se>
- <20190530094053.364b1147@carbon>
- <d695d08a-9ee1-0228-2cbb-4b2538a1d2f8@kth.se>
- <2218141a-7026-1cb8-c594-37e38eef7b15@kth.se>
- <20190531181817.34039c9f@carbon>
- <19ca7cd9a878b2ecc593cd2838b8ae0412463593.camel@mellanox.com>
-Message-ID: <9f116335-0fad-079b-4070-89f24af4ab55@kth.se>
-Date: Tue, 4 Jun 2019 09:28:22 +0200
+Received: from youngberry.canonical.com ([91.189.89.112]:46645 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726976AbfFDIV4 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 4 Jun 2019 04:21:56 -0400
+From: Colin King <colin.king@canonical.com>
+Subject: [PATCH][next][V2] bpf: remove redundant assignment to err
+Date: Tue,  4 Jun 2019 09:21:46 +0100
+Message-Id: <20190604082146.2049-1-colin.king@canonical.com>
 MIME-Version: 1.0
-In-Reply-To: <19ca7cd9a878b2ecc593cd2838b8ae0412463593.camel@mellanox.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Saeed Mahameed <saeedm@mellanox.com>, "brouer@redhat.com" <brouer@redhat.com>
-Cc: "toke@redhat.com" <toke@redhat.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Leon Romanovsky <leonro@mellanox.com>, Tariq Toukan <tariqt@mellanox.com>
+To: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S . Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+Cc: kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
 
-Le 31/05/2019 à 20:06, Saeed Mahameed a écrit :
-> 
-> The question is, On the same packet rate/bandwidth do you see higher
-> cpu utilization on mlx5 compared to other drivers? you have to compare
-> apples to apples.
-> 
-I meant relative increase. Of course at 40G the XL710 is using less CPU, 
-but activating XDP is nearly free. As XDP is purely per packet I would 
-expect the cost of it to be similar. Eg, a few instructions per packet.
+From: Colin Ian King <colin.king@canonical.com>
 
+The variable err is assigned with the value -EINVAL that is never
+read and it is re-assigned a new value later on.  The assignment is
+redundant and can be removed.
 
-Thanks Jesper for looking into this!
+Addresses-Coverity: ("Unused value")
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
 
-I don't think I will be of much help further on this matter. My take out 
-would be: as a first-time user looking into XDP after watching a dozen 
-of XDP talks, I would have expected XDP default settings to be identical 
-to SKB, so I don't have to watch out for a set of per-driver parameter 
-checklist to avoid increasing my CPU consumption by 15% when inserting 
-"a super efficient and light BPF program". But I understand it's not 
-that easy...
+---
 
-Tom
+V2: reorder variables as recommended by Jakub Kicinski to keep in
+    the networking code style.
+
+---
+ kernel/bpf/devmap.c | 2 +-
+ kernel/bpf/xskmap.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
+index 5ae7cce5ef16..b58a33ca8a27 100644
+--- a/kernel/bpf/devmap.c
++++ b/kernel/bpf/devmap.c
+@@ -88,8 +88,8 @@ static u64 dev_map_bitmap_size(const union bpf_attr *attr)
+ static struct bpf_map *dev_map_alloc(union bpf_attr *attr)
+ {
+ 	struct bpf_dtab *dtab;
+-	int err = -EINVAL;
+ 	u64 cost;
++	int err;
+ 
+ 	if (!capable(CAP_NET_ADMIN))
+ 		return ERR_PTR(-EPERM);
+diff --git a/kernel/bpf/xskmap.c b/kernel/bpf/xskmap.c
+index 22066c28ba61..413d75f4fc72 100644
+--- a/kernel/bpf/xskmap.c
++++ b/kernel/bpf/xskmap.c
+@@ -17,8 +17,8 @@ struct xsk_map {
+ 
+ static struct bpf_map *xsk_map_alloc(union bpf_attr *attr)
+ {
+-	int cpu, err = -EINVAL;
+ 	struct xsk_map *m;
++	int cpu, err;
+ 	u64 cost;
+ 
+ 	if (!capable(CAP_NET_ADMIN))
+-- 
+2.20.1
