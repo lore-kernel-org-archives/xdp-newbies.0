@@ -1,48 +1,78 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lj1-f195.google.com ([209.85.208.195]:42828 "EHLO
-        mail-lj1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727642AbfFENUQ (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 5 Jun 2019 09:20:16 -0400
-Received: by mail-lj1-f195.google.com with SMTP id t28so11977150lje.9
-        for <xdp-newbies@vger.kernel.org>; Wed, 05 Jun 2019 06:20:15 -0700 (PDT)
+Received: from mail-lf1-f45.google.com ([209.85.167.45]:35946 "EHLO
+        mail-lf1-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727939AbfFENUP (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 5 Jun 2019 09:20:15 -0400
+Received: by mail-lf1-f45.google.com with SMTP id q26so19064328lfc.3
+        for <xdp-newbies@vger.kernel.org>; Wed, 05 Jun 2019 06:20:14 -0700 (PDT)
 From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH v3 net-next 1/7] net: page_pool: add helper function to retrieve dma addresses
-Date: Wed,  5 Jun 2019 16:20:03 +0300
-Message-Id: <20190605132009.10734-2-ivan.khoronzhuk@linaro.org>
-In-Reply-To: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
-References: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
+Subject: [PATCH v3 net-next 0/7] net: ethernet: ti: cpsw: Add XDP support
+Date: Wed,  5 Jun 2019 16:20:02 +0300
+Message-Id: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net
-Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Jesper Dangaard Brouer <brouer@redhat.com>, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-From: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+This patchset adds XDP support for TI cpsw driver and base it on
+page_pool allocator. It was verified on af_xdp socket drop,
+af_xdp l2f, ebpf XDP_DROP, XDP_REDIRECT, XDP_PASS, XDP_TX.
 
-On a previous patch dma addr was stored in 'struct page'.
-Use that to retrieve DMA addresses used by network drivers
+It was verified with following configs enabled:
+CONFIG_JIT=y
+CONFIG_BPFILTER=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_XDP_SOCKETS=y
+CONFIG_BPF_EVENTS=y
+CONFIG_HAVE_EBPF_JIT=y
+CONFIG_BPF_JIT=y
+CONFIG_CGROUP_BPF=y
 
-Signed-off-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
-Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
----
- include/net/page_pool.h | 5 +++++
- 1 file changed, 5 insertions(+)
+Link on previous v2:
+https://lkml.org/lkml/2019/5/30/1315
 
-diff --git a/include/net/page_pool.h b/include/net/page_pool.h
-index 694d055e01ef..b885d86cb7a1 100644
---- a/include/net/page_pool.h
-+++ b/include/net/page_pool.h
-@@ -132,6 +132,11 @@ static inline void page_pool_recycle_direct(struct page_pool *pool,
- 	__page_pool_put_page(pool, page, true);
- }
- 
-+static inline dma_addr_t page_pool_get_dma_addr(struct page *page)
-+{
-+	return page->dma_addr;
-+}
-+
- static inline bool is_page_pool_compiled_in(void)
- {
- #ifdef CONFIG_PAGE_POOL
+Also regular tests with iperf2 were done in order to verify impact on
+regular netstack performance, compared with base commit:
+https://pastebin.com/JSMT0iZ4
+
+v2..v3:
+- each rxq and ndev has its own page pool
+
+v1..v2:
+- combined xdp_xmit functions
+- used page allocation w/o refcnt juggle
+- unmapped page for skb netstack
+- moved rxq/page pool allocation to open/close pair
+- added several preliminary patches:
+  net: page_pool: add helper function to retrieve dma addresses
+  net: page_pool: add helper function to unmap dma addresses
+  net: ethernet: ti: cpsw: use cpsw as drv data
+  net: ethernet: ti: cpsw_ethtool: simplify slave loops
+
+
+Based on net-next/master
+
+Ilias Apalodimas (2):
+  net: page_pool: add helper function to retrieve dma addresses
+  net: page_pool: add helper function to unmap dma addresses
+
+Ivan Khoronzhuk (5):
+  net: ethernet: ti: cpsw: use cpsw as drv data
+  net: ethernet: ti: cpsw_ethtool: simplify slave loops
+  net: ethernet: ti: davinci_cpdma: add dma mapped submit
+  net: ethernet: ti: davinci_cpdma: return handler status
+  net: ethernet: ti: cpsw: add XDP support
+
+ drivers/net/ethernet/ti/Kconfig         |   1 +
+ drivers/net/ethernet/ti/cpsw.c          | 555 ++++++++++++++++++++----
+ drivers/net/ethernet/ti/cpsw_ethtool.c  | 100 ++++-
+ drivers/net/ethernet/ti/cpsw_priv.h     |   9 +-
+ drivers/net/ethernet/ti/davinci_cpdma.c | 122 ++++--
+ drivers/net/ethernet/ti/davinci_cpdma.h |   6 +-
+ drivers/net/ethernet/ti/davinci_emac.c  |  18 +-
+ include/net/page_pool.h                 |   6 +
+ net/core/page_pool.c                    |   7 +
+ 9 files changed, 685 insertions(+), 139 deletions(-)
+
 -- 
 2.17.1
