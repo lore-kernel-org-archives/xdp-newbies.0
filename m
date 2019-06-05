@@ -1,78 +1,110 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f45.google.com ([209.85.167.45]:35946 "EHLO
-        mail-lf1-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727939AbfFENUP (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 5 Jun 2019 09:20:15 -0400
-Received: by mail-lf1-f45.google.com with SMTP id q26so19064328lfc.3
-        for <xdp-newbies@vger.kernel.org>; Wed, 05 Jun 2019 06:20:14 -0700 (PDT)
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH v3 net-next 0/7] net: ethernet: ti: cpsw: Add XDP support
-Date: Wed,  5 Jun 2019 16:20:02 +0300
-Message-Id: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
+Received: from mail-it1-f197.google.com ([209.85.166.197]:42595 "EHLO
+        mail-it1-f197.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726638AbfFEXmG (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 5 Jun 2019 19:42:06 -0400
+Received: by mail-it1-f197.google.com with SMTP id s18so243500itl.7
+        for <xdp-newbies@vger.kernel.org>; Wed, 05 Jun 2019 16:42:05 -0700 (PDT)
+MIME-Version: 1.0
+Date: Wed, 05 Jun 2019 16:42:05 -0700
+Message-ID: <000000000000188da1058a9c25e3@google.com>
+Subject: memory leak in vhost_net_ioctl
+From: syzbot <syzbot+0789f0c7e45efd7bb643@syzkaller.appspotmail.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net
-Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+To: ast@kernel.org, bpf@vger.kernel.org, daniel@iogearbox.net, davem@davemloft.net, hawk@kernel.org, jakub.kicinski@netronome.com, jasowang@redhat.com, john.fastabend@gmail.com, kvm@vger.kernel.org, linux-kernel@vger.kernel.org, mst@redhat.com, netdev@vger.kernel.org, syzkaller-bugs@googlegroups.com, virtualization@lists.linux-foundation.org, xdp-newbies@vger.kernel.org
 
-This patchset adds XDP support for TI cpsw driver and base it on
-page_pool allocator. It was verified on af_xdp socket drop,
-af_xdp l2f, ebpf XDP_DROP, XDP_REDIRECT, XDP_PASS, XDP_TX.
+Hello,
 
-It was verified with following configs enabled:
-CONFIG_JIT=y
-CONFIG_BPFILTER=y
-CONFIG_BPF_SYSCALL=y
-CONFIG_XDP_SOCKETS=y
-CONFIG_BPF_EVENTS=y
-CONFIG_HAVE_EBPF_JIT=y
-CONFIG_BPF_JIT=y
-CONFIG_CGROUP_BPF=y
+syzbot found the following crash on:
 
-Link on previous v2:
-https://lkml.org/lkml/2019/5/30/1315
+HEAD commit:    788a0249 Merge tag 'arc-5.2-rc4' of git://git.kernel.org/p..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=15dc9ea6a00000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=d5c73825cbdc7326
+dashboard link: https://syzkaller.appspot.com/bug?extid=0789f0c7e45efd7bb643
+compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=10b31761a00000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=124892c1a00000
 
-Also regular tests with iperf2 were done in order to verify impact on
-regular netstack performance, compared with base commit:
-https://pastebin.com/JSMT0iZ4
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+0789f0c7e45efd7bb643@syzkaller.appspotmail.com
 
-v2..v3:
-- each rxq and ndev has its own page pool
+udit: type=1400 audit(1559768703.229:36): avc:  denied  { map } for   
+pid=7116 comm="syz-executor330" path="/root/syz-executor330334897"  
+dev="sda1" ino=16461 scontext=unconfined_u:system_r:insmod_t:s0-s0:c0.c1023  
+tcontext=unconfined_u:object_r:user_home_t:s0 tclass=file permissive=1
+executing program
+executing program
+BUG: memory leak
+unreferenced object 0xffff88812421fe40 (size 64):
+   comm "syz-executor330", pid 7117, jiffies 4294949245 (age 13.030s)
+   hex dump (first 32 bytes):
+     01 00 00 00 20 69 6f 63 00 00 00 00 64 65 76 2f  .... ioc....dev/
+     50 fe 21 24 81 88 ff ff 50 fe 21 24 81 88 ff ff  P.!$....P.!$....
+   backtrace:
+     [<00000000ae0c4ae0>] kmemleak_alloc_recursive  
+include/linux/kmemleak.h:55 [inline]
+     [<00000000ae0c4ae0>] slab_post_alloc_hook mm/slab.h:439 [inline]
+     [<00000000ae0c4ae0>] slab_alloc mm/slab.c:3326 [inline]
+     [<00000000ae0c4ae0>] kmem_cache_alloc_trace+0x13d/0x280 mm/slab.c:3553
+     [<0000000079ebab38>] kmalloc include/linux/slab.h:547 [inline]
+     [<0000000079ebab38>] vhost_net_ubuf_alloc drivers/vhost/net.c:241  
+[inline]
+     [<0000000079ebab38>] vhost_net_set_backend drivers/vhost/net.c:1534  
+[inline]
+     [<0000000079ebab38>] vhost_net_ioctl+0xb43/0xc10  
+drivers/vhost/net.c:1716
+     [<000000009f6204a2>] vfs_ioctl fs/ioctl.c:46 [inline]
+     [<000000009f6204a2>] file_ioctl fs/ioctl.c:509 [inline]
+     [<000000009f6204a2>] do_vfs_ioctl+0x62a/0x810 fs/ioctl.c:696
+     [<00000000b45866de>] ksys_ioctl+0x86/0xb0 fs/ioctl.c:713
+     [<00000000dfb41eb8>] __do_sys_ioctl fs/ioctl.c:720 [inline]
+     [<00000000dfb41eb8>] __se_sys_ioctl fs/ioctl.c:718 [inline]
+     [<00000000dfb41eb8>] __x64_sys_ioctl+0x1e/0x30 fs/ioctl.c:718
+     [<0000000049c1f547>] do_syscall_64+0x76/0x1a0  
+arch/x86/entry/common.c:301
+     [<0000000029cc8ca7>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
 
-v1..v2:
-- combined xdp_xmit functions
-- used page allocation w/o refcnt juggle
-- unmapped page for skb netstack
-- moved rxq/page pool allocation to open/close pair
-- added several preliminary patches:
-  net: page_pool: add helper function to retrieve dma addresses
-  net: page_pool: add helper function to unmap dma addresses
-  net: ethernet: ti: cpsw: use cpsw as drv data
-  net: ethernet: ti: cpsw_ethtool: simplify slave loops
+BUG: memory leak
+unreferenced object 0xffff88812421fa80 (size 64):
+   comm "syz-executor330", pid 7130, jiffies 4294949755 (age 7.930s)
+   hex dump (first 32 bytes):
+     01 00 00 00 01 00 00 00 00 00 00 00 2f 76 69 72  ............/vir
+     90 fa 21 24 81 88 ff ff 90 fa 21 24 81 88 ff ff  ..!$......!$....
+   backtrace:
+     [<00000000ae0c4ae0>] kmemleak_alloc_recursive  
+include/linux/kmemleak.h:55 [inline]
+     [<00000000ae0c4ae0>] slab_post_alloc_hook mm/slab.h:439 [inline]
+     [<00000000ae0c4ae0>] slab_alloc mm/slab.c:3326 [inline]
+     [<00000000ae0c4ae0>] kmem_cache_alloc_trace+0x13d/0x280 mm/slab.c:3553
+     [<0000000079ebab38>] kmalloc include/linux/slab.h:547 [inline]
+     [<0000000079ebab38>] vhost_net_ubuf_alloc drivers/vhost/net.c:241  
+[inline]
+     [<0000000079ebab38>] vhost_net_set_backend drivers/vhost/net.c:1534  
+[inline]
+     [<0000000079ebab38>] vhost_net_ioctl+0xb43/0xc10  
+drivers/vhost/net.c:1716
+     [<000000009f6204a2>] vfs_ioctl fs/ioctl.c:46 [inline]
+     [<000000009f6204a2>] file_ioctl fs/ioctl.c:509 [inline]
+     [<000000009f6204a2>] do_vfs_ioctl+0x62a/0x810 fs/ioctl.c:696
+     [<00000000b45866de>] ksys_ioctl+0x86/0xb0 fs/ioctl.c:713
+     [<00000000dfb41eb8>] __do_sys_ioctl fs/ioctl.c:720 [inline]
+     [<00000000dfb41eb8>] __se_sys_ioctl fs/ioctl.c:718 [inline]
+     [<00000000dfb41eb8>] __x64_sys_ioctl+0x1e/0x30 fs/ioctl.c:718
+     [<0000000049c1f547>] do_syscall_64+0x76/0x1a0  
+arch/x86/entry/common.c:301
+     [<0000000029cc8ca7>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
 
 
-Based on net-next/master
 
-Ilias Apalodimas (2):
-  net: page_pool: add helper function to retrieve dma addresses
-  net: page_pool: add helper function to unmap dma addresses
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-Ivan Khoronzhuk (5):
-  net: ethernet: ti: cpsw: use cpsw as drv data
-  net: ethernet: ti: cpsw_ethtool: simplify slave loops
-  net: ethernet: ti: davinci_cpdma: add dma mapped submit
-  net: ethernet: ti: davinci_cpdma: return handler status
-  net: ethernet: ti: cpsw: add XDP support
-
- drivers/net/ethernet/ti/Kconfig         |   1 +
- drivers/net/ethernet/ti/cpsw.c          | 555 ++++++++++++++++++++----
- drivers/net/ethernet/ti/cpsw_ethtool.c  | 100 ++++-
- drivers/net/ethernet/ti/cpsw_priv.h     |   9 +-
- drivers/net/ethernet/ti/davinci_cpdma.c | 122 ++++--
- drivers/net/ethernet/ti/davinci_cpdma.h |   6 +-
- drivers/net/ethernet/ti/davinci_emac.c  |  18 +-
- include/net/page_pool.h                 |   6 +
- net/core/page_pool.c                    |   7 +
- 9 files changed, 685 insertions(+), 139 deletions(-)
-
--- 
-2.17.1
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
