@@ -1,63 +1,77 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f67.google.com ([209.85.167.67]:46995 "EHLO
-        mail-lf1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727998AbfFENUR (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 5 Jun 2019 09:20:17 -0400
-Received: by mail-lf1-f67.google.com with SMTP id l26so19037902lfh.13
-        for <xdp-newbies@vger.kernel.org>; Wed, 05 Jun 2019 06:20:16 -0700 (PDT)
+Received: from mail-lf1-f65.google.com ([209.85.167.65]:42584 "EHLO
+        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728024AbfFENUT (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 5 Jun 2019 09:20:19 -0400
+Received: by mail-lf1-f65.google.com with SMTP id y13so19041007lfh.9
+        for <xdp-newbies@vger.kernel.org>; Wed, 05 Jun 2019 06:20:17 -0700 (PDT)
 From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH v3 net-next 2/7] net: page_pool: add helper function to unmap dma addresses
-Date: Wed,  5 Jun 2019 16:20:04 +0300
-Message-Id: <20190605132009.10734-3-ivan.khoronzhuk@linaro.org>
+Subject: [PATCH v3 net-next 3/7] net: ethernet: ti: cpsw: use cpsw as drv data
+Date: Wed,  5 Jun 2019 16:20:05 +0300
+Message-Id: <20190605132009.10734-4-ivan.khoronzhuk@linaro.org>
 In-Reply-To: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
 References: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net
-Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Jesper Dangaard Brouer <brouer@redhat.com>, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-From: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+No need to set ndev for drvdata when mainly cpsw reference is needed,
+so correct this legacy decision.
 
-On a previous patch dma addr was stored in 'struct page'.
-Use that to unmap DMA addresses used by network drivers
-
-Signed-off-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Reviewed-by: Grygorii Strashko <grygorii.strashko@ti.com>
 Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 ---
- include/net/page_pool.h | 1 +
- net/core/page_pool.c    | 7 +++++++
- 2 files changed, 8 insertions(+)
+ drivers/net/ethernet/ti/cpsw.c | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/page_pool.h b/include/net/page_pool.h
-index b885d86cb7a1..ad218cef88c5 100644
---- a/include/net/page_pool.h
-+++ b/include/net/page_pool.h
-@@ -110,6 +110,7 @@ static inline struct page *page_pool_dev_alloc_pages(struct page_pool *pool)
- struct page_pool *page_pool_create(const struct page_pool_params *params);
+diff --git a/drivers/net/ethernet/ti/cpsw.c b/drivers/net/ethernet/ti/cpsw.c
+index 6d3f1f3f90cb..3430503e1053 100644
+--- a/drivers/net/ethernet/ti/cpsw.c
++++ b/drivers/net/ethernet/ti/cpsw.c
+@@ -2265,8 +2265,7 @@ static int cpsw_probe_dt(struct cpsw_platform_data *data,
  
- void page_pool_destroy(struct page_pool *pool);
-+void page_pool_unmap_page(struct page_pool *pool, struct page *page);
- 
- /* Never call this directly, use helpers below */
- void __page_pool_put_page(struct page_pool *pool,
-diff --git a/net/core/page_pool.c b/net/core/page_pool.c
-index 5b2252c6d49b..205af7bd6d09 100644
---- a/net/core/page_pool.c
-+++ b/net/core/page_pool.c
-@@ -190,6 +190,13 @@ static void __page_pool_clean_page(struct page_pool *pool,
- 	page->dma_addr = 0;
- }
- 
-+/* unmap the page and clean our state */
-+void page_pool_unmap_page(struct page_pool *pool, struct page *page)
-+{
-+	__page_pool_clean_page(pool, page);
-+}
-+EXPORT_SYMBOL(page_pool_unmap_page);
-+
- /* Return a page to the page allocator, cleaning up our state */
- static void __page_pool_return_page(struct page_pool *pool, struct page *page)
+ static void cpsw_remove_dt(struct platform_device *pdev)
  {
+-	struct net_device *ndev = platform_get_drvdata(pdev);
+-	struct cpsw_common *cpsw = ndev_to_cpsw(ndev);
++	struct cpsw_common *cpsw = platform_get_drvdata(pdev);
+ 	struct cpsw_platform_data *data = &cpsw->data;
+ 	struct device_node *node = pdev->dev.of_node;
+ 	struct device_node *slave_node;
+@@ -2477,7 +2476,7 @@ static int cpsw_probe(struct platform_device *pdev)
+ 		goto clean_cpts;
+ 	}
+ 
+-	platform_set_drvdata(pdev, ndev);
++	platform_set_drvdata(pdev, cpsw);
+ 	priv = netdev_priv(ndev);
+ 	priv->cpsw = cpsw;
+ 	priv->ndev = ndev;
+@@ -2570,9 +2569,8 @@ static int cpsw_probe(struct platform_device *pdev)
+ 
+ static int cpsw_remove(struct platform_device *pdev)
+ {
+-	struct net_device *ndev = platform_get_drvdata(pdev);
+-	struct cpsw_common *cpsw = ndev_to_cpsw(ndev);
+-	int ret;
++	struct cpsw_common *cpsw = platform_get_drvdata(pdev);
++	int i, ret;
+ 
+ 	ret = pm_runtime_get_sync(&pdev->dev);
+ 	if (ret < 0) {
+@@ -2580,9 +2578,9 @@ static int cpsw_remove(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
+-	if (cpsw->data.dual_emac)
+-		unregister_netdev(cpsw->slaves[1].ndev);
+-	unregister_netdev(ndev);
++	for (i = 0; i < cpsw->data.slaves; i++)
++		if (cpsw->slaves[i].ndev)
++			unregister_netdev(cpsw->slaves[i].ndev);
+ 
+ 	cpts_release(cpsw->cpts);
+ 	cpdma_ctlr_destroy(cpsw->dma);
 -- 
 2.17.1
