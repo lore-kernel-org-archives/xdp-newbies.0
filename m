@@ -1,14 +1,14 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f65.google.com ([209.85.167.65]:42584 "EHLO
-        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728024AbfFENUT (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 5 Jun 2019 09:20:19 -0400
-Received: by mail-lf1-f65.google.com with SMTP id y13so19041007lfh.9
-        for <xdp-newbies@vger.kernel.org>; Wed, 05 Jun 2019 06:20:17 -0700 (PDT)
+Received: from mail-lj1-f193.google.com ([209.85.208.193]:36210 "EHLO
+        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728042AbfFENUU (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 5 Jun 2019 09:20:20 -0400
+Received: by mail-lj1-f193.google.com with SMTP id i21so8537560ljj.3
+        for <xdp-newbies@vger.kernel.org>; Wed, 05 Jun 2019 06:20:19 -0700 (PDT)
 From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH v3 net-next 3/7] net: ethernet: ti: cpsw: use cpsw as drv data
-Date: Wed,  5 Jun 2019 16:20:05 +0300
-Message-Id: <20190605132009.10734-4-ivan.khoronzhuk@linaro.org>
+Subject: [PATCH v3 net-next 4/7] net: ethernet: ti: cpsw_ethtool: simplify slave loops
+Date: Wed,  5 Jun 2019 16:20:06 +0300
+Message-Id: <20190605132009.10734-5-ivan.khoronzhuk@linaro.org>
 In-Reply-To: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
 References: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
@@ -16,62 +16,112 @@ List-ID: <xdp-newbies.vger.kernel.org>
 To: grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net
 Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-No need to set ndev for drvdata when mainly cpsw reference is needed,
-so correct this legacy decision.
+Only for consistency reasons, do it like in main cpsw.c module
+and use ndev reference but not by means of slave.
 
-Reviewed-by: Grygorii Strashko <grygorii.strashko@ti.com>
 Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 ---
- drivers/net/ethernet/ti/cpsw.c | 16 +++++++---------
- 1 file changed, 7 insertions(+), 9 deletions(-)
+ drivers/net/ethernet/ti/cpsw_ethtool.c | 40 ++++++++++++++------------
+ 1 file changed, 21 insertions(+), 19 deletions(-)
 
-diff --git a/drivers/net/ethernet/ti/cpsw.c b/drivers/net/ethernet/ti/cpsw.c
-index 6d3f1f3f90cb..3430503e1053 100644
---- a/drivers/net/ethernet/ti/cpsw.c
-+++ b/drivers/net/ethernet/ti/cpsw.c
-@@ -2265,8 +2265,7 @@ static int cpsw_probe_dt(struct cpsw_platform_data *data,
- 
- static void cpsw_remove_dt(struct platform_device *pdev)
+diff --git a/drivers/net/ethernet/ti/cpsw_ethtool.c b/drivers/net/ethernet/ti/cpsw_ethtool.c
+index a4a7ec0d2531..3d5ae3fa5a8f 100644
+--- a/drivers/net/ethernet/ti/cpsw_ethtool.c
++++ b/drivers/net/ethernet/ti/cpsw_ethtool.c
+@@ -458,7 +458,6 @@ int cpsw_nway_reset(struct net_device *ndev)
+ static void cpsw_suspend_data_pass(struct net_device *ndev)
  {
--	struct net_device *ndev = platform_get_drvdata(pdev);
--	struct cpsw_common *cpsw = ndev_to_cpsw(ndev);
-+	struct cpsw_common *cpsw = platform_get_drvdata(pdev);
- 	struct cpsw_platform_data *data = &cpsw->data;
- 	struct device_node *node = pdev->dev.of_node;
- 	struct device_node *slave_node;
-@@ -2477,7 +2476,7 @@ static int cpsw_probe(struct platform_device *pdev)
- 		goto clean_cpts;
+ 	struct cpsw_common *cpsw = ndev_to_cpsw(ndev);
+-	struct cpsw_slave *slave;
+ 	int i;
+ 
+ 	/* Disable NAPI scheduling */
+@@ -467,12 +466,13 @@ static void cpsw_suspend_data_pass(struct net_device *ndev)
+ 	/* Stop all transmit queues for every network device.
+ 	 * Disable re-using rx descriptors with dormant_on.
+ 	 */
+-	for (i = cpsw->data.slaves, slave = cpsw->slaves; i; i--, slave++) {
+-		if (!(slave->ndev && netif_running(slave->ndev)))
++	for (i = 0; i < cpsw->data.slaves; i++) {
++		ndev = cpsw->slaves[i].ndev;
++		if (!(ndev && netif_running(ndev)))
+ 			continue;
+ 
+-		netif_tx_stop_all_queues(slave->ndev);
+-		netif_dormant_on(slave->ndev);
++		netif_tx_stop_all_queues(ndev);
++		netif_dormant_on(ndev);
  	}
  
--	platform_set_drvdata(pdev, ndev);
-+	platform_set_drvdata(pdev, cpsw);
- 	priv = netdev_priv(ndev);
- 	priv->cpsw = cpsw;
- 	priv->ndev = ndev;
-@@ -2570,9 +2569,8 @@ static int cpsw_probe(struct platform_device *pdev)
- 
- static int cpsw_remove(struct platform_device *pdev)
+ 	/* Handle rest of tx packets and stop cpdma channels */
+@@ -483,13 +483,14 @@ static int cpsw_resume_data_pass(struct net_device *ndev)
  {
--	struct net_device *ndev = platform_get_drvdata(pdev);
--	struct cpsw_common *cpsw = ndev_to_cpsw(ndev);
--	int ret;
-+	struct cpsw_common *cpsw = platform_get_drvdata(pdev);
-+	int i, ret;
+ 	struct cpsw_priv *priv = netdev_priv(ndev);
+ 	struct cpsw_common *cpsw = priv->cpsw;
+-	struct cpsw_slave *slave;
+ 	int i, ret;
  
- 	ret = pm_runtime_get_sync(&pdev->dev);
- 	if (ret < 0) {
-@@ -2580,9 +2578,9 @@ static int cpsw_remove(struct platform_device *pdev)
- 		return ret;
+ 	/* Allow rx packets handling */
+-	for (i = cpsw->data.slaves, slave = cpsw->slaves; i; i--, slave++)
+-		if (slave->ndev && netif_running(slave->ndev))
+-			netif_dormant_off(slave->ndev);
++	for (i = 0; i < cpsw->data.slaves; i++) {
++		ndev = cpsw->slaves[i].ndev;
++		if (ndev && netif_running(ndev))
++			netif_dormant_off(ndev);
++	}
+ 
+ 	/* After this receive is started */
+ 	if (cpsw->usage_count) {
+@@ -502,9 +503,11 @@ static int cpsw_resume_data_pass(struct net_device *ndev)
  	}
  
--	if (cpsw->data.dual_emac)
--		unregister_netdev(cpsw->slaves[1].ndev);
--	unregister_netdev(ndev);
-+	for (i = 0; i < cpsw->data.slaves; i++)
-+		if (cpsw->slaves[i].ndev)
-+			unregister_netdev(cpsw->slaves[i].ndev);
+ 	/* Resume transmit for every affected interface */
+-	for (i = cpsw->data.slaves, slave = cpsw->slaves; i; i--, slave++)
+-		if (slave->ndev && netif_running(slave->ndev))
+-			netif_tx_start_all_queues(slave->ndev);
++	for (i = 0; i < cpsw->data.slaves; i++) {
++		ndev = cpsw->slaves[i].ndev;
++		if (ndev && netif_running(ndev))
++			netif_tx_start_all_queues(ndev);
++	}
  
- 	cpts_release(cpsw->cpts);
- 	cpdma_ctlr_destroy(cpsw->dma);
+ 	return 0;
+ }
+@@ -587,7 +590,7 @@ int cpsw_set_channels_common(struct net_device *ndev,
+ {
+ 	struct cpsw_priv *priv = netdev_priv(ndev);
+ 	struct cpsw_common *cpsw = priv->cpsw;
+-	struct cpsw_slave *slave;
++	struct net_device *sl_ndev;
+ 	int i, ret;
+ 
+ 	ret = cpsw_check_ch_settings(cpsw, chs);
+@@ -604,20 +607,19 @@ int cpsw_set_channels_common(struct net_device *ndev,
+ 	if (ret)
+ 		goto err;
+ 
+-	for (i = cpsw->data.slaves, slave = cpsw->slaves; i; i--, slave++) {
+-		if (!(slave->ndev && netif_running(slave->ndev)))
++	for (i = 0; i < cpsw->data.slaves; i++) {
++		sl_ndev = cpsw->slaves[i].ndev;
++		if (!(sl_ndev && netif_running(sl_ndev)))
+ 			continue;
+ 
+ 		/* Inform stack about new count of queues */
+-		ret = netif_set_real_num_tx_queues(slave->ndev,
+-						   cpsw->tx_ch_num);
++		ret = netif_set_real_num_tx_queues(sl_ndev, cpsw->tx_ch_num);
+ 		if (ret) {
+ 			dev_err(priv->dev, "cannot set real number of tx queues\n");
+ 			goto err;
+ 		}
+ 
+-		ret = netif_set_real_num_rx_queues(slave->ndev,
+-						   cpsw->rx_ch_num);
++		ret = netif_set_real_num_rx_queues(sl_ndev, cpsw->rx_ch_num);
+ 		if (ret) {
+ 			dev_err(priv->dev, "cannot set real number of rx queues\n");
+ 			goto err;
 -- 
 2.17.1
