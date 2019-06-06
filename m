@@ -1,110 +1,67 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-it1-f197.google.com ([209.85.166.197]:42595 "EHLO
-        mail-it1-f197.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726638AbfFEXmG (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 5 Jun 2019 19:42:06 -0400
-Received: by mail-it1-f197.google.com with SMTP id s18so243500itl.7
-        for <xdp-newbies@vger.kernel.org>; Wed, 05 Jun 2019 16:42:05 -0700 (PDT)
+Received: from aserp2130.oracle.com ([141.146.126.79]:44654 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725784AbfFFKpQ (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 6 Jun 2019 06:45:16 -0400
+Date: Thu, 6 Jun 2019 13:44:28 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: Re: [PATCH][next] bpf: remove redundant assignment to err
+Message-ID: <20190606104428.GK31203@kadam>
+References: <20190603170247.9951-1-colin.king@canonical.com>
+ <20190603102140.70fee157@cakuba.netronome.com>
+ <276525bd-dd79-052e-7663-9acc92621853@canonical.com>
+ <20190603104930.466a306b@cakuba.netronome.com>
+ <e351d18c-21cd-6617-2a59-31a48be54b7e@canonical.com>
 MIME-Version: 1.0
-Date: Wed, 05 Jun 2019 16:42:05 -0700
-Message-ID: <000000000000188da1058a9c25e3@google.com>
-Subject: memory leak in vhost_net_ioctl
-From: syzbot <syzbot+0789f0c7e45efd7bb643@syzkaller.appspotmail.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <e351d18c-21cd-6617-2a59-31a48be54b7e@canonical.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: ast@kernel.org, bpf@vger.kernel.org, daniel@iogearbox.net, davem@davemloft.net, hawk@kernel.org, jakub.kicinski@netronome.com, jasowang@redhat.com, john.fastabend@gmail.com, kvm@vger.kernel.org, linux-kernel@vger.kernel.org, mst@redhat.com, netdev@vger.kernel.org, syzkaller-bugs@googlegroups.com, virtualization@lists.linux-foundation.org, xdp-newbies@vger.kernel.org
+To: Colin Ian King <colin.king@canonical.com>
+Cc: Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S . Miller" <davem@davemloft.net>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
 
-Hello,
+On Mon, Jun 03, 2019 at 07:07:20PM +0100, Colin Ian King wrote:
+> On 03/06/2019 18:49, Jakub Kicinski wrote:
+> > On Mon, 3 Jun 2019 18:39:16 +0100, Colin Ian King wrote:
+> >> On 03/06/2019 18:21, Jakub Kicinski wrote:
+> >>> On Mon,  3 Jun 2019 18:02:47 +0100, Colin King wrote:  
+> >>>> From: Colin Ian King <colin.king@canonical.com>
+> >>>>
+> >>>> The variable err is assigned with the value -EINVAL that is never
+> >>>> read and it is re-assigned a new value later on.  The assignment is
+> >>>> redundant and can be removed.
+> >>>>
+> >>>> Addresses-Coverity: ("Unused value")
+> >>>> Signed-off-by: Colin Ian King <colin.king@canonical.com>
+> >>>> ---
+> >>>>  kernel/bpf/devmap.c | 2 +-
+> >>>>  kernel/bpf/xskmap.c | 2 +-
+> >>>>  2 files changed, 2 insertions(+), 2 deletions(-)
+> >>>>
+> >>>> diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
+> >>>> index 5ae7cce5ef16..a76cc6412fc4 100644
+> >>>> --- a/kernel/bpf/devmap.c
+> >>>> +++ b/kernel/bpf/devmap.c
+> >>>> @@ -88,7 +88,7 @@ static u64 dev_map_bitmap_size(const union bpf_attr *attr)
+> >>>>  static struct bpf_map *dev_map_alloc(union bpf_attr *attr)
+> >>>>  {
+> >>>>  	struct bpf_dtab *dtab;
+> >>>> -	int err = -EINVAL;
+> >>>> +	int err;
+> >>>>  	u64 cost;  
+> >>>
+> >>> Perhaps keep the variables ordered longest to shortest?  
+> >>
+> >> Is that a required coding standard?
+> > 
+> > For networking code, yes.  Just look around the files you're changing
+> > and see for yourself.
+> 
+> Ah, informal coding standards. Great. Won't this end up with more diff
+> churn?
 
-syzbot found the following crash on:
+Everyone knows that netdev uses reverse Christmas tree declarations...
 
-HEAD commit:    788a0249 Merge tag 'arc-5.2-rc4' of git://git.kernel.org/p..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=15dc9ea6a00000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=d5c73825cbdc7326
-dashboard link: https://syzkaller.appspot.com/bug?extid=0789f0c7e45efd7bb643
-compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=10b31761a00000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=124892c1a00000
-
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+0789f0c7e45efd7bb643@syzkaller.appspotmail.com
-
-udit: type=1400 audit(1559768703.229:36): avc:  denied  { map } for   
-pid=7116 comm="syz-executor330" path="/root/syz-executor330334897"  
-dev="sda1" ino=16461 scontext=unconfined_u:system_r:insmod_t:s0-s0:c0.c1023  
-tcontext=unconfined_u:object_r:user_home_t:s0 tclass=file permissive=1
-executing program
-executing program
-BUG: memory leak
-unreferenced object 0xffff88812421fe40 (size 64):
-   comm "syz-executor330", pid 7117, jiffies 4294949245 (age 13.030s)
-   hex dump (first 32 bytes):
-     01 00 00 00 20 69 6f 63 00 00 00 00 64 65 76 2f  .... ioc....dev/
-     50 fe 21 24 81 88 ff ff 50 fe 21 24 81 88 ff ff  P.!$....P.!$....
-   backtrace:
-     [<00000000ae0c4ae0>] kmemleak_alloc_recursive  
-include/linux/kmemleak.h:55 [inline]
-     [<00000000ae0c4ae0>] slab_post_alloc_hook mm/slab.h:439 [inline]
-     [<00000000ae0c4ae0>] slab_alloc mm/slab.c:3326 [inline]
-     [<00000000ae0c4ae0>] kmem_cache_alloc_trace+0x13d/0x280 mm/slab.c:3553
-     [<0000000079ebab38>] kmalloc include/linux/slab.h:547 [inline]
-     [<0000000079ebab38>] vhost_net_ubuf_alloc drivers/vhost/net.c:241  
-[inline]
-     [<0000000079ebab38>] vhost_net_set_backend drivers/vhost/net.c:1534  
-[inline]
-     [<0000000079ebab38>] vhost_net_ioctl+0xb43/0xc10  
-drivers/vhost/net.c:1716
-     [<000000009f6204a2>] vfs_ioctl fs/ioctl.c:46 [inline]
-     [<000000009f6204a2>] file_ioctl fs/ioctl.c:509 [inline]
-     [<000000009f6204a2>] do_vfs_ioctl+0x62a/0x810 fs/ioctl.c:696
-     [<00000000b45866de>] ksys_ioctl+0x86/0xb0 fs/ioctl.c:713
-     [<00000000dfb41eb8>] __do_sys_ioctl fs/ioctl.c:720 [inline]
-     [<00000000dfb41eb8>] __se_sys_ioctl fs/ioctl.c:718 [inline]
-     [<00000000dfb41eb8>] __x64_sys_ioctl+0x1e/0x30 fs/ioctl.c:718
-     [<0000000049c1f547>] do_syscall_64+0x76/0x1a0  
-arch/x86/entry/common.c:301
-     [<0000000029cc8ca7>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-BUG: memory leak
-unreferenced object 0xffff88812421fa80 (size 64):
-   comm "syz-executor330", pid 7130, jiffies 4294949755 (age 7.930s)
-   hex dump (first 32 bytes):
-     01 00 00 00 01 00 00 00 00 00 00 00 2f 76 69 72  ............/vir
-     90 fa 21 24 81 88 ff ff 90 fa 21 24 81 88 ff ff  ..!$......!$....
-   backtrace:
-     [<00000000ae0c4ae0>] kmemleak_alloc_recursive  
-include/linux/kmemleak.h:55 [inline]
-     [<00000000ae0c4ae0>] slab_post_alloc_hook mm/slab.h:439 [inline]
-     [<00000000ae0c4ae0>] slab_alloc mm/slab.c:3326 [inline]
-     [<00000000ae0c4ae0>] kmem_cache_alloc_trace+0x13d/0x280 mm/slab.c:3553
-     [<0000000079ebab38>] kmalloc include/linux/slab.h:547 [inline]
-     [<0000000079ebab38>] vhost_net_ubuf_alloc drivers/vhost/net.c:241  
-[inline]
-     [<0000000079ebab38>] vhost_net_set_backend drivers/vhost/net.c:1534  
-[inline]
-     [<0000000079ebab38>] vhost_net_ioctl+0xb43/0xc10  
-drivers/vhost/net.c:1716
-     [<000000009f6204a2>] vfs_ioctl fs/ioctl.c:46 [inline]
-     [<000000009f6204a2>] file_ioctl fs/ioctl.c:509 [inline]
-     [<000000009f6204a2>] do_vfs_ioctl+0x62a/0x810 fs/ioctl.c:696
-     [<00000000b45866de>] ksys_ioctl+0x86/0xb0 fs/ioctl.c:713
-     [<00000000dfb41eb8>] __do_sys_ioctl fs/ioctl.c:720 [inline]
-     [<00000000dfb41eb8>] __se_sys_ioctl fs/ioctl.c:718 [inline]
-     [<00000000dfb41eb8>] __x64_sys_ioctl+0x1e/0x30 fs/ioctl.c:718
-     [<0000000049c1f547>] do_syscall_64+0x76/0x1a0  
-arch/x86/entry/common.c:301
-     [<0000000029cc8ca7>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-
-
----
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-syzbot can test patches for this bug, for details see:
-https://goo.gl/tpsmEJ#testing-patches
+regards,
+dan carpenter
