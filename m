@@ -1,78 +1,88 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f67.google.com ([209.85.167.67]:47082 "EHLO
-        mail-lf1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727792AbfFFNY0 (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 6 Jun 2019 09:24:26 -0400
-Received: by mail-lf1-f67.google.com with SMTP id l26so121199lfh.13
-        for <xdp-newbies@vger.kernel.org>; Thu, 06 Jun 2019 06:24:25 -0700 (PDT)
-Date: Thu, 6 Jun 2019 16:24:22 +0300
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: Re: [PATCH v3 net-next 0/7] net: ethernet: ti: cpsw: Add XDP support
-Message-ID: <20190606132420.GA12429@khorivan>
-References: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
- <20190605.121450.2198491088032558315.davem@davemloft.net>
- <20190606100850.72a48a43@carbon>
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:39646 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727559AbfFFSDk (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 6 Jun 2019 14:03:40 -0400
+From: "Jonathan Lemon" <jonathan.lemon@gmail.com>
+Subject: Re: [PATCH] net: Fix hang while unregistering device bound to xdp
+ socket
+Date: Thu, 06 Jun 2019 11:03:38 -0700
+Message-ID: <4414B6B6-3FE2-4CF2-A67A-159FCF6B9ECF@gmail.com>
+In-Reply-To: <20190606124014.23231-1-i.maximets@samsung.com>
+References: <CGME20190606124020eucas1p2007396ae8f23a426a17e0e5481636187@eucas1p2.samsung.com>
+ <20190606124014.23231-1-i.maximets@samsung.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Disposition: inline
-In-Reply-To: <20190606100850.72a48a43@carbon>
+Content-Type: text/plain
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: David Miller <davem@davemloft.net>, grygorii.strashko@ti.com, hawk@kernel.org, ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com
+To: Ilya Maximets <i.maximets@samsung.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?utf-8?b?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>
 
-On Thu, Jun 06, 2019 at 10:08:50AM +0200, Jesper Dangaard Brouer wrote:
->On Wed, 05 Jun 2019 12:14:50 -0700 (PDT)
->David Miller <davem@davemloft.net> wrote:
->
->> From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
->> Date: Wed,  5 Jun 2019 16:20:02 +0300
->>
->> > This patchset adds XDP support for TI cpsw driver and base it on
->> > page_pool allocator. It was verified on af_xdp socket drop,
->> > af_xdp l2f, ebpf XDP_DROP, XDP_REDIRECT, XDP_PASS, XDP_TX.
->>
->> Jesper et al., please give this a good once over.
->
->The issue with merging this, is that I recently discovered two bug with
->page_pool API, when using DMA-mappings, which result in missing
->DMA-unmap's.  These bugs are not "exposed" yet, but will get exposed
->now with this drivers.
->
->The two bugs are:
->
->#1: in-flight packet-pages can still be on remote drivers TX queue,
->while XDP RX driver manage to unregister the page_pool (waiting 1 RCU
->period is not enough).
->
->#2: this patchset also introduce page_pool_unmap_page(), which is
->called before an XDP frame travel into networks stack (as no callback
->exist, yet).  But the CPUMAP redirect *also* needs to call this, else we
->"leak"/miss DMA-unmap.
->
->I do have a working prototype, that fixes these two bugs.  I guess, I'm
->under pressure to send this to the list soon...
+On 6 Jun 2019, at 5:40, Ilya Maximets wrote:
 
-In particular "cpsw" case no dma unmap issue and if no changes in page_pool
-API then no changes to the driver required. page_pool_unmap_page() is
-used here for consistency reasons with attention that it can be
-inherited/reused by other SoCs for what it can be relevant.
+> Device that bound to XDP socket will not have zero refcount until the
+> userspace application will not close it. This leads to hang inside
+> 'netdev_wait_allrefs()' if device unregistering requested:
+>
+>   # ip link del p1
+>   < hang on recvmsg on netlink socket >
+>
+>   # ps -x | grep ip
+>   5126  pts/0    D+   0:00 ip link del p1
+>
+>   # journalctl -b
+>
+>   Jun 05 07:19:16 kernel:
+>   unregister_netdevice: waiting for p1 to become free. Usage count = 1
+>
+>   Jun 05 07:19:27 kernel:
+>   unregister_netdevice: waiting for p1 to become free. Usage count = 1
+>   ...
+>
+> Fix that by counting XDP references for the device and failing
+> RTM_DELLINK with EBUSY if device is still in use by any XDP socket.
+>
+> With this change:
+>
+>   # ip link del p1
+>   RTNETLINK answers: Device or resource busy
+>
+> Fixes: 965a99098443 ("xsk: add support for bind for Rx")
+> Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+> ---
+>
+> Another option could be to force closing all the corresponding AF_XDP
+> sockets, but I didn't figure out how to do this properly yet.
+>
+>  include/linux/netdevice.h | 25 +++++++++++++++++++++++++
+>  net/core/dev.c            | 10 ++++++++++
+>  net/core/rtnetlink.c      |  6 ++++++
+>  net/xdp/xsk.c             |  7 ++++++-
+>  4 files changed, 47 insertions(+), 1 deletion(-)
+>
+> diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+> index 44b47e9df94a..24451cfc5590 100644
+> --- a/include/linux/netdevice.h
+> +++ b/include/linux/netdevice.h
+> @@ -1705,6 +1705,7 @@ enum netdev_priv_flags {
+>   *	@watchdog_timer:	List of timers
+>   *
+>   *	@pcpu_refcnt:		Number of references to this device
+> + *	@pcpu_xdp_refcnt:	Number of XDP socket references to this device
+>   *	@todo_list:		Delayed register/unregister
+>   *	@link_watch_list:	XXX: need comments on this one
+>   *
+> @@ -1966,6 +1967,7 @@ struct net_device {
+>  	struct timer_list	watchdog_timer;
+>
+>  	int __percpu		*pcpu_refcnt;
+> +	int __percpu		*pcpu_xdp_refcnt;
+>  	struct list_head	todo_list;
 
-One potential change as you mentioned is with dropping page_pool_destroy() that,
-now, can look like:
 
-@@ -571,7 +571,6 @@ static void cpsw_destroy_rx_pool(struct cpsw_priv *priv, int ch)
-                return;
- 
-        xdp_rxq_info_unreg(&priv->xdp_rxq[ch]);
--       page_pool_destroy(priv->page_pool[ch]);
-        priv->page_pool[ch] = NULL;
- }
-
-From what I know there is ongoing change for adding switchdev to cpsw that can
-change a lot and can require more work to rebase / test this patchset, so I want
-to believe it can be merged before this.
-
+I understand the intention here, but don't think that putting a XDP reference
+into the generic netdev structure is the right way of doing this.  Likely the
+NETDEV_UNREGISTER notifier should be used so the socket and umem unbinds from
+the device.
 -- 
-Regards,
-Ivan Khoronzhuk
+Jonathan
