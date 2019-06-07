@@ -1,84 +1,62 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35128 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726671AbfFGJcd (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 7 Jun 2019 05:32:33 -0400
-Date: Fri, 7 Jun 2019 11:32:20 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [PATCH v2 bpf-next 1/2] xdp: Add tracepoint for bulk XDP_TX
-Message-ID: <20190607113220.1ea4093a@carbon>
-In-Reply-To: <e0266202-5db6-123c-eba6-33e5c5c4ba6d@gmail.com>
-References: <20190605053613.22888-1-toshiaki.makita1@gmail.com>
-        <20190605053613.22888-2-toshiaki.makita1@gmail.com>
-        <20190605095931.5d90b69c@carbon>
-        <abd43c39-afb7-acd4-688a-553cec76f55c@gmail.com>
-        <20190606214105.6bf2f873@carbon>
-        <e0266202-5db6-123c-eba6-33e5c5c4ba6d@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Received: from mailout2.w1.samsung.com ([210.118.77.12]:42843 "EHLO
+        mailout2.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730188AbfFGR1l (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 7 Jun 2019 13:27:41 -0400
+Received: from eucas1p1.samsung.com (unknown [182.198.249.206])
+        by mailout2.w1.samsung.com (KnoxPortal) with ESMTP id 20190607172739euoutp02d42b165a2c1fcd7fe3575403a54e793d~l_qthHUzC1359213592euoutp026
+        for <xdp-newbies@vger.kernel.org>; Fri,  7 Jun 2019 17:27:39 +0000 (GMT)
+From: Ilya Maximets <i.maximets@samsung.com>
+Subject: [PATCH bpf] xdp: check device pointer before clearing
+Date: Fri,  7 Jun 2019 20:27:32 +0300
+Message-Id: <20190607172732.4710-1-i.maximets@samsung.com>
+Content-Type: text/plain; charset="utf-8"
+References: <CGME20190607172737eucas1p28508d5e198907695bc77f9fd18ce233e@eucas1p2.samsung.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Toshiaki Makita <toshiaki.makita1@gmail.com>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>, Jason Wang <jasowang@redhat.com>, brouer@redhat.com, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Ilya Maximets <i.maximets@samsung.com>
 
-On Fri, 7 Jun 2019 11:22:00 +0900
-Toshiaki Makita <toshiaki.makita1@gmail.com> wrote:
+We should not call 'ndo_bpf()' or 'dev_put()' with NULL argument.
 
-> On 2019/06/07 4:41, Jesper Dangaard Brouer wrote:
-> > On Thu, 6 Jun 2019 20:04:20 +0900
-> > Toshiaki Makita <toshiaki.makita1@gmail.com> wrote:
-> >   
-> >> On 2019/06/05 16:59, Jesper Dangaard Brouer wrote:  
-> >>> On Wed,  5 Jun 2019 14:36:12 +0900
-> >>> Toshiaki Makita <toshiaki.makita1@gmail.com> wrote:
-> >>>      
-[...]
-> >>
-> >> So... prog_id is the problem. The program can be changed while we are
-> >> enqueueing packets to the bulk queue, so the prog_id at flush may be an
-> >> unexpected one.  
-> > 
-> > Hmmm... that sounds problematic, if the XDP bpf_prog for veth can
-> > change underneath, before the flush.  Our redirect system, depend on
-> > things being stable until the xdp_do_flush_map() operation, as will
-> > e.g. set per-CPU (bpf_redirect_info) map_to_flush pointer (which depend
-> > on XDP prog), and expect it to be correct/valid.  
-> 
-> Sorry, I don't get how maps depend on programs.
+Fixes: c9b47cc1fabc ("xsk: fix bug when trying to use both copy and zero-copy on one queue id")
+Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+---
 
-BPF/XDP programs have a reference count on the map (e.g. used for
-redirect) and when the XDP is removed, and last refcnt for the map is
-reached, then the map is also removed (redirect maps does a call_rcu
-when shutdown).
+I'm not sure if this fixes any real NULL pointer dereference, but code
+is not consistent anyway and should be fixed.
 
-> At least xdp_do_redirect_map() handles map_to_flush change during NAPI. 
-> Is there a problem when the map is not changed but the program is changed?
-> Also I believe this is not veth-specific behavior. Looking at tun and 
-> i40e, they seem to change xdp_prog without stopping data path.
+ net/xdp/xdp_umem.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
+index 2b18223e7eb8..9c6de4f114f8 100644
+--- a/net/xdp/xdp_umem.c
++++ b/net/xdp/xdp_umem.c
+@@ -143,6 +143,9 @@ static void xdp_umem_clear_dev(struct xdp_umem *umem)
+ 	struct netdev_bpf bpf;
+ 	int err;
  
-I guess this could actually happen, but we are "saved" by the
-'map_to_flush' (pointer) is still valid due to RCU protection.
-
-But it does look fishy, as our rcu_read_lock's does not encapsulation
-this. There is RCU-read-section in veth_xdp_rcv_skb(), which via can
-call xdp_do_redirect() which set per-CPU ri->map_to_flush.  
-
-Do we get this protection by running under softirq, and does this
-prevent an RCU grace-period (call_rcu callbacks) from happening?
-(between veth_xdp_rcv_skb() and xdp_do_flush_map() in veth_poll())
-
-
-To Toshiaki, regarding your patch 2/2, you are not affected by this
-per-CPU map storing, as you pass along the bulk-queue.  I do see you
-point, with prog_id could change.  Could you change the tracepoint to
-include the 'act' and place 'ifindex' above this in the struct, this way
-the 'act' member is in the same location/offset as other XDP
-tracepoints.  I see the 'ifindex' as the identifier for this tracepoint
-(other have map_id or prog_id in this location).
-
++	if (!umem->dev)
++		return;
++
+ 	if (umem->zc) {
+ 		bpf.command = XDP_SETUP_XSK_UMEM;
+ 		bpf.xsk.umem = NULL;
+@@ -156,11 +159,9 @@ static void xdp_umem_clear_dev(struct xdp_umem *umem)
+ 			WARN(1, "failed to disable umem!\n");
+ 	}
+ 
+-	if (umem->dev) {
+-		rtnl_lock();
+-		xdp_clear_umem_at_qid(umem->dev, umem->queue_id);
+-		rtnl_unlock();
+-	}
++	rtnl_lock();
++	xdp_clear_umem_at_qid(umem->dev, umem->queue_id);
++	rtnl_unlock();
+ 
+ 	if (umem->zc) {
+ 		dev_put(umem->dev);
 -- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+2.17.1
