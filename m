@@ -1,118 +1,99 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf1-f194.google.com ([209.85.210.194]:34592 "EHLO
-        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726305AbfFGCWI (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 6 Jun 2019 22:22:08 -0400
-Subject: Re: [PATCH v2 bpf-next 1/2] xdp: Add tracepoint for bulk XDP_TX
-References: <20190605053613.22888-1-toshiaki.makita1@gmail.com>
- <20190605053613.22888-2-toshiaki.makita1@gmail.com>
- <20190605095931.5d90b69c@carbon>
- <abd43c39-afb7-acd4-688a-553cec76f55c@gmail.com>
- <20190606214105.6bf2f873@carbon>
-From: Toshiaki Makita <toshiaki.makita1@gmail.com>
-Message-ID: <e0266202-5db6-123c-eba6-33e5c5c4ba6d@gmail.com>
-Date: Fri, 7 Jun 2019 11:22:00 +0900
+Received: from mailout2.w1.samsung.com ([210.118.77.12]:59550 "EHLO
+        mailout2.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725978AbfFGGgY (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 7 Jun 2019 02:36:24 -0400
+Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
+        by mailout2.w1.samsung.com (KnoxPortal) with ESMTP id 20190607063622euoutp022eed90dba2bbee29f0c3259a558adab0~l1yEC4KfC0964409644euoutp02g
+        for <xdp-newbies@vger.kernel.org>; Fri,  7 Jun 2019 06:36:22 +0000 (GMT)
+Subject: Re: [PATCH] net: Fix hang while unregistering device bound to xdp
+ socket
+From: Ilya Maximets <i.maximets@samsung.com>
+Message-ID: <3014f882-3042-cb6a-2356-ea3a754840a7@samsung.com>
+Date: Fri, 7 Jun 2019 09:36:19 +0300
 MIME-Version: 1.0
-In-Reply-To: <20190606214105.6bf2f873@carbon>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
+In-Reply-To: <4414B6B6-3FE2-4CF2-A67A-159FCF6B9ECF@gmail.com>
+Content-Language: en-GB
 Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+References: <CGME20190606124020eucas1p2007396ae8f23a426a17e0e5481636187@eucas1p2.samsung.com>
+        <20190606124014.23231-1-i.maximets@samsung.com>
+        <4414B6B6-3FE2-4CF2-A67A-159FCF6B9ECF@gmail.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>, Jason Wang <jasowang@redhat.com>, Brendan Gregg <brendan.d.gregg@gmail.com>
+To: Jonathan Lemon <jonathan.lemon@gmail.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>
 
-On 2019/06/07 4:41, Jesper Dangaard Brouer wrote:
-> On Thu, 6 Jun 2019 20:04:20 +0900
-> Toshiaki Makita <toshiaki.makita1@gmail.com> wrote:
+On 06.06.2019 21:03, Jonathan Lemon wrote:
+> On 6 Jun 2019, at 5:40, Ilya Maximets wrote:
 > 
->> On 2019/06/05 16:59, Jesper Dangaard Brouer wrote:
->>> On Wed,  5 Jun 2019 14:36:12 +0900
->>> Toshiaki Makita <toshiaki.makita1@gmail.com> wrote:
->>>    
->>>> This is introduced for admins to check what is happening on XDP_TX when
->>>> bulk XDP_TX is in use, which will be first introduced in veth in next
->>>> commit.
->>>
->>> Is the plan that this tracepoint 'xdp:xdp_bulk_tx' should be used by
->>> all drivers?
+>> Device that bound to XDP socket will not have zero refcount until the
+>> userspace application will not close it. This leads to hang inside
+>> 'netdev_wait_allrefs()' if device unregistering requested:
 >>
->> I guess you mean all drivers that implement similar mechanism should use
->> this? Then yes.
->> (I don't think all drivers needs bulk tx mechanism though)
+>>   # ip link del p1
+>>   < hang on recvmsg on netlink socket >
 >>
->>> (more below)
->>>    
->>>> Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
->>>> ---
->>>>    include/trace/events/xdp.h | 25 +++++++++++++++++++++++++
->>>>    kernel/bpf/core.c          |  1 +
->>>>    2 files changed, 26 insertions(+)
->>>>
->>>> diff --git a/include/trace/events/xdp.h b/include/trace/events/xdp.h
->>>> index e95cb86..e06ea65 100644
->>>> --- a/include/trace/events/xdp.h
->>>> +++ b/include/trace/events/xdp.h
->>>> @@ -50,6 +50,31 @@
->>>>    		  __entry->ifindex)
->>>>    );
->>>>    
->>>> +TRACE_EVENT(xdp_bulk_tx,
->>>> +
->>>> +	TP_PROTO(const struct net_device *dev,
->>>> +		 int sent, int drops, int err),
->>>> +
->>>> +	TP_ARGS(dev, sent, drops, err),
->>>> +
->>>> +	TP_STRUCT__entry(
->>>
->>> All other tracepoints in this file starts with:
->>>
->>> 		__field(int, prog_id)
->>> 		__field(u32, act)
->>> or
->>> 		__field(int, map_id)
->>> 		__field(u32, act)
->>>
->>> Could you please add those?
+>>   # ps -x | grep ip
+>>   5126  pts/0    D+   0:00 ip link del p1
 >>
->> So... prog_id is the problem. The program can be changed while we are
->> enqueueing packets to the bulk queue, so the prog_id at flush may be an
->> unexpected one.
+>>   # journalctl -b
+>>
+>>   Jun 05 07:19:16 kernel:
+>>   unregister_netdevice: waiting for p1 to become free. Usage count = 1
+>>
+>>   Jun 05 07:19:27 kernel:
+>>   unregister_netdevice: waiting for p1 to become free. Usage count = 1
+>>   ...
+>>
+>> Fix that by counting XDP references for the device and failing
+>> RTM_DELLINK with EBUSY if device is still in use by any XDP socket.
+>>
+>> With this change:
+>>
+>>   # ip link del p1
+>>   RTNETLINK answers: Device or resource busy
+>>
+>> Fixes: 965a99098443 ("xsk: add support for bind for Rx")
+>> Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+>> ---
+>>
+>> Another option could be to force closing all the corresponding AF_XDP
+>> sockets, but I didn't figure out how to do this properly yet.
+>>
+>>  include/linux/netdevice.h | 25 +++++++++++++++++++++++++
+>>  net/core/dev.c            | 10 ++++++++++
+>>  net/core/rtnetlink.c      |  6 ++++++
+>>  net/xdp/xsk.c             |  7 ++++++-
+>>  4 files changed, 47 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+>> index 44b47e9df94a..24451cfc5590 100644
+>> --- a/include/linux/netdevice.h
+>> +++ b/include/linux/netdevice.h
+>> @@ -1705,6 +1705,7 @@ enum netdev_priv_flags {
+>>   *	@watchdog_timer:	List of timers
+>>   *
+>>   *	@pcpu_refcnt:		Number of references to this device
+>> + *	@pcpu_xdp_refcnt:	Number of XDP socket references to this device
+>>   *	@todo_list:		Delayed register/unregister
+>>   *	@link_watch_list:	XXX: need comments on this one
+>>   *
+>> @@ -1966,6 +1967,7 @@ struct net_device {
+>>  	struct timer_list	watchdog_timer;
+>>
+>>  	int __percpu		*pcpu_refcnt;
+>> +	int __percpu		*pcpu_xdp_refcnt;
+>>  	struct list_head	todo_list;
 > 
-> Hmmm... that sounds problematic, if the XDP bpf_prog for veth can
-> change underneath, before the flush.  Our redirect system, depend on
-> things being stable until the xdp_do_flush_map() operation, as will
-> e.g. set per-CPU (bpf_redirect_info) map_to_flush pointer (which depend
-> on XDP prog), and expect it to be correct/valid.
+> 
+> I understand the intention here, but don't think that putting a XDP reference
+> into the generic netdev structure is the right way of doing this.  Likely the
+> NETDEV_UNREGISTER notifier should be used so the socket and umem unbinds from
+> the device.
+> 
 
-Sorry, I don't get how maps depend on programs.
-At least xdp_do_redirect_map() handles map_to_flush change during NAPI. 
-Is there a problem when the map is not changed but the program is changed?
-Also I believe this is not veth-specific behavior. Looking at tun and 
-i40e, they seem to change xdp_prog without stopping data path.
+Thanks for the pointer! That is exactly what I looked for.
+I'll make a new version that will unbind resources using netdevice notifier.
 
->> It can be fixed by disabling NAPI when changing XDP programs. This stops
->> packet processing while changing XDP programs, but I guess it is an
->> acceptable compromise. Having said that, I'm honestly not so eager to
->> make this change, since this will require refurbishment of one of the
->> most delicate part of veth XDP, NAPI disabling/enabling mechanism.
->>
->> WDYT?
-> 
-> Sound like a bug, if XDP bpf_prog is not stable within the NAPI poll...
-> 
->   
->>>> +		__field(int, ifindex)
->>>> +		__field(int, drops)
->>>> +		__field(int, sent)
->>>> +		__field(int, err)
->>>> +	),
->>>
->>> The reason is that this make is easier to attach to multiple
->>> tracepoints, and extract the same value.
->>>
->>> Example with bpftrace oneliner:
->>>
->>> $ sudo bpftrace -e 'tracepoint:xdp:xdp_* { @action[args->act] = count(); }'
-> 
+Best regards, Ilya Maximets.
