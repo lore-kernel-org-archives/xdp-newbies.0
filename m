@@ -1,30 +1,30 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([23.128.96.9]:57644 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726668AbfFFU4D (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 6 Jun 2019 16:56:03 -0400
-Date: Thu, 06 Jun 2019 13:56:01 -0700 (PDT)
-Message-Id: <20190606.135601.1164776763745750423.davem@davemloft.net>
-Subject: Re: [PATCH v3 net-next 0/7] net: ethernet: ti: cpsw: Add XDP
- support
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20190606100850.72a48a43@carbon>
-References: <20190605132009.10734-1-ivan.khoronzhuk@linaro.org>
-        <20190605.121450.2198491088032558315.davem@davemloft.net>
-        <20190606100850.72a48a43@carbon>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+Received: from mail-qk1-f174.google.com ([209.85.222.174]:43195 "EHLO
+        mail-qk1-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729573AbfFHC4N (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 7 Jun 2019 22:56:13 -0400
+Received: by mail-qk1-f174.google.com with SMTP id m14so2491234qka.10
+        for <xdp-newbies@vger.kernel.org>; Fri, 07 Jun 2019 19:56:13 -0700 (PDT)
+MIME-Version: 1.0
+From: William Tu <u9012063@gmail.com>
+Date: Fri, 7 Jun 2019 19:55:34 -0700
+Message-ID: <CALDO+SZ_y2crYSXGtFxQtk8zZz2X=Fr-rJTPr_zm6rbtD8h9iQ@mail.gmail.com>
+Subject: AF_XDP with QoS support question
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: brouer@redhat.com
-Cc: ivan.khoronzhuk@linaro.org, grygorii.strashko@ti.com, hawk@kernel.org, ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com
+To: Xdp <xdp-newbies@vger.kernel.org>, "<dev@openvswitch.org>" <dev@openvswitch.org>
 
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Date: Thu, 6 Jun 2019 10:08:50 +0200
+Hi,
 
-> I do have a working prototype, that fixes these two bugs.  I guess, I'm
-> under pressure to send this to the list soon...
+When using AF_XDP, the TC qdisc layer is by-passed and packets go to
+userspace directly. One problem is that there is no QoS support when
+using AF_XDP.
 
-So I'm going to mark this CPSW patchset as "deferred" while these bugs are
-worked out.
+For egress shaping, I'm thinking about using tc-mqprio, which has
+hardware offload support. And for OVS, we can add tc-mqprio support.
+For ingress policing, I don't know how to do it. Is there an hardware
+offload ingress policing support?
+
+Thanks
+William
