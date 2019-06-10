@@ -1,64 +1,70 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36198 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388734AbfFJKPq (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 10 Jun 2019 06:15:46 -0400
-Date: Mon, 10 Jun 2019 12:15:40 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: ethtool isn't showing xdp statistics
-Message-ID: <20190610121540.36391dc3@carbon>
-In-Reply-To: <CAK6Qs9=ig3-PWKtSk7UJfm1gcWz9cSGYU7uDxxUw=xju5TtP9w@mail.gmail.com>
-References: <CAK6Qs9=ig3-PWKtSk7UJfm1gcWz9cSGYU7uDxxUw=xju5TtP9w@mail.gmail.com>
+Received: from mail-qt1-f171.google.com ([209.85.160.171]:40408 "EHLO
+        mail-qt1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387500AbfFJSYI (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 10 Jun 2019 14:24:08 -0400
+Received: by mail-qt1-f171.google.com with SMTP id a15so11564252qtn.7
+        for <xdp-newbies@vger.kernel.org>; Mon, 10 Jun 2019 11:24:07 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+References: <CALDO+SZ_y2crYSXGtFxQtk8zZz2X=Fr-rJTPr_zm6rbtD8h9iQ@mail.gmail.com>
+ <20190608141948.65e77b75@cakuba.netronome.com>
+In-Reply-To: <20190608141948.65e77b75@cakuba.netronome.com>
+From: William Tu <u9012063@gmail.com>
+Date: Mon, 10 Jun 2019 11:23:29 -0700
+Message-ID: <CALDO+SbhtcZfK-re9JLyss8VoHaVJgyrH7tzgRkFK0OMK1JSVQ@mail.gmail.com>
+Subject: Re: AF_XDP with QoS support question
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: =?UTF-8?B?xLBicmFoaW0=?= Ercan <ibrahim.metu@gmail.com>
-Cc: xdp-newbies@vger.kernel.org, brouer@redhat.com, David Ahern <dsahern@gmail.com>
+To: Jakub Kicinski <jakub.kicinski@netronome.com>
+Cc: Xdp <xdp-newbies@vger.kernel.org>, "<dev@openvswitch.org>" <dev@openvswitch.org>
 
-On Mon, 10 Jun 2019 12:55:07 +0300
-İbrahim Ercan <ibrahim.metu@gmail.com> wrote:
+Hi Jakub,
 
-> Hi.
-> I'm trying to do a xdp performance test on redhat based environment.
-> To do so, I compiled kernel 5.0.13 and iproute 4.6.0
-> Then I loaded compiled code to interface with below command.
-> #ip -force link set dev enp7s0f0 xdp object xdptest.o
-> 
-> After that packets dropped as expected but I can not see statistics
-> with ethtool command like below.
-> #ethtool -S enp7s0f0 | grep xdp
-> 
-> ethtool version is 4.8
-> I did my test with that NIC
-> Intel Corporation 82599ES 10-Gigabit SFI/SFP+ Network Connection (rev 01)
-> 
-> I wonder why I can't see statistics. Did I miss something while
-> compiling kernel or iproute? Should I also compile ethtool too?
-
-You did nothing wrong. Consistency for statistics with XDP is a known
-issue, see [1].  The behavior varies per driver, which obviously is bad
-from a user perspective.  You NIC is based on ixgbe driver, which don't
-have ethtool stats counters for XDP, instead it actually updates
-ifconfig counters correctly. While for mlx5 it's opposite (p.s. I use
-this[2] ethtool stats tool).
-
-We want to bring consistency in this area, but there are performance
-concerns.  As any stat counter will bring overhead, and XDP is all
-about maximum performance.  Thus, we want this counter overhead to be
-opt-in (that is not on as default).
-
-Currently you have to add the stats your want to the XDP/BPF program
-itself.  That is the current opt-in mechanism.  To help you coded this,
-we have an example here[3].
+Thanks for your feedback.
 
 
-[1] https://github.com/xdp-project/xdp-project/blob/master/xdp-project.org#consistency-for-statistics-with-xdp
-[2] https://github.com/netoptimizer/network-testing/blob/master/bin/ethtool_stats.pl
-[3] https://github.com/xdp-project/xdp-tutorial/blob/master/common/xdp_stats_kern.h
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+On Sat, Jun 8, 2019 at 2:19 PM Jakub Kicinski
+<jakub.kicinski@netronome.com> wrote:
+>
+> On Fri, 7 Jun 2019 19:55:34 -0700, William Tu wrote:
+> > Hi,
+> >
+> > When using AF_XDP, the TC qdisc layer is by-passed and packets go to
+> > userspace directly. One problem is that there is no QoS support when
+> > using AF_XDP.
+> >
+> > For egress shaping, I'm thinking about using tc-mqprio, which has
+> > hardware offload support. And for OVS, we can add tc-mqprio support.
+>
+> What is your end game?  Once upon the time Simon was explaining the QoS
+
+I thought I could do s.t like
+1) combined to 1 queue only using ethtool
+2) using AF_XDP in OVS to send packets to queue0,
+3) program the mqprio to do some ratelimit, and set prio by SO_PRIORITY
+
+ex: use queue 0-1, 2-3,  and 4
+tc qdisc add dev eth3 root mqprio num_tc 3 map 0 0 0 0 1 1 1 2 queues
+2@0 2@2 1@4
+
+> stuff in OvS to me, but IIRC it used CBQ and/or HTB.  The XDP TX queues
+> are not exposed to the stack, so we can't set per-queue QoS, setting a
+> root Qdisc (like mqprio) and expecting the XDP queues to have the same
+> settings would be very limiting (then again even with mqprio IDK how
+> you'd select the prio? by using the TX queue ID? hm..).
+>
+I see.
+So the hw queues used by AF_XDP is the same queues used by QoS?
+Then I guess the above command won't work.
+
+> > For ingress policing, I don't know how to do it. Is there an hardware
+> > offload ingress policing support?
+>
+> There is support for act_police in a couple drivers.  Although using it
+> per queue could be a challenge...  (At least we do have a real queue ID
+> on the RX, hopefully the mlx5 fake queues never get merged.)
+
+Regards,
+William
