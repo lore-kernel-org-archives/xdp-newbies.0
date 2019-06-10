@@ -1,80 +1,77 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-it1-f198.google.com ([209.85.166.198]:59287 "EHLO
-        mail-it1-f198.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727081AbfFHLWG (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Sat, 8 Jun 2019 07:22:06 -0400
-Received: by mail-it1-f198.google.com with SMTP id l193so4301625ita.8
-        for <xdp-newbies@vger.kernel.org>; Sat, 08 Jun 2019 04:22:06 -0700 (PDT)
+Received: from mailout1.w1.samsung.com ([210.118.77.11]:37450 "EHLO
+        mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387808AbfFJIFr (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 10 Jun 2019 04:05:47 -0400
+Received: from eucas1p1.samsung.com (unknown [182.198.249.206])
+        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190610080545euoutp013e6728051b659cbdfafec243c82fd0b7~mx79Mtv0A3083030830euoutp01z
+        for <xdp-newbies@vger.kernel.org>; Mon, 10 Jun 2019 08:05:45 +0000 (GMT)
+Subject: Re: [PATCH bpf v2] xdp: fix hang while unregistering device bound
+ to xdp socket
+From: Ilya Maximets <i.maximets@samsung.com>
+Message-ID: <d8b2bc92-3b7e-dfe7-35ee-61a68d46ff02@samsung.com>
+Date: Mon, 10 Jun 2019 11:05:41 +0300
 MIME-Version: 1.0
-Date: Sat, 08 Jun 2019 04:22:06 -0700
-In-Reply-To: <000000000000e92d1805711f5552@google.com>
-Message-ID: <000000000000381684058ace28e5@google.com>
-Subject: Re: WARNING in bpf_jit_free
-From: syzbot <syzbot+2ff1e7cb738fd3c41113@syzkaller.appspotmail.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+In-Reply-To: <20190607163156.12cd3418@cakuba.netronome.com>
+Content-Language: en-GB
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+References: <CGME20190607173149eucas1p1d2ebedcab469ebd66acfe7c7dcd18d7e@eucas1p1.samsung.com>
+        <20190607173143.4919-1-i.maximets@samsung.com>
+        <20190607163156.12cd3418@cakuba.netronome.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: airlied@linux.ie, ast@kernel.org, bpf@vger.kernel.org, daniel@ffwll.ch, daniel@iogearbox.net, davem@davemloft.net, dri-devel@lists.freedesktop.org, hawk@kernel.org, jakub.kicinski@netronome.com, john.fastabend@gmail.com, kafai@fb.com, linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, maxime.ripard@bootlin.com, netdev@vger.kernel.org, paul.kocialkowski@bootlin.com, songliubraving@fb.com, syzkaller-bugs@googlegroups.com, wens@csie.org, xdp-newbies@vger.kernel.org, yhs@fb.com
+To: Jakub Kicinski <jakub.kicinski@netronome.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>
 
-syzbot has found a reproducer for the following crash on:
+On 08.06.2019 2:31, Jakub Kicinski wrote:
+> On Fri,  7 Jun 2019 20:31:43 +0300, Ilya Maximets wrote:
+>> +static int xsk_notifier(struct notifier_block *this,
+>> +			unsigned long msg, void *ptr)
+>> +{
+>> +	struct sock *sk;
+>> +	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+>> +	struct net *net = dev_net(dev);
+>> +	int i, unregister_count = 0;
+> 
+> Please order the var declaration lines longest to shortest.
+> (reverse christmas tree)
 
-HEAD commit:    79c3ba32 Merge tag 'drm-fixes-2019-06-07-1' of git://anong..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=1201b971a00000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=60564cb52ab29d5b
-dashboard link: https://syzkaller.appspot.com/bug?extid=2ff1e7cb738fd3c41113
-compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=14a3bf51a00000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=120d19f2a00000
+Hi.
+I'm not a fan of mixing 'struct's with bare types in the declarations.
+Moving the 'sk' to the third place will make a hole like this:
 
-The bug was bisected to:
+	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net *net = dev_net(dev);
+	struct sock *sk;
+	int i, unregister_count = 0;
 
-commit 0fff724a33917ac581b5825375d0b57affedee76
-Author: Paul Kocialkowski <paul.kocialkowski@bootlin.com>
-Date:   Fri Jan 18 14:51:13 2019 +0000
+Which is not looking good.
+Moving to the 4th place:
 
-     drm/sun4i: backend: Use explicit fourcc helpers for packed YUV422 check
+	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net *net = dev_net(dev);
+	int i, unregister_count = 0;
+	struct sock *sk;
 
-bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=1467550f200000
-final crash:    https://syzkaller.appspot.com/x/report.txt?x=1667550f200000
-console output: https://syzkaller.appspot.com/x/log.txt?x=1267550f200000
+This variant doesn't look good for me because of mixing 'struct's with
+bare integers.
 
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+2ff1e7cb738fd3c41113@syzkaller.appspotmail.com
-Fixes: 0fff724a3391 ("drm/sun4i: backend: Use explicit fourcc helpers for  
-packed YUV422 check")
+Do you think I need to use one of above variants?
 
-WARNING: CPU: 0 PID: 8951 at kernel/bpf/core.c:851 bpf_jit_free+0x157/0x1b0
-Kernel panic - not syncing: panic_on_warn set ...
-CPU: 0 PID: 8951 Comm: kworker/0:0 Not tainted 5.2.0-rc3+ #23
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
-Google 01/01/2011
-Workqueue: events bpf_prog_free_deferred
-Call Trace:
-  __dump_stack lib/dump_stack.c:77 [inline]
-  dump_stack+0x172/0x1f0 lib/dump_stack.c:113
-  panic+0x2cb/0x744 kernel/panic.c:219
-  __warn.cold+0x20/0x4d kernel/panic.c:576
-  report_bug+0x263/0x2b0 lib/bug.c:186
-  fixup_bug arch/x86/kernel/traps.c:179 [inline]
-  fixup_bug arch/x86/kernel/traps.c:174 [inline]
-  do_error_trap+0x11b/0x200 arch/x86/kernel/traps.c:272
-  do_invalid_op+0x37/0x50 arch/x86/kernel/traps.c:291
-  invalid_op+0x14/0x20 arch/x86/entry/entry_64.S:986
-RIP: 0010:bpf_jit_free+0x157/0x1b0
-Code: 00 fc ff df 48 89 fa 48 c1 ea 03 80 3c 02 00 75 5d 48 b8 00 02 00 00  
-00 00 ad de 48 39 43 70 0f 84 05 ff ff ff e8 f9 b5 f4 ff <0f> 0b e9 f9 fe  
-ff ff e8 bd 53 2d 00 e9 d9 fe ff ff 48 89 7d e0 e8
-RSP: 0018:ffff88808886fcb0 EFLAGS: 00010293
-RAX: ffff88808cb6c480 RBX: ffff88809051d280 RCX: ffffffff817ae68d
-RDX: 0000000000000000 RSI: ffffffff817bf0f7 RDI: ffff88809051d2f0
-RBP: ffff88808886fcd0 R08: 1ffffffff14ccaa8 R09: fffffbfff14ccaa9
-R10: fffffbfff14ccaa8 R11: ffffffff8a665547 R12: ffffc90001925000
-R13: ffff88809051d2e8 R14: ffff8880a0e43900 R15: ffff8880ae834840
-  bpf_prog_free_deferred+0x27a/0x350 kernel/bpf/core.c:1984
-  process_one_work+0x989/0x1790 kernel/workqueue.c:2269
-  worker_thread+0x98/0xe40 kernel/workqueue.c:2415
-  kthread+0x354/0x420 kernel/kthread.c:255
-  ret_from_fork+0x24/0x30 arch/x86/entry/entry_64.S:352
-Kernel Offset: disabled
-Rebooting in 86400 seconds..
+> 
+>> +	mutex_lock(&net->xdp.lock);
+>> +	sk_for_each(sk, &net->xdp.list) {
+>> +		struct xdp_sock *xs = xdp_sk(sk);
+>> +
+>> +		mutex_lock(&xs->mutex);
+>> +		switch (msg) {
+>> +		case NETDEV_UNREGISTER:
+> 
+> You should probably check the msg type earlier and not take all the
+> locks and iterate for other types..
+
+Yeah. I thought about it too. Will fix in the next version.
+
+Best regards, Ilya Maximets.
