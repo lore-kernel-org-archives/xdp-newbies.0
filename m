@@ -1,70 +1,171 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f171.google.com ([209.85.160.171]:40408 "EHLO
-        mail-qt1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387500AbfFJSYI (ORCPT
+Received: from mail-io1-f47.google.com ([209.85.166.47]:38202 "EHLO
+        mail-io1-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2404428AbfFKJS4 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 10 Jun 2019 14:24:08 -0400
-Received: by mail-qt1-f171.google.com with SMTP id a15so11564252qtn.7
-        for <xdp-newbies@vger.kernel.org>; Mon, 10 Jun 2019 11:24:07 -0700 (PDT)
+        Tue, 11 Jun 2019 05:18:56 -0400
+Received: by mail-io1-f47.google.com with SMTP id k13so9265939iop.5
+        for <xdp-newbies@vger.kernel.org>; Tue, 11 Jun 2019 02:18:56 -0700 (PDT)
 MIME-Version: 1.0
-References: <CALDO+SZ_y2crYSXGtFxQtk8zZz2X=Fr-rJTPr_zm6rbtD8h9iQ@mail.gmail.com>
- <20190608141948.65e77b75@cakuba.netronome.com>
-In-Reply-To: <20190608141948.65e77b75@cakuba.netronome.com>
-From: William Tu <u9012063@gmail.com>
-Date: Mon, 10 Jun 2019 11:23:29 -0700
-Message-ID: <CALDO+SbhtcZfK-re9JLyss8VoHaVJgyrH7tzgRkFK0OMK1JSVQ@mail.gmail.com>
-Subject: Re: AF_XDP with QoS support question
+References: <CAK6Qs9=ig3-PWKtSk7UJfm1gcWz9cSGYU7uDxxUw=xju5TtP9w@mail.gmail.com>
+ <20190610121540.36391dc3@carbon>
+In-Reply-To: <20190610121540.36391dc3@carbon>
+From: =?UTF-8?Q?=C4=B0brahim_Ercan?= <ibrahim.metu@gmail.com>
+Date: Tue, 11 Jun 2019 12:18:44 +0300
+Message-ID: <CAK6Qs9mdViRXL5BhafcUdv06inVF0ZuciBX1zPNasRYw3We9-g@mail.gmail.com>
+Subject: Re: ethtool isn't showing xdp statistics
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jakub Kicinski <jakub.kicinski@netronome.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>, "<dev@openvswitch.org>" <dev@openvswitch.org>
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: xdp-newbies@vger.kernel.org, David Ahern <dsahern@gmail.com>
 
-Hi Jakub,
+Thanks for the clarification.
+I used ethtool_stats.pl script and realized total dropped packets are
+sum of fdir_miss and rx_missed_errors.
+Here I observed sometimes fdir_miss increase to 1-2m and
+rx_missed_errors drop about same amount but their total not change.
 
-Thanks for your feedback.
+Show adapter(s) (enp7s0f0) statistics (ONLY that changed!)
+Ethtool(enp7s0f0) stat:       153818 (        153,818) <=3D fdir_miss /sec
+Ethtool(enp7s0f0) stat:      9060176 (      9,060,176) <=3D rx_bytes /sec
+Ethtool(enp7s0f0) stat:    946625059 (    946,625,059) <=3D rx_bytes_nic /s=
+ec
+Ethtool(enp7s0f0) stat:     14694930 (     14,694,930) <=3D rx_missed_error=
+s /sec
+
+As you can see, In my tests I dropped about 15m packets successfully.
+After that I did some latency tests and get some bad results.
+I loaded a xdp code that drops only udp packets. I connected 2 packet
+sender through a switch. One of them I sent flood udp ddos. From other
+one I just send ping and observed latency.
+Here is results.
+latency when there is no attack.
+
+# ping -c 10 10.0.0.213
+PING 10.0.0.213 (10.0.0.213) 56(84) bytes of data.
+64 bytes from 10.0.0.213: icmp_seq=3D1 ttl=3D64 time=3D0.794 ms
+64 bytes from 10.0.0.213: icmp_seq=3D2 ttl=3D64 time=3D0.435 ms
+64 bytes from 10.0.0.213: icmp_seq=3D3 ttl=3D64 time=3D0.394 ms
+64 bytes from 10.0.0.213: icmp_seq=3D4 ttl=3D64 time=3D0.387 ms
+64 bytes from 10.0.0.213: icmp_seq=3D5 ttl=3D64 time=3D0.479 ms
+64 bytes from 10.0.0.213: icmp_seq=3D6 ttl=3D64 time=3D0.487 ms
+64 bytes from 10.0.0.213: icmp_seq=3D7 ttl=3D64 time=3D0.458 ms
+64 bytes from 10.0.0.213: icmp_seq=3D8 ttl=3D64 time=3D0.536 ms
+64 bytes from 10.0.0.213: icmp_seq=3D9 ttl=3D64 time=3D0.499 ms
+64 bytes from 10.0.0.213: icmp_seq=3D10 ttl=3D64 time=3D0.391 ms
+
+--- 10.0.0.213 ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time 9202ms
+rtt min/avg/max/mdev =3D 0.387/0.486/0.794/0.113 ms
 
 
-On Sat, Jun 8, 2019 at 2:19 PM Jakub Kicinski
-<jakub.kicinski@netronome.com> wrote:
+latency when there is 150k attack
+
+# ping -c 10 10.0.0.213
+PING 10.0.0.213 (10.0.0.213) 56(84) bytes of data.
+64 bytes from 10.0.0.213: icmp_seq=3D1 ttl=3D64 time=3D43.4 ms
+64 bytes from 10.0.0.213: icmp_seq=3D2 ttl=3D64 time=3D8.26 ms
+64 bytes from 10.0.0.213: icmp_seq=3D4 ttl=3D64 time=3D47.1 ms
+64 bytes from 10.0.0.213: icmp_seq=3D5 ttl=3D64 time=3D2.51 ms
+64 bytes from 10.0.0.213: icmp_seq=3D6 ttl=3D64 time=3D1.43 ms
+64 bytes from 10.0.0.213: icmp_seq=3D7 ttl=3D64 time=3D40.6 ms
+64 bytes from 10.0.0.213: icmp_seq=3D8 ttl=3D64 time=3D44.2 ms
+64 bytes from 10.0.0.213: icmp_seq=3D9 ttl=3D64 time=3D38.0 ms
+64 bytes from 10.0.0.213: icmp_seq=3D10 ttl=3D64 time=3D50.5 ms
+
+--- 10.0.0.213 ping statistics ---
+10 packets transmitted, 9 received, 10% packet loss, time 9060ms
+
+latency when there is 800k attack
+
+# ping -c 10 10.0.0.213
+PING 10.0.0.213 (10.0.0.213) 56(84) bytes of data.
+64 bytes from 10.0.0.213: icmp_seq=3D4 ttl=3D64 time=3D0.395 ms
+64 bytes from 10.0.0.213: icmp_seq=3D5 ttl=3D64 time=3D0.359 ms
+64 bytes from 10.0.0.213: icmp_seq=3D8 ttl=3D64 time=3D30.3 ms
+
+--- 10.0.0.213 ping statistics ---
+10 packets transmitted, 3 received, 70% packet loss, time 9246ms
+rtt min/avg/max/mdev =3D 0.359/10.376/30.376/14.142 ms
+
+latency when there is 1.6m attack
+
+# ping -c 10 10.0.0.213
+PING 10.0.0.213 (10.0.0.213) 56(84) bytes of data.
+64 bytes from 10.0.0.213: icmp_seq=3D2 ttl=3D64 time=3D34.7 ms
+
+--- 10.0.0.213 ping statistics ---
+10 packets transmitted, 1 received, 90% packet loss, time 9205ms
+rtt min/avg/max/mdev =3D 34.756/34.756/34.756/0.000 ms
+
+latency when there is 2.4m attack
+
+# ping -c 10 10.0.0.213
+PING 10.0.0.213 (10.0.0.213) 56(84) bytes of data.
+From 10.0.0.214 icmp_seq=3D10 Destination Host Unreachable
+
+--- 10.0.0.213 ping statistics ---
+10 packets transmitted, 0 received, +1 errors, 100% packet loss, time 9229m=
+s
+
+After that all ping stop as you can see. I don't know how to debug
+that latency. I believe I need to do some tuning but I don't know what
+it is. I tried to enable jit but nothing changed.
+If xdp cause this latency, than it is useless for me. Can you help me
+to understand its cause?
+
+On Mon, Jun 10, 2019 at 1:15 PM Jesper Dangaard Brouer
+<brouer@redhat.com> wrote:
 >
-> On Fri, 7 Jun 2019 19:55:34 -0700, William Tu wrote:
-> > Hi,
+> On Mon, 10 Jun 2019 12:55:07 +0300
+> =C4=B0brahim Ercan <ibrahim.metu@gmail.com> wrote:
+>
+> > Hi.
+> > I'm trying to do a xdp performance test on redhat based environment.
+> > To do so, I compiled kernel 5.0.13 and iproute 4.6.0
+> > Then I loaded compiled code to interface with below command.
+> > #ip -force link set dev enp7s0f0 xdp object xdptest.o
 > >
-> > When using AF_XDP, the TC qdisc layer is by-passed and packets go to
-> > userspace directly. One problem is that there is no QoS support when
-> > using AF_XDP.
+> > After that packets dropped as expected but I can not see statistics
+> > with ethtool command like below.
+> > #ethtool -S enp7s0f0 | grep xdp
 > >
-> > For egress shaping, I'm thinking about using tc-mqprio, which has
-> > hardware offload support. And for OVS, we can add tc-mqprio support.
+> > ethtool version is 4.8
+> > I did my test with that NIC
+> > Intel Corporation 82599ES 10-Gigabit SFI/SFP+ Network Connection (rev 0=
+1)
+> >
+> > I wonder why I can't see statistics. Did I miss something while
+> > compiling kernel or iproute? Should I also compile ethtool too?
 >
-> What is your end game?  Once upon the time Simon was explaining the QoS
-
-I thought I could do s.t like
-1) combined to 1 queue only using ethtool
-2) using AF_XDP in OVS to send packets to queue0,
-3) program the mqprio to do some ratelimit, and set prio by SO_PRIORITY
-
-ex: use queue 0-1, 2-3,  and 4
-tc qdisc add dev eth3 root mqprio num_tc 3 map 0 0 0 0 1 1 1 2 queues
-2@0 2@2 1@4
-
-> stuff in OvS to me, but IIRC it used CBQ and/or HTB.  The XDP TX queues
-> are not exposed to the stack, so we can't set per-queue QoS, setting a
-> root Qdisc (like mqprio) and expecting the XDP queues to have the same
-> settings would be very limiting (then again even with mqprio IDK how
-> you'd select the prio? by using the TX queue ID? hm..).
+> You did nothing wrong. Consistency for statistics with XDP is a known
+> issue, see [1].  The behavior varies per driver, which obviously is bad
+> from a user perspective.  You NIC is based on ixgbe driver, which don't
+> have ethtool stats counters for XDP, instead it actually updates
+> ifconfig counters correctly. While for mlx5 it's opposite (p.s. I use
+> this[2] ethtool stats tool).
 >
-I see.
-So the hw queues used by AF_XDP is the same queues used by QoS?
-Then I guess the above command won't work.
-
-> > For ingress policing, I don't know how to do it. Is there an hardware
-> > offload ingress policing support?
+> We want to bring consistency in this area, but there are performance
+> concerns.  As any stat counter will bring overhead, and XDP is all
+> about maximum performance.  Thus, we want this counter overhead to be
+> opt-in (that is not on as default).
 >
-> There is support for act_police in a couple drivers.  Although using it
-> per queue could be a challenge...  (At least we do have a real queue ID
-> on the RX, hopefully the mlx5 fake queues never get merged.)
-
-Regards,
-William
+> Currently you have to add the stats your want to the XDP/BPF program
+> itself.  That is the current opt-in mechanism.  To help you coded this,
+> we have an example here[3].
+>
+>
+> [1] https://github.com/xdp-project/xdp-project/blob/master/xdp-project.or=
+g#consistency-for-statistics-with-xdp
+> [2] https://github.com/netoptimizer/network-testing/blob/master/bin/ethto=
+ol_stats.pl
+> [3] https://github.com/xdp-project/xdp-tutorial/blob/master/common/xdp_st=
+ats_kern.h
+> --
+> Best regards,
+>   Jesper Dangaard Brouer
+>   MSc.CS, Principal Kernel Engineer at Red Hat
+>   LinkedIn: http://www.linkedin.com/in/brouer
+>
