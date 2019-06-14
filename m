@@ -1,17 +1,17 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ed1-f67.google.com ([209.85.208.67]:39000 "EHLO
-        mail-ed1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727083AbfFNLE4 (ORCPT
+Received: from mail-lj1-f196.google.com ([209.85.208.196]:37398 "EHLO
+        mail-lj1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727262AbfFNLHp (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 14 Jun 2019 07:04:56 -0400
-Received: by mail-ed1-f67.google.com with SMTP id m10so2923281edv.6
-        for <xdp-newbies@vger.kernel.org>; Fri, 14 Jun 2019 04:04:55 -0700 (PDT)
+        Fri, 14 Jun 2019 07:07:45 -0400
+Received: by mail-lj1-f196.google.com with SMTP id 131so1981357ljf.4
+        for <xdp-newbies@vger.kernel.org>; Fri, 14 Jun 2019 04:07:44 -0700 (PDT)
 From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-Subject: Re: [PATCH bpf 1/3] devmap: Fix premature entry free on destroying map
-In-Reply-To: <20190614082015.23336-2-toshiaki.makita1@gmail.com>
-References: <20190614082015.23336-1-toshiaki.makita1@gmail.com> <20190614082015.23336-2-toshiaki.makita1@gmail.com>
-Date: Fri, 14 Jun 2019 13:04:53 +0200
-Message-ID: <877e9octre.fsf@toke.dk>
+Subject: Re: [PATCH bpf 3/3] devmap: Add missing RCU read lock on flush
+In-Reply-To: <20190614082015.23336-4-toshiaki.makita1@gmail.com>
+References: <20190614082015.23336-1-toshiaki.makita1@gmail.com> <20190614082015.23336-4-toshiaki.makita1@gmail.com>
+Date: Fri, 14 Jun 2019 13:07:42 +0200
+Message-ID: <874l4sctmp.fsf@toke.dk>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: xdp-newbies-owner@vger.kernel.org
@@ -21,27 +21,17 @@ Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, "M
 
 Toshiaki Makita <toshiaki.makita1@gmail.com> writes:
 
-> dev_map_free() waits for flush_needed bitmap to be empty in order to
-> ensure all flush operations have completed before freeing its entries.
-> However the corresponding clear_bit() was called before using the
-> entries, so the entries could be used after free.
+> .ndo_xdp_xmit() assumes it is called under RCU. For example virtio_net
+> uses RCU to detect it has setup the resources for tx. The assumption
+> accidentally broke when introducing bulk queue in devmap.
 >
-> All access to the entries needs to be done before clearing the bit.
-> It seems commit a5e2da6e9787 ("bpf: netdev is never null in
-> __dev_map_flush") accidentally changed the clear_bit() and memory access
-> order.
->
-> Note that the problem happens only in __dev_map_flush(), not in
-> dev_map_flush_old(). dev_map_flush_old() is called only after nulling
-> out the corresponding netdev_map entry, so dev_map_free() never frees
-> the entry thus no such race happens there.
->
-> Fixes: a5e2da6e9787 ("bpf: netdev is never null in __dev_map_flush")
+> Fixes: 5d053f9da431 ("bpf: devmap prepare xdp frames for bulking")
+> Reported-by: David Ahern <dsahern@gmail.com>
 > Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
+> ---
 
-I recently posted a patch[0] that gets rid of the bitmap entirely, so I
-think you can drop this one...
+I think this is still needed, but the patch context is going to conflict
+with the patch I linked above... I guess it's up to the maintainers to
+decide which order to merge them in :)
 
 -Toke
-
-[0] https://lore.kernel.org/netdev/156042464148.25684.11881534392137955942.stgit@alrua-x1/
