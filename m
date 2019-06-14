@@ -1,13 +1,13 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf1-f193.google.com ([209.85.210.193]:38124 "EHLO
-        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726381AbfFNIUb (ORCPT
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:43336 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726655AbfFNIUh (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 14 Jun 2019 04:20:31 -0400
+        Fri, 14 Jun 2019 04:20:37 -0400
 From: Toshiaki Makita <toshiaki.makita1@gmail.com>
-Subject: [PATCH bpf 1/3] devmap: Fix premature entry free on destroying map
-Date: Fri, 14 Jun 2019 17:20:13 +0900
-Message-Id: <20190614082015.23336-2-toshiaki.makita1@gmail.com>
+Subject: [PATCH bpf 3/3] devmap: Add missing RCU read lock on flush
+Date: Fri, 14 Jun 2019 17:20:15 +0900
+Message-Id: <20190614082015.23336-4-toshiaki.makita1@gmail.com>
 In-Reply-To: <20190614082015.23336-1-toshiaki.makita1@gmail.com>
 References: <20190614082015.23336-1-toshiaki.makita1@gmail.com>
 MIME-Version: 1.0
@@ -17,41 +17,50 @@ List-ID: <xdp-newbies.vger.kernel.org>
 To: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>
 Cc: Toshiaki Makita <toshiaki.makita1@gmail.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, "Michael S. Tsirkin" <mst@redhat.com>, Jason Wang <jasowang@redhat.com>, David Ahern <dsahern@gmail.com>
 
-dev_map_free() waits for flush_needed bitmap to be empty in order to
-ensure all flush operations have completed before freeing its entries.
-However the corresponding clear_bit() was called before using the
-entries, so the entries could be used after free.
+.ndo_xdp_xmit() assumes it is called under RCU. For example virtio_net
+uses RCU to detect it has setup the resources for tx. The assumption
+accidentally broke when introducing bulk queue in devmap.
 
-All access to the entries needs to be done before clearing the bit.
-It seems commit a5e2da6e9787 ("bpf: netdev is never null in
-__dev_map_flush") accidentally changed the clear_bit() and memory access
-order.
-
-Note that the problem happens only in __dev_map_flush(), not in
-dev_map_flush_old(). dev_map_flush_old() is called only after nulling
-out the corresponding netdev_map entry, so dev_map_free() never frees
-the entry thus no such race happens there.
-
-Fixes: a5e2da6e9787 ("bpf: netdev is never null in __dev_map_flush")
+Fixes: 5d053f9da431 ("bpf: devmap prepare xdp frames for bulking")
+Reported-by: David Ahern <dsahern@gmail.com>
 Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
 ---
- kernel/bpf/devmap.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ kernel/bpf/devmap.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
-index 1e525d7..e001fb1 100644
+index a126d95..1defea4 100644
 --- a/kernel/bpf/devmap.c
 +++ b/kernel/bpf/devmap.c
-@@ -291,10 +291,10 @@ void __dev_map_flush(struct bpf_map *map)
- 		if (unlikely(!dev))
- 			continue;
+@@ -282,6 +282,7 @@ void __dev_map_flush(struct bpf_map *map)
+ 	unsigned long *bitmap = this_cpu_ptr(dtab->flush_needed);
+ 	u32 bit;
  
--		__clear_bit(bit, bitmap);
--
- 		bq = this_cpu_ptr(dev->bulkq);
- 		bq_xmit_all(dev, bq, XDP_XMIT_FLUSH, true);
-+
-+		__clear_bit(bit, bitmap);
++	rcu_read_lock();
+ 	for_each_set_bit(bit, bitmap, map->max_entries) {
+ 		struct bpf_dtab_netdev *dev = READ_ONCE(dtab->netdev_map[bit]);
+ 		struct xdp_bulk_queue *bq;
+@@ -297,6 +298,7 @@ void __dev_map_flush(struct bpf_map *map)
+ 
+ 		__clear_bit(bit, bitmap);
+ 	}
++	rcu_read_unlock();
+ }
+ 
+ /* rcu_read_lock (from syscall and BPF contexts) ensures that if a delete and/or
+@@ -389,6 +391,7 @@ static void dev_map_flush_old(struct bpf_dtab_netdev *dev)
+ 
+ 		int cpu;
+ 
++		rcu_read_lock();
+ 		for_each_online_cpu(cpu) {
+ 			bitmap = per_cpu_ptr(dev->dtab->flush_needed, cpu);
+ 			__clear_bit(dev->bit, bitmap);
+@@ -396,6 +399,7 @@ static void dev_map_flush_old(struct bpf_dtab_netdev *dev)
+ 			bq = per_cpu_ptr(dev->bulkq, cpu);
+ 			bq_xmit_all(dev, bq, XDP_XMIT_FLUSH, false);
+ 		}
++		rcu_read_unlock();
  	}
  }
  
