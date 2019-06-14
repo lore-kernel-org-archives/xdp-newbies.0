@@ -1,59 +1,57 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from fm1nodo5.polito.it ([130.192.180.18]:59628 "EHLO
-        fm1nodo5.polito.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732343AbfFMN5G (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 13 Jun 2019 09:57:06 -0400
-Received: from polito.it (frontmail1.polito.it [130.192.180.41])
-        by fm1nodo5.polito.it  with ESMTP id x5DDv3Jv012022-x5DDv3Jx012022
-        (version=TLSv1.0 cipher=ECDHE-RSA-AES256-SHA bits=256 verify=CAFAIL)
-        for <xdp-newbies@vger.kernel.org>; Thu, 13 Jun 2019 15:57:03 +0200
-Received: from mail-io1-f48.google.com (account d038154@polito.it [209.85.166.48] verified)
-  by polito.it (CommuniGate Pro SMTP 6.2.5)
-  with ESMTPSA id 157095292 for xdp-newbies@vger.kernel.org; Thu, 13 Jun 2019 15:57:03 +0200
-Received: by mail-io1-f48.google.com with SMTP id k13so17050343iop.5
-        for <xdp-newbies@vger.kernel.org>; Thu, 13 Jun 2019 06:57:03 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:36736 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727054AbfFNL6V (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 14 Jun 2019 07:58:21 -0400
+Date: Fri, 14 Jun 2019 13:58:06 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: [PATCH bpf 2/3] devmap: Add missing bulk queue free
+Message-ID: <20190614135806.4bcb1a31@carbon>
+In-Reply-To: <20190614082015.23336-3-toshiaki.makita1@gmail.com>
+References: <20190614082015.23336-1-toshiaki.makita1@gmail.com>
+        <20190614082015.23336-3-toshiaki.makita1@gmail.com>
 MIME-Version: 1.0
-References: <CAPyJoHm0i1g_F8qcZWCifFtSEv10PFS4du_Nx35g+ztFvPwkgw@mail.gmail.com>
- <CAMENy5pTvJnij++qLmEpXYsB-3991AZ7pBHDaFKjcVBrJJ664w@mail.gmail.com> <CAPyJoH=5rcpGjX=J+ZSvMydAh4Ygm5hDoKiuEefGayccGgq0GA@mail.gmail.com>
-In-Reply-To: <CAPyJoH=5rcpGjX=J+ZSvMydAh4Ygm5hDoKiuEefGayccGgq0GA@mail.gmail.com>
-From: Sebastiano Miano <sebastiano.miano@polito.it>
-Date: Thu, 13 Jun 2019 14:56:49 +0100
-Message-ID: <CAMENy5pkU7EnUph64fvemadMdAcu+n4W6VDZ0Sr=BqkOcmGBCQ@mail.gmail.com>
-Subject: Re: Measuring performance of BPF programs
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Matheus Salgueiro Castanho <matheus.castanho@dcc.ufmg.br>
-Cc: xdp-newbies@vger.kernel.org
+To: Toshiaki Makita <toshiaki.makita1@gmail.com>
+Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, "Michael S. Tsirkin" <mst@redhat.com>, Jason Wang <jasowang@redhat.com>, David Ahern <dsahern@gmail.com>, brouer@redhat.com
 
-On Thu, Jun 13, 2019 at 1:56 PM Matheus Salgueiro Castanho
-<matheus.castanho@dcc.ufmg.br> wrote:
->
-> Hi Sebastiano,
->
-> Thanks for the tip. Right now I'm using kernel 5.0, so I tried the
-> second option with 'perf record' + 'perf report', and it gave me
-> exactly what I needed.
->
-> After installing the kernel symbols I'm able to see all function
-> calls, including calls to cls_bpf_classify() and
-> bpf_xdp_adjust_head(), but I don't see any symbols with the format you
-> said.
->
-> Am I missing some symbol packages?
+On Fri, 14 Jun 2019 17:20:14 +0900
+Toshiaki Makita <toshiaki.makita1@gmail.com> wrote:
 
-Could you please try with a newer kernel (e.g., v5.1)? I guess this
-has been added recently, although I am not able to find the
-corresponding patch.
-Moreover, make sure you first run 'perf record -ag' and then load the
-corresponding eBPF program.
+> dev_map_free() forgot to free bulk queue when freeing its entries.
+> 
+> Fixes: 5d053f9da431 ("bpf: devmap prepare xdp frames for bulking")
+> Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
+> ---
+>  kernel/bpf/devmap.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
+> index e001fb1..a126d95 100644
+> --- a/kernel/bpf/devmap.c
+> +++ b/kernel/bpf/devmap.c
+> @@ -186,6 +186,7 @@ static void dev_map_free(struct bpf_map *map)
+>  		if (!dev)
+>  			continue;
+>  
+> +		free_percpu(dev->bulkq);
+>  		dev_put(dev->dev);
+>  		kfree(dev);
+>  	}
 
-Hope this helps.
+Do we need to call need to call dev_map_flush_old() before
+free_percpu(dev->bulkq) ?
 
-Cheers,
-Sebastiano
+Looking the code, I guess this is not needed as, above we are ensuring
+all pending flush operations have completed.
 
->
-> Thanks,
-> Matheus Castanho
+Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
