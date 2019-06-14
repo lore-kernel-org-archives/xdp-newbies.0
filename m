@@ -1,63 +1,63 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg1-f196.google.com ([209.85.215.196]:46279 "EHLO
-        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726874AbfFNNEE (ORCPT
+Received: from mail-lj1-f193.google.com ([209.85.208.193]:44024 "EHLO
+        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727937AbfFNNJs (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 14 Jun 2019 09:04:04 -0400
-Subject: Re: [PATCH bpf 2/3] devmap: Add missing bulk queue free
-References: <20190614082015.23336-1-toshiaki.makita1@gmail.com>
- <20190614082015.23336-3-toshiaki.makita1@gmail.com>
- <20190614135806.4bcb1a31@carbon>
-From: Toshiaki Makita <toshiaki.makita1@gmail.com>
-Message-ID: <4ab32fa0-0c79-79c7-141b-9620f844d23b@gmail.com>
-Date: Fri, 14 Jun 2019 22:03:57 +0900
+        Fri, 14 Jun 2019 09:09:48 -0400
+Received: by mail-lj1-f193.google.com with SMTP id 16so2320826ljv.10
+        for <xdp-newbies@vger.kernel.org>; Fri, 14 Jun 2019 06:09:47 -0700 (PDT)
+From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Subject: Re: [PATCH bpf 1/3] devmap: Fix premature entry free on destroying map
+In-Reply-To: <fb895684-c863-e580-f36a-30722c480b41@gmail.com>
+References: <20190614082015.23336-1-toshiaki.makita1@gmail.com> <20190614082015.23336-2-toshiaki.makita1@gmail.com> <877e9octre.fsf@toke.dk> <87sgscbc5d.fsf@toke.dk> <fb895684-c863-e580-f36a-30722c480b41@gmail.com>
+Date: Fri, 14 Jun 2019 15:09:44 +0200
+Message-ID: <87muikb9ev.fsf@toke.dk>
 MIME-Version: 1.0
-In-Reply-To: <20190614135806.4bcb1a31@carbon>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, "Michael S. Tsirkin" <mst@redhat.com>, Jason Wang <jasowang@redhat.com>, David Ahern <dsahern@gmail.com>
+To: Toshiaki Makita <toshiaki.makita1@gmail.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>
+Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, "Michael S. Tsirkin" <mst@redhat.com>, Jason Wang <jasowang@redhat.com>, David Ahern <dsahern@gmail.com>
 
-On 19/06/14 (金) 20:58:06, Jesper Dangaard Brouer wrote:
-> On Fri, 14 Jun 2019 17:20:14 +0900
-> Toshiaki Makita <toshiaki.makita1@gmail.com> wrote:
-> 
->> dev_map_free() forgot to free bulk queue when freeing its entries.
->>
->> Fixes: 5d053f9da431 ("bpf: devmap prepare xdp frames for bulking")
->> Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
->> ---
->>   kernel/bpf/devmap.c | 1 +
->>   1 file changed, 1 insertion(+)
->>
->> diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
->> index e001fb1..a126d95 100644
->> --- a/kernel/bpf/devmap.c
->> +++ b/kernel/bpf/devmap.c
->> @@ -186,6 +186,7 @@ static void dev_map_free(struct bpf_map *map)
->>   		if (!dev)
->>   			continue;
->>   
->> +		free_percpu(dev->bulkq);
->>   		dev_put(dev->dev);
->>   		kfree(dev);
->>   	}
-> 
-> Do we need to call need to call dev_map_flush_old() before
-> free_percpu(dev->bulkq) ?
-> 
-> Looking the code, I guess this is not needed as, above we are ensuring
-> all pending flush operations have completed.
+Toshiaki Makita <toshiaki.makita1@gmail.com> writes:
 
-My understanding is the same. The code waits for NAPI to flush the 
-queue, so no need for dev_map_flush_old().
+> On 19/06/14 (金) 21:10:38, Toke Høiland-Jørgensen wrote:
+>> Toke Høiland-Jørgensen <toke@redhat.com> writes:
+>> 
+>>> Toshiaki Makita <toshiaki.makita1@gmail.com> writes:
+>>>
+>>>> dev_map_free() waits for flush_needed bitmap to be empty in order to
+>>>> ensure all flush operations have completed before freeing its entries.
+>>>> However the corresponding clear_bit() was called before using the
+>>>> entries, so the entries could be used after free.
+>>>>
+>>>> All access to the entries needs to be done before clearing the bit.
+>>>> It seems commit a5e2da6e9787 ("bpf: netdev is never null in
+>>>> __dev_map_flush") accidentally changed the clear_bit() and memory access
+>>>> order.
+>>>>
+>>>> Note that the problem happens only in __dev_map_flush(), not in
+>>>> dev_map_flush_old(). dev_map_flush_old() is called only after nulling
+>>>> out the corresponding netdev_map entry, so dev_map_free() never frees
+>>>> the entry thus no such race happens there.
+>>>>
+>>>> Fixes: a5e2da6e9787 ("bpf: netdev is never null in __dev_map_flush")
+>>>> Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
+>>>
+>>> I recently posted a patch[0] that gets rid of the bitmap entirely, so I
+>>> think you can drop this one...
+>> 
+>> Alternatively, since this entire series should probably go to stable, I
+>> can respin mine on top of it?
+>
+> Indeed conflict will happen, as this is for 'bpf' not 'bpf-next'.
+> Sorry for disturbing your work.
 
-> 
-> Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Oh, no worries!
 
-Thanks!
+> I'm also not sure how to proceed in this case.
 
-Toshiaki Makita
+I guess we'll leave that up to the maintainers :)
+
+-Toke
