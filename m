@@ -1,40 +1,54 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from home.regit.org ([37.187.126.138]:55598 "EHLO home.regit.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726302AbfFQKZS (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 17 Jun 2019 06:25:18 -0400
-Received: from infra1.stamus-networks.com ([91.121.107.192] helo=[10.24.24.5])
-        by home.regit.org with esmtpsa (TLS1.2:ECDHE_RSA_AES_256_GCM_SHA384:256)
-        (Exim 4.89)
-        (envelope-from <eric@regit.org>)
-        id 1hcoQl-0004Rm-Vp
-        for xdp-newbies@vger.kernel.org; Mon, 17 Jun 2019 12:00:05 +0200
-Message-ID: <86f135475a7820adadb05e7ac9a05c71846bebd6.camel@regit.org>
-Subject: AF_XDP and packet timestamp
-From: Eric Leblond <eric@regit.org>
-Date: Mon, 17 Jun 2019 12:00:02 +0200
-Content-Type: text/plain; charset="ISO-8859-15"
+Received: from mail-wr1-f65.google.com ([209.85.221.65]:45224 "EHLO
+        mail-wr1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726174AbfFQK5O (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 17 Jun 2019 06:57:14 -0400
+Received: by mail-wr1-f65.google.com with SMTP id f9so9383503wre.12
+        for <xdp-newbies@vger.kernel.org>; Mon, 17 Jun 2019 03:57:12 -0700 (PDT)
+Date: Mon, 17 Jun 2019 13:57:09 +0300
+From: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Subject: Re: AF_XDP and packet timestamp
+Message-ID: <20190617105709.GA7734@apalos>
+References: <86f135475a7820adadb05e7ac9a05c71846bebd6.camel@regit.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <86f135475a7820adadb05e7ac9a05c71846bebd6.camel@regit.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: xdp-newbies@vger.kernel.org
+To: Eric Leblond <eric@regit.org>
+Cc: xdp-newbies@vger.kernel.org
 
-Hello,
+Hi Eric, 
 
-I did start to work on AF_XDP support for Suricata. API was really easy
-to use via libbpf.
+> Hello,
+> 
+> I did start to work on AF_XDP support for Suricata. API was really easy
+> to use via libbpf.
+> 
+> From Suricata point of view, the current system with default
+> configuration is lacking an important information. I don't have access
+> to the timestamp of the packet. I'm in particular interested by the
+> hardware timestamp as it would allow to do reordering in some capture
+> cases.
+There's no timestamp available to my knowledge
+> 
+> Is there a way to get the information via AF_XDP. I've seen the
+> discussion on hardware hints but there was no code example I was able
+> to find. 
+This is an awful hack i did when i needed similar information [1]
+Essentially i am copying a software 'timestamp' (in my case rdtsc() since i
+needed to measure packet timings from AF_XDP -> userspace), into the meta_data
+of XDP.
+The way i did it is obviously wrong since it has to be added per driver.
+> 
+> BR,
+> -- 
+> Eric Leblond <eric@regit.org>
+> 
 
-From Suricata point of view, the current system with default
-configuration is lacking an important information. I don't have access
-to the timestamp of the packet. I'm in particular interested by the
-hardware timestamp as it would allow to do reordering in some capture
-cases.
+[1] https://github.com/xdp-project/xdp-project/blob/master/areas/arm64/xdp_for_tsn.org
 
-Is there a way to get the information via AF_XDP. I've seen the
-discussion on hardware hints but there was no code example I was able
-to find. 
-
-BR,
--- 
-Eric Leblond <eric@regit.org>
+Cheers
+/Ilias
