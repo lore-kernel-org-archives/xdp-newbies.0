@@ -1,99 +1,65 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f178.google.com ([209.85.160.178]:34900 "EHLO
-        mail-qt1-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725913AbfFRMvX (ORCPT
+Received: from mail-qt1-f175.google.com ([209.85.160.175]:43714 "EHLO
+        mail-qt1-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728575AbfFRO0Q (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 18 Jun 2019 08:51:23 -0400
-Received: by mail-qt1-f178.google.com with SMTP id d23so15098702qto.2
-        for <xdp-newbies@vger.kernel.org>; Tue, 18 Jun 2019 05:51:22 -0700 (PDT)
+        Tue, 18 Jun 2019 10:26:16 -0400
+Received: by mail-qt1-f175.google.com with SMTP id w17so9122242qto.10
+        for <xdp-newbies@vger.kernel.org>; Tue, 18 Jun 2019 07:26:16 -0700 (PDT)
 MIME-Version: 1.0
 References: <CALDO+SYgZ1ZJx31iU+ZNnd5v3-V0kWwT3nqk+X6NuD8VWk1Tnw@mail.gmail.com>
-In-Reply-To: <CALDO+SYgZ1ZJx31iU+ZNnd5v3-V0kWwT3nqk+X6NuD8VWk1Tnw@mail.gmail.com>
-From: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
-Date: Tue, 18 Jun 2019 14:51:11 +0200
-Message-ID: <CAJ+HfNgr-39L1-Q5w3pw4WOGqKs_F-vZP6Yj37s9EiJD_BQ7GQ@mail.gmail.com>
+ <CAJ+HfNgr-39L1-Q5w3pw4WOGqKs_F-vZP6Yj37s9EiJD_BQ7GQ@mail.gmail.com>
+In-Reply-To: <CAJ+HfNgr-39L1-Q5w3pw4WOGqKs_F-vZP6Yj37s9EiJD_BQ7GQ@mail.gmail.com>
+From: William Tu <u9012063@gmail.com>
+Date: Tue, 18 Jun 2019 07:25:39 -0700
+Message-ID: <CALDO+Sadm5JEqUw_1Toc52Z9+GyPe25iAJbtN=7AtTTQg_JB6Q@mail.gmail.com>
 Subject: Re: Question/Bug about AF_XDP idx_cq from xsk_ring_cons__peek?
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: William Tu <u9012063@gmail.com>
+To: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
 Cc: Xdp <xdp-newbies@vger.kernel.org>, "Karlsson, Magnus" <magnus.karlsson@intel.com>
 
-On Sat, 15 Jun 2019 at 01:25, William Tu <u9012063@gmail.com> wrote:
+On Tue, Jun 18, 2019 at 5:51 AM Bj=C3=B6rn T=C3=B6pel <bjorn.topel@gmail.co=
+m> wrote:
 >
-> Hi,
+> On Sat, 15 Jun 2019 at 01:25, William Tu <u9012063@gmail.com> wrote:
+> >
+> > Hi,
+> >
+> > In my implementation[1], I'm doing s.t like
+> >     tx_done =3D xsk_ring_cons__peek(&xsk->umem->cq, BATCH_SIZE, &idx_cq=
+);
+> >     if (tx_done > 0) {
+> >         xsk_ring_cons__release(&xsk->umem->cq, tx_done);
+> >         xsk->outstanding_tx -=3D tx_done;
+> >     }
+> >
+> > I expect if tx_done returns 32, then after calling xsk_ring_cons__relea=
+se,
+> > the next time I call xsk_ring_cons__peek, I should get idx_cq + 32.
+> > However, sometimes I see the same value of idx_cq is returned as previo=
+us, even
+> > when tx_done > 0. Is this the expected behavior?
+> >
+> > I experiment with xdpsock_user.c with the patch below and run
+> > ~/bpf-next/samples/bpf# ./xdpsock -l -N -z -i eth3
+> > using bpf-next commit 5e2ac390fbd08b2a462db66cef2663e4db0d5191
+> >
 >
-> In my implementation[1], I'm doing s.t like
->     tx_done =3D xsk_ring_cons__peek(&xsk->umem->cq, BATCH_SIZE, &idx_cq);
->     if (tx_done > 0) {
->         xsk_ring_cons__release(&xsk->umem->cq, tx_done);
->         xsk->outstanding_tx -=3D tx_done;
->     }
+> Will, apologies for the slow response.
 >
-> I expect if tx_done returns 32, then after calling xsk_ring_cons__release=
-,
-> the next time I call xsk_ring_cons__peek, I should get idx_cq + 32.
-> However, sometimes I see the same value of idx_cq is returned as previous=
-, even
-> when tx_done > 0. Is this the expected behavior?
+> Hmm, it looks like a bug. We'll take a look!
 >
-> I experiment with xdpsock_user.c with the patch below and run
-> ~/bpf-next/samples/bpf# ./xdpsock -l -N -z -i eth3
-> using bpf-next commit 5e2ac390fbd08b2a462db66cef2663e4db0d5191
->
+No worries, thanks for the update!
+Or let me know if I can try something to get more info.
 
-Will, apologies for the slow response.
+the xsk_ring_cons__peek just keeps doing
+        *idx =3D cons->cached_cons;
+        cons->cached_cons +=3D entries;
 
-Hmm, it looks like a bug. We'll take a look!
+It's weird to see idx value not advancing 'entries' occasionally.
 
-
-Thanks,
-Bj=C3=B6rn
-
-
-> --- a/samples/bpf/xdpsock_user.c
-> +++ b/samples/bpf/xdpsock_user.c
-> @@ -444,6 +443,8 @@ static void kick_tx(struct xsk_socket_info *xsk)
->         exit_with_error(errno);
->  }
->
-> +static int prev_idx_cq;
-> +
->  static inline void complete_tx_l2fwd(struct xsk_socket_info *xsk)
->  {
->         u32 idx_cq =3D 0, idx_fq =3D 0;
-> @@ -463,6 +464,15 @@ static inline void complete_tx_l2fwd(struct
-> xsk_socket_info *xsk)
->                 unsigned int i;
->                 int ret;
->
-> +        if (idx_cq =3D=3D prev_idx_cq) {
-> +            printf("\n\n ERROR \n\n");
-> +        }
-> +        if (idx_cq - prev_idx_cq !=3D rcvd) {
-> +            printf("\n\n ERROR request %d return %d idx_cq %x prev_cq
-> %x diff %d\n",
-> +                   ndescs, rcvd, idx_cq, prev_idx_cq, idx_cq - prev_idx_=
-cq);
-> +        }
-> +        prev_idx_cq =3D idx_cq;
-> +
->                 ret =3D xsk_ring_prod__reserve(&xsk->umem->fq, rcvd, &idx=
-_fq);
->                 while (ret !=3D rcvd) {
->                         if (ret < 0)
-> @@ -599,7 +609,7 @@ static void tx_only(struct xsk_socket_info *xsk)
->         }
->  }
-> Most of the time idx_cq - prev_idx_cq =3D=3D rcvd, but sometimes I got:
->  ERROR request 64 return 64 idx_cq 107f54 prev_cq 107f50 diff 4
->  ERROR request 64 return 4 idx_cq 2df794 prev_cq 2df754 diff 64
->  ERROR request 60 return 60 idx_cq 2df798 prev_cq 2df794 diff 4
->  ERROR request 64 return 64 idx_cq 2df7d4 prev_cq 2df798 diff 60
-> I wonder if it is a bug?
-> [1]https://github.com/williamtu/ovs-ebpf/blob/afxdp-v11/lib/netdev-afxdp.=
-c#L719
->
-> Thanks
-> William
+Regards,
+William
