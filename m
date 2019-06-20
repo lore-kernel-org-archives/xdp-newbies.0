@@ -1,48 +1,244 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ed1-f65.google.com ([209.85.208.65]:36666 "EHLO
-        mail-ed1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726164AbfFQLDR (ORCPT
+Received: from mail-pg1-f194.google.com ([209.85.215.194]:35209 "EHLO
+        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726370AbfFTCXp (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 17 Jun 2019 07:03:17 -0400
-Received: by mail-ed1-f65.google.com with SMTP id k21so15579057edq.3
-        for <xdp-newbies@vger.kernel.org>; Mon, 17 Jun 2019 04:03:16 -0700 (PDT)
-From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-Subject: Re: AF_XDP and packet timestamp
-In-Reply-To: <86f135475a7820adadb05e7ac9a05c71846bebd6.camel@regit.org>
-References: <86f135475a7820adadb05e7ac9a05c71846bebd6.camel@regit.org>
-Date: Mon, 17 Jun 2019 13:03:14 +0200
-Message-ID: <87d0jca2z1.fsf@toke.dk>
+        Wed, 19 Jun 2019 22:23:45 -0400
+From: Toshiaki Makita <toshiaki.makita1@gmail.com>
+Subject: [PATCH bpf-next] selftests: Add test for veth native XDP
+Date: Thu, 20 Jun 2019 11:23:23 +0900
+Message-Id: <20190620022323.19243-1-toshiaki.makita1@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Eric Leblond <eric@regit.org>, xdp-newbies@vger.kernel.org
+To: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>
+Cc: Toshiaki Makita <toshiaki.makita1@gmail.com>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
 
-Eric Leblond <eric@regit.org> writes:
+Add a test case for veth native XDP. It checks if XDP_PASS, XDP_TX and
+XDP_REDIRECT work properly.
 
-> Hello,
->
-> I did start to work on AF_XDP support for Suricata. API was really easy
-> to use via libbpf.
->
-> From Suricata point of view, the current system with default
-> configuration is lacking an important information. I don't have access
-> to the timestamp of the packet. I'm in particular interested by the
-> hardware timestamp as it would allow to do reordering in some capture
-> cases.
->
-> Is there a way to get the information via AF_XDP. I've seen the
-> discussion on hardware hints but there was no code example I was able
-> to find.
+  $ cd tools/testing/selftests/bpf
+  $ make \
+  	TEST_CUSTOM_PROGS= \
+  	TEST_GEN_PROGS= \
+  	TEST_GEN_PROGS_EXTENDED= \
+  	TEST_PROGS_EXTENDED= \
+  	TEST_PROGS="test_xdp_veth.sh" \
+  	run_tests
+  TAP version 13
+  1..1
+  # selftests: bpf: test_xdp_veth.sh
+  # PING 10.1.1.33 (10.1.1.33) 56(84) bytes of data.
+  # 64 bytes from 10.1.1.33: icmp_seq=1 ttl=64 time=0.073 ms
+  #
+  # --- 10.1.1.33 ping statistics ---
+  # 1 packets transmitted, 1 received, 0% packet loss, time 0ms
+  # rtt min/avg/max/mdev = 0.073/0.073/0.073/0.000 ms
+  # selftests: xdp_veth [PASS]
+  ok 1 selftests: bpf: test_xdp_veth.sh
 
-Making more information from the hardware available to XDP is currently
-on our list of things we plan to enable in the future:
-https://github.com/xdp-project/xdp-project/blob/master/xdp-project.org#metadata-available-to-programs
+Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
+---
+ tools/testing/selftests/bpf/Makefile               |   1 +
+ .../testing/selftests/bpf/progs/xdp_redirect_map.c |  31 ++++++
+ tools/testing/selftests/bpf/progs/xdp_tx.c         |  12 +++
+ tools/testing/selftests/bpf/test_xdp_veth.sh       | 118 +++++++++++++++++++++
+ 4 files changed, 162 insertions(+)
+ create mode 100644 tools/testing/selftests/bpf/progs/xdp_redirect_map.c
+ create mode 100644 tools/testing/selftests/bpf/progs/xdp_tx.c
+ create mode 100755 tools/testing/selftests/bpf/test_xdp_veth.sh
 
-I just added timestamps as a field we want in there (so we don't
-forget).
-
-I.e., no, there is no way to get this information from XDP (and thus not
-from AF_XDP either) yet...
-
--Toke
+diff --git a/tools/testing/selftests/bpf/Makefile b/tools/testing/selftests/bpf/Makefile
+index 44fb61f..11128ba 100644
+--- a/tools/testing/selftests/bpf/Makefile
++++ b/tools/testing/selftests/bpf/Makefile
+@@ -46,6 +46,7 @@ TEST_PROGS := test_kmod.sh \
+ 	test_libbpf.sh \
+ 	test_xdp_redirect.sh \
+ 	test_xdp_meta.sh \
++	test_xdp_veth.sh \
+ 	test_offload.py \
+ 	test_sock_addr.sh \
+ 	test_tunnel.sh \
+diff --git a/tools/testing/selftests/bpf/progs/xdp_redirect_map.c b/tools/testing/selftests/bpf/progs/xdp_redirect_map.c
+new file mode 100644
+index 0000000..e87a985
+--- /dev/null
++++ b/tools/testing/selftests/bpf/progs/xdp_redirect_map.c
+@@ -0,0 +1,31 @@
++// SPDX-License-Identifier: GPL-2.0
++
++#include <linux/bpf.h>
++#include "bpf_helpers.h"
++
++struct bpf_map_def SEC("maps") tx_port = {
++	.type = BPF_MAP_TYPE_DEVMAP,
++	.key_size = sizeof(int),
++	.value_size = sizeof(int),
++	.max_entries = 8,
++};
++
++SEC("redirect_map_0")
++int xdp_redirect_map_0(struct xdp_md *xdp)
++{
++	return bpf_redirect_map(&tx_port, 0, 0);
++}
++
++SEC("redirect_map_1")
++int xdp_redirect_map_1(struct xdp_md *xdp)
++{
++	return bpf_redirect_map(&tx_port, 1, 0);
++}
++
++SEC("redirect_map_2")
++int xdp_redirect_map_2(struct xdp_md *xdp)
++{
++	return bpf_redirect_map(&tx_port, 2, 0);
++}
++
++char _license[] SEC("license") = "GPL";
+diff --git a/tools/testing/selftests/bpf/progs/xdp_tx.c b/tools/testing/selftests/bpf/progs/xdp_tx.c
+new file mode 100644
+index 0000000..57912e7
+--- /dev/null
++++ b/tools/testing/selftests/bpf/progs/xdp_tx.c
+@@ -0,0 +1,12 @@
++// SPDX-License-Identifier: GPL-2.0
++
++#include <linux/bpf.h>
++#include "bpf_helpers.h"
++
++SEC("tx")
++int xdp_tx(struct xdp_md *xdp)
++{
++	return XDP_TX;
++}
++
++char _license[] SEC("license") = "GPL";
+diff --git a/tools/testing/selftests/bpf/test_xdp_veth.sh b/tools/testing/selftests/bpf/test_xdp_veth.sh
+new file mode 100755
+index 0000000..ba8ffcd
+--- /dev/null
++++ b/tools/testing/selftests/bpf/test_xdp_veth.sh
+@@ -0,0 +1,118 @@
++#!/bin/sh
++# SPDX-License-Identifier: GPL-2.0
++#
++# Create 3 namespaces with 3 veth peers, and
++# forward packets in-between using native XDP
++#
++#                      XDP_TX
++# NS1(veth11)        NS2(veth22)        NS3(veth33)
++#      |                  |                  |
++#      |                  |                  |
++#   (veth1,            (veth2,            (veth3,
++#   id:111)            id:122)            id:133)
++#     ^ |                ^ |                ^ |
++#     | |  XDP_REDIRECT  | |  XDP_REDIRECT  | |
++#     | ------------------ ------------------ |
++#     -----------------------------------------
++#                    XDP_REDIRECT
++
++# Kselftest framework requirement - SKIP code is 4.
++ksft_skip=4
++
++TESTNAME=xdp_veth
++BPF_FS=$(awk '$3 == "bpf" {print $2; exit}' /proc/mounts)
++BPF_DIR=$BPF_FS/test_$TESTNAME
++
++_cleanup()
++{
++	set +e
++	ip link del veth1 2> /dev/null
++	ip link del veth2 2> /dev/null
++	ip link del veth3 2> /dev/null
++	ip netns del ns1 2> /dev/null
++	ip netns del ns2 2> /dev/null
++	ip netns del ns3 2> /dev/null
++	rm -rf $BPF_DIR 2> /dev/null
++}
++
++cleanup_skip()
++{
++	echo "selftests: $TESTNAME [SKIP]"
++	_cleanup
++
++	exit $ksft_skip
++}
++
++cleanup()
++{
++	if [ "$?" = 0 ]; then
++		echo "selftests: $TESTNAME [PASS]"
++	else
++		echo "selftests: $TESTNAME [FAILED]"
++	fi
++	_cleanup
++}
++
++if [ $(id -u) -ne 0 ]; then
++	echo "selftests: $TESTNAME [SKIP] Need root privileges"
++	exit $ksft_skip
++fi
++
++if ! ip link set dev lo xdp off > /dev/null 2>&1; then
++	echo "selftests: $TESTNAME [SKIP] Could not run test without the ip xdp support"
++	exit $ksft_skip
++fi
++
++if [ -z "$BPF_FS" ]; then
++	echo "selftests: $TESTNAME [SKIP] Could not run test without bpffs mounted"
++	exit $ksft_skip
++fi
++
++if ! bpftool version > /dev/null 2>&1; then
++	echo "selftests: $TESTNAME [SKIP] Could not run test without bpftool"
++	exit $ksft_skip
++fi
++
++set -e
++
++trap cleanup_skip EXIT
++
++ip netns add ns1
++ip netns add ns2
++ip netns add ns3
++
++ip link add veth1 index 111 type veth peer name veth11 netns ns1
++ip link add veth2 index 122 type veth peer name veth22 netns ns2
++ip link add veth3 index 133 type veth peer name veth33 netns ns3
++
++ip link set veth1 up
++ip link set veth2 up
++ip link set veth3 up
++
++ip -n ns1 addr add 10.1.1.11/24 dev veth11
++ip -n ns3 addr add 10.1.1.33/24 dev veth33
++
++ip -n ns1 link set dev veth11 up
++ip -n ns2 link set dev veth22 up
++ip -n ns3 link set dev veth33 up
++
++mkdir $BPF_DIR
++bpftool prog loadall \
++	xdp_redirect_map.o $BPF_DIR/progs type xdp \
++	pinmaps $BPF_DIR/maps
++bpftool map update pinned $BPF_DIR/maps/tx_port key 0 0 0 0 value 122 0 0 0
++bpftool map update pinned $BPF_DIR/maps/tx_port key 1 0 0 0 value 133 0 0 0
++bpftool map update pinned $BPF_DIR/maps/tx_port key 2 0 0 0 value 111 0 0 0
++ip link set dev veth1 xdp pinned $BPF_DIR/progs/redirect_map_0
++ip link set dev veth2 xdp pinned $BPF_DIR/progs/redirect_map_1
++ip link set dev veth3 xdp pinned $BPF_DIR/progs/redirect_map_2
++
++ip -n ns1 link set dev veth11 xdp obj xdp_dummy.o sec xdp_dummy
++ip -n ns2 link set dev veth22 xdp obj xdp_tx.o sec tx
++ip -n ns3 link set dev veth33 xdp obj xdp_dummy.o sec xdp_dummy
++
++trap cleanup EXIT
++
++ip netns exec ns1 ping -c 1 -W 1 10.1.1.33
++
++exit 0
+-- 
+1.8.3.1
