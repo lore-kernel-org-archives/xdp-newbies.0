@@ -1,62 +1,46 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44184 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731407AbfFYJVR (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 25 Jun 2019 05:21:17 -0400
-Date: Tue, 25 Jun 2019 11:21:04 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [PATCH net-next] xdp: Make __mem_id_disconnect static
-Message-ID: <20190625112104.6654a048@carbon>
-In-Reply-To: <20190625023137.29272-1-yuehaibing@huawei.com>
-References: <20190625023137.29272-1-yuehaibing@huawei.com>
+Received: from www62.your-server.de ([213.133.104.62]:58856 "EHLO
+        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727485AbfFYM3N (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 25 Jun 2019 08:29:13 -0400
+Subject: Re: [PATCH v3 bpf-next 0/2] veth: Bulk XDP_TX
+References: <20190613093959.2796-1-toshiaki.makita1@gmail.com>
+From: Daniel Borkmann <daniel@iogearbox.net>
+Message-ID: <2ee794bc-403b-84c5-da8f-3cbabf52dff7@iogearbox.net>
+Date: Tue, 25 Jun 2019 14:29:05 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20190613093959.2796-1-toshiaki.makita1@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: YueHaibing <yuehaibing@huawei.com>
-Cc: davem@davemloft.net, ast@kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, brouer@redhat.com
+To: Toshiaki Makita <toshiaki.makita1@gmail.com>, Alexei Starovoitov <ast@kernel.org>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>
+Cc: netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org, =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>, Jason Wang <jasowang@redhat.com>
 
-On Tue, 25 Jun 2019 10:31:37 +0800
-YueHaibing <yuehaibing@huawei.com> wrote:
-
-> Fix sparse warning:
+On 06/13/2019 11:39 AM, Toshiaki Makita wrote:
+> This introduces bulk XDP_TX in veth.
+> Improves XDP_TX performance by approximately 9%. The detailed
+> explanation and performance numbers are shown in patch 2.
 > 
-> net/core/xdp.c:88:6: warning:
->  symbol '__mem_id_disconnect' was not declared. Should it be static?
-
-I didn't declare it static as I didn't want it to get inlined.  As
-during development I was using kprobes to inspect this function.  In
-the end I added a tracepoint in this function as kprobes was not enough
-to capture the state needed.
-
-So, I guess we can declare it static.
-
-Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
-
-> Reported-by: Hulk Robot <hulkci@huawei.com>
-> Signed-off-by: YueHaibing <yuehaibing@huawei.com>
-> ---
->  net/core/xdp.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> v2:
+> - Use stack for bulk queue instead of a global variable.
 > 
-> diff --git a/net/core/xdp.c b/net/core/xdp.c
-> index b29d7b5..829377c 100644
-> --- a/net/core/xdp.c
-> +++ b/net/core/xdp.c
-> @@ -85,7 +85,7 @@ static void __xdp_mem_allocator_rcu_free(struct rcu_head *rcu)
->  	kfree(xa);
->  }
->  
-> -bool __mem_id_disconnect(int id, bool force)
-> +static bool __mem_id_disconnect(int id, bool force)
->  {
->  	struct xdp_mem_allocator *xa;
->  	bool safe_to_remove = true;
+> v3:
+> - Add act field to xdp_bulk_tx tracepoint to be in line with other XDP
+>   tracepoints.
+> 
+> Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
+> 
+> Toshiaki Makita (2):
+>   xdp: Add tracepoint for bulk XDP_TX
+>   veth: Support bulk XDP_TX
+> 
+>  drivers/net/veth.c         | 60 ++++++++++++++++++++++++++++++++++++----------
+>  include/trace/events/xdp.h | 29 ++++++++++++++++++++++
+>  kernel/bpf/core.c          |  1 +
+>  3 files changed, 78 insertions(+), 12 deletions(-)
+> 
 
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+Applied, thanks!
