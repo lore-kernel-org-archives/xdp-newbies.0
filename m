@@ -1,87 +1,142 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk1-f181.google.com ([209.85.222.181]:37731 "EHLO
-        mail-qk1-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726968AbfFYQEr (ORCPT
+Received: from mail-lj1-f193.google.com ([209.85.208.193]:44937 "EHLO
+        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731784AbfFYR74 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 25 Jun 2019 12:04:47 -0400
-Received: by mail-qk1-f181.google.com with SMTP id d15so13029105qkl.4
-        for <xdp-newbies@vger.kernel.org>; Tue, 25 Jun 2019 09:04:46 -0700 (PDT)
-MIME-Version: 1.0
-References: <CAJ8uoz2o5jxnUbtKjCbYe+QGffgCtLO05qXHFVfUHFiN3FXvvA@mail.gmail.com>
-In-Reply-To: <CAJ8uoz2o5jxnUbtKjCbYe+QGffgCtLO05qXHFVfUHFiN3FXvvA@mail.gmail.com>
-From: William Tu <u9012063@gmail.com>
-Date: Tue, 25 Jun 2019 09:04:07 -0700
-Message-ID: <CALDO+SbBfevJi1AD9bRWMcyhSae2TusT=xdEmpqoq0Mk8Tx=Ug@mail.gmail.com>
-Subject: Re: Question/Bug about AF_XDP idx_cq from xsk_ring_cons__peek?
-Content-Type: text/plain; charset="UTF-8"
+        Tue, 25 Jun 2019 13:59:56 -0400
+Received: by mail-lj1-f193.google.com with SMTP id k18so17159625ljc.11
+        for <xdp-newbies@vger.kernel.org>; Tue, 25 Jun 2019 10:59:54 -0700 (PDT)
+From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Subject: [PATCH v4 net-next 1/4] net: core: page_pool: add user cnt preventing pool deletion
+Date: Tue, 25 Jun 2019 20:59:45 +0300
+Message-Id: <20190625175948.24771-2-ivan.khoronzhuk@linaro.org>
+In-Reply-To: <20190625175948.24771-1-ivan.khoronzhuk@linaro.org>
+References: <20190625175948.24771-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Magnus Karlsson <magnus.karlsson@gmail.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Eelco Chaudron <echaudro@redhat.com>, Jesper Dangaard Brouer <brouer@redhat.com>, =?UTF-8?B?VG9rZSBIw7hpbGFuZC1Kw7hyZ2Vuc2Vu?= <toke@redhat.com>
+To: davem@davemloft.net, grygorii.strashko@ti.com, hawk@kernel.org, brouer@redhat.com, saeedm@mellanox.com, leon@kernel.org
+Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-On Mon, Jun 24, 2019 at 2:51 AM Magnus Karlsson
-<magnus.karlsson@gmail.com> wrote:
->
-> On Sat, 15 Jun 2019 at 01:25, William Tu <u9012063@xxxxxxxxx> wrote:
-> >
-> > Hi,
-> >
-> > In my implementation[1], I'm doing s.t like
-> >     tx_done = xsk_ring_cons__peek(&xsk->umem->cq, BATCH_SIZE, &idx_cq);
-> >     if (tx_done > 0) {
-> >         xsk_ring_cons__release(&xsk->umem->cq, tx_done);
-> >         xsk->outstanding_tx -= tx_done;
-> >     }
-> >
-> > I expect if tx_done returns 32, then after calling xsk_ring_cons__release,
-> > the next time I call xsk_ring_cons__peek, I should get idx_cq + 32.
-> > However, sometimes I see the same value of idx_cq is returned as previous, even
-> > when tx_done > 0. Is this the expected behavior?
-> >
-> > I experiment with xdpsock_user.c with the patch below and run
-> > ~/bpf-next/samples/bpf# ./xdpsock -l -N -z -i eth3
-> > using bpf-next commit 5e2ac390fbd08b2a462db66cef2663e4db0d5191
-> >
-> > --- a/samples/bpf/xdpsock_user.c
-> > +++ b/samples/bpf/xdpsock_user.c
-> > @@ -444,6 +443,8 @@ static void kick_tx(struct xsk_socket_info *xsk)
-> >         exit_with_error(errno);
-> >  }
-> >
-> > +static int prev_idx_cq;
-> > +
-> >  static inline void complete_tx_l2fwd(struct xsk_socket_info *xsk)
-> >  {
-> >         u32 idx_cq = 0, idx_fq = 0;
-> > @@ -463,6 +464,15 @@ static inline void complete_tx_l2fwd(struct
-> > xsk_socket_info *xsk)
-> >                 unsigned int i;
-> >                 int ret;
-> >
-> > +        if (idx_cq == prev_idx_cq) {
-> > +            printf("\n\n ERROR \n\n");
-> > +        }
-> > +        if (idx_cq - prev_idx_cq != rcvd) {
->
-> William,
->
-> You need to compare with prev_rcvd (and introduce that variable) here
-> as the difference in index should be the same as the amount you
-> received last time. If you do this change, you will get no errors. You
-> can also see this pattern in your printouts. The diff is always equal
-> to rcvd during the previous iteration.
->
-> /Magnus
->
+Add user counter allowing to delete pool only when no users.
+It doesn't prevent pool from flush, only prevents freeing the
+pool instance. Helps when no need to delete the pool and now
+it's user responsibility to free it by calling page_pool_free()
+while destroying procedure. It also makes to use page_pool_free()
+explicitly, not fully hidden in xdp unreg, which looks more
+correct after page pool "create" routine.
 
-Hi Magnus,
+Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+---
+ drivers/net/ethernet/mellanox/mlx5/core/en_main.c | 8 +++++---
+ include/net/page_pool.h                           | 7 +++++++
+ net/core/page_pool.c                              | 7 +++++++
+ net/core/xdp.c                                    | 3 +++
+ 4 files changed, 22 insertions(+), 3 deletions(-)
 
-Thanks for the clarification! Now I understand it's my mistake.
-So:
- rcvd1 = xsk_ring_cons__peek(&xsk->umem->cq, ndescs, &idx1_cq);
- ...
- rcvd2 = xsk_ring_cons__peek(&xsk->umem->cq, ndescs, &idx2_cq);
-
-and idx2_cq - idx1_cq == rcvd1.
-
---William
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en_main.c b/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
+index 5e40db8f92e6..cb028de64a1d 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
+@@ -545,10 +545,8 @@ static int mlx5e_alloc_rq(struct mlx5e_channel *c,
+ 	}
+ 	err = xdp_rxq_info_reg_mem_model(&rq->xdp_rxq,
+ 					 MEM_TYPE_PAGE_POOL, rq->page_pool);
+-	if (err) {
+-		page_pool_free(rq->page_pool);
++	if (err)
+ 		goto err_free;
+-	}
+ 
+ 	for (i = 0; i < wq_sz; i++) {
+ 		if (rq->wq_type == MLX5_WQ_TYPE_LINKED_LIST_STRIDING_RQ) {
+@@ -613,6 +611,8 @@ static int mlx5e_alloc_rq(struct mlx5e_channel *c,
+ 	if (rq->xdp_prog)
+ 		bpf_prog_put(rq->xdp_prog);
+ 	xdp_rxq_info_unreg(&rq->xdp_rxq);
++	if (rq->page_pool)
++		page_pool_free(rq->page_pool);
+ 	mlx5_wq_destroy(&rq->wq_ctrl);
+ 
+ 	return err;
+@@ -643,6 +643,8 @@ static void mlx5e_free_rq(struct mlx5e_rq *rq)
+ 	}
+ 
+ 	xdp_rxq_info_unreg(&rq->xdp_rxq);
++	if (rq->page_pool)
++		page_pool_free(rq->page_pool);
+ 	mlx5_wq_destroy(&rq->wq_ctrl);
+ }
+ 
+diff --git a/include/net/page_pool.h b/include/net/page_pool.h
+index f07c518ef8a5..1ec838e9927e 100644
+--- a/include/net/page_pool.h
++++ b/include/net/page_pool.h
+@@ -101,6 +101,7 @@ struct page_pool {
+ 	struct ptr_ring ring;
+ 
+ 	atomic_t pages_state_release_cnt;
++	atomic_t user_cnt;
+ };
+ 
+ struct page *page_pool_alloc_pages(struct page_pool *pool, gfp_t gfp);
+@@ -183,6 +184,12 @@ static inline dma_addr_t page_pool_get_dma_addr(struct page *page)
+ 	return page->dma_addr;
+ }
+ 
++/* used to prevent pool from deallocation */
++static inline void page_pool_get(struct page_pool *pool)
++{
++	atomic_inc(&pool->user_cnt);
++}
++
+ static inline bool is_page_pool_compiled_in(void)
+ {
+ #ifdef CONFIG_PAGE_POOL
+diff --git a/net/core/page_pool.c b/net/core/page_pool.c
+index b366f59885c1..169b0e3c870e 100644
+--- a/net/core/page_pool.c
++++ b/net/core/page_pool.c
+@@ -48,6 +48,7 @@ static int page_pool_init(struct page_pool *pool,
+ 		return -ENOMEM;
+ 
+ 	atomic_set(&pool->pages_state_release_cnt, 0);
++	atomic_set(&pool->user_cnt, 0);
+ 
+ 	if (pool->p.flags & PP_FLAG_DMA_MAP)
+ 		get_device(pool->p.dev);
+@@ -70,6 +71,8 @@ struct page_pool *page_pool_create(const struct page_pool_params *params)
+ 		kfree(pool);
+ 		return ERR_PTR(err);
+ 	}
++
++	page_pool_get(pool);
+ 	return pool;
+ }
+ EXPORT_SYMBOL(page_pool_create);
+@@ -356,6 +359,10 @@ static void __warn_in_flight(struct page_pool *pool)
+ 
+ void __page_pool_free(struct page_pool *pool)
+ {
++	/* free only if no users */
++	if (!atomic_dec_and_test(&pool->user_cnt))
++		return;
++
+ 	WARN(pool->alloc.count, "API usage violation");
+ 	WARN(!ptr_ring_empty(&pool->ring), "ptr_ring is not empty");
+ 
+diff --git a/net/core/xdp.c b/net/core/xdp.c
+index 829377cc83db..04bdcd784d2e 100644
+--- a/net/core/xdp.c
++++ b/net/core/xdp.c
+@@ -372,6 +372,9 @@ int xdp_rxq_info_reg_mem_model(struct xdp_rxq_info *xdp_rxq,
+ 
+ 	mutex_unlock(&mem_id_lock);
+ 
++	if (type == MEM_TYPE_PAGE_POOL)
++		page_pool_get(xdp_alloc->page_pool);
++
+ 	trace_mem_connect(xdp_alloc, xdp_rxq);
+ 	return 0;
+ err:
+-- 
+2.17.1
