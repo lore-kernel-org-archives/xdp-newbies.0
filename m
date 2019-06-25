@@ -1,71 +1,87 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-io1-f50.google.com ([209.85.166.50]:46965 "EHLO
-        mail-io1-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732385AbfFYPcC (ORCPT
+Received: from mail-qk1-f181.google.com ([209.85.222.181]:37731 "EHLO
+        mail-qk1-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726968AbfFYQEr (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 25 Jun 2019 11:32:02 -0400
-Received: by mail-io1-f50.google.com with SMTP id i10so1789969iol.13
-        for <xdp-newbies@vger.kernel.org>; Tue, 25 Jun 2019 08:32:01 -0700 (PDT)
-Date: Tue, 25 Jun 2019 10:31:59 -0500
-From: Dan Rue <dan.rue@linaro.org>
-Subject: Re: selftests: bpf: test_libbpf.sh failed at file test_l4lb.o
-Message-ID: <20190625153159.5utnn36dgku5545n@xps.therub.org>
-References: <CA+G9fYsMcdHmKY66CNhsrizO-gErkOQCkTcBSyOHLpOs+8g5=g@mail.gmail.com>
- <CAEf4BzbTD8G_zKkj-S3MOeG5Hq3_2zz3bGoXhQtpt0beG8nWJA@mail.gmail.com>
- <20190621161752.d7d7n4m5q67uivys@xps.therub.org>
- <CAEf4BzaSoKA5H5rN=w+OAtUz4bD30-VOjjjY+Qv9tTAnhMweiA@mail.gmail.com>
- <20190624195336.nubi7n2np5vfjutr@xps.therub.org>
- <CAADnVQKZycXgSw6C0qa7g0y=W3xRhM_4Rqcj7ZzL=rGh_n4mgA@mail.gmail.com>
+        Tue, 25 Jun 2019 12:04:47 -0400
+Received: by mail-qk1-f181.google.com with SMTP id d15so13029105qkl.4
+        for <xdp-newbies@vger.kernel.org>; Tue, 25 Jun 2019 09:04:46 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAADnVQKZycXgSw6C0qa7g0y=W3xRhM_4Rqcj7ZzL=rGh_n4mgA@mail.gmail.com>
+References: <CAJ8uoz2o5jxnUbtKjCbYe+QGffgCtLO05qXHFVfUHFiN3FXvvA@mail.gmail.com>
+In-Reply-To: <CAJ8uoz2o5jxnUbtKjCbYe+QGffgCtLO05qXHFVfUHFiN3FXvvA@mail.gmail.com>
+From: William Tu <u9012063@gmail.com>
+Date: Tue, 25 Jun 2019 09:04:07 -0700
+Message-ID: <CALDO+SbBfevJi1AD9bRWMcyhSae2TusT=xdEmpqoq0Mk8Tx=Ug@mail.gmail.com>
+Subject: Re: Question/Bug about AF_XDP idx_cq from xsk_ring_cons__peek?
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Cc: Andrii Nakryiko <andrii.nakryiko@gmail.com>, Naresh Kamboju <naresh.kamboju@linaro.org>, "open list:KERNEL SELFTEST FRAMEWORK" <linux-kselftest@vger.kernel.org>, bpf <bpf@vger.kernel.org>, Netdev <netdev@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>, Xdp <xdp-newbies@vger.kernel.org>, "David S. Miller" <davem@davemloft.net>, Daniel Borkmann <daniel@iogearbox.net>, Alexei Starovoitov <ast@kernel.org>, Martin Lau <kafai@fb.com>, Yonghong Song <yhs@fb.com>, john fastabend <john.fastabend@gmail.com>, Jesper Dangaard Brouer <hawk@kernel.org>, Jakub Kicinski <jakub.kicinski@netronome.com>, Shuah Khan <shuah@kernel.org>
+To: Magnus Karlsson <magnus.karlsson@gmail.com>
+Cc: Xdp <xdp-newbies@vger.kernel.org>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Eelco Chaudron <echaudro@redhat.com>, Jesper Dangaard Brouer <brouer@redhat.com>, =?UTF-8?B?VG9rZSBIw7hpbGFuZC1Kw7hyZ2Vuc2Vu?= <toke@redhat.com>
 
-On Mon, Jun 24, 2019 at 12:58:15PM -0700, Alexei Starovoitov wrote:
-> On Mon, Jun 24, 2019 at 12:53 PM Dan Rue <dan.rue@linaro.org> wrote:
+On Mon, Jun 24, 2019 at 2:51 AM Magnus Karlsson
+<magnus.karlsson@gmail.com> wrote:
+>
+> On Sat, 15 Jun 2019 at 01:25, William Tu <u9012063@xxxxxxxxx> wrote:
 > >
-> > I would say if it's not possible to check at runtime, and it requires
-> > clang 9.0, that this test should not be enabled by default.
-> 
-> The latest clang is the requirement.
-> If environment has old clang or no clang at all these tests will be failing.
+> > Hi,
+> >
+> > In my implementation[1], I'm doing s.t like
+> >     tx_done = xsk_ring_cons__peek(&xsk->umem->cq, BATCH_SIZE, &idx_cq);
+> >     if (tx_done > 0) {
+> >         xsk_ring_cons__release(&xsk->umem->cq, tx_done);
+> >         xsk->outstanding_tx -= tx_done;
+> >     }
+> >
+> > I expect if tx_done returns 32, then after calling xsk_ring_cons__release,
+> > the next time I call xsk_ring_cons__peek, I should get idx_cq + 32.
+> > However, sometimes I see the same value of idx_cq is returned as previous, even
+> > when tx_done > 0. Is this the expected behavior?
+> >
+> > I experiment with xdpsock_user.c with the patch below and run
+> > ~/bpf-next/samples/bpf# ./xdpsock -l -N -z -i eth3
+> > using bpf-next commit 5e2ac390fbd08b2a462db66cef2663e4db0d5191
+> >
+> > --- a/samples/bpf/xdpsock_user.c
+> > +++ b/samples/bpf/xdpsock_user.c
+> > @@ -444,6 +443,8 @@ static void kick_tx(struct xsk_socket_info *xsk)
+> >         exit_with_error(errno);
+> >  }
+> >
+> > +static int prev_idx_cq;
+> > +
+> >  static inline void complete_tx_l2fwd(struct xsk_socket_info *xsk)
+> >  {
+> >         u32 idx_cq = 0, idx_fq = 0;
+> > @@ -463,6 +464,15 @@ static inline void complete_tx_l2fwd(struct
+> > xsk_socket_info *xsk)
+> >                 unsigned int i;
+> >                 int ret;
+> >
+> > +        if (idx_cq == prev_idx_cq) {
+> > +            printf("\n\n ERROR \n\n");
+> > +        }
+> > +        if (idx_cq - prev_idx_cq != rcvd) {
+>
+> William,
+>
+> You need to compare with prev_rcvd (and introduce that variable) here
+> as the difference in index should be the same as the amount you
+> received last time. If you do this change, you will get no errors. You
+> can also see this pattern in your printouts. The diff is always equal
+> to rcvd during the previous iteration.
+>
+> /Magnus
+>
 
-Hi Alexei!
+Hi Magnus,
 
-I'm not certain if I'm interpreting you as you intended, but it sounds
-like you're telling me that if the test build environment does not use
-'latest clang' (i guess latest as of today?), that these tests will
-fail, and that is how it is going to be. If I have that wrong, please
-correct me and disregard the rest of my message.
+Thanks for the clarification! Now I understand it's my mistake.
+So:
+ rcvd1 = xsk_ring_cons__peek(&xsk->umem->cq, ndescs, &idx1_cq);
+ ...
+ rcvd2 = xsk_ring_cons__peek(&xsk->umem->cq, ndescs, &idx2_cq);
 
-Please understand where we are coming from. We (and many others) run
-thousands of tests from a lot of test frameworks, and so our environment
-often has mutually exclusive requirements when it comes to things like
-toolchain selection.
+and idx2_cq - idx1_cq == rcvd1.
 
-We believe, strongly, that a test should not emit a "fail" for a missing
-requirement. Fail is a serious thing, and should be reserved for an
-actual issue that needs to be investigated, reported, and fixed.
-
-This is how we treat test failures - we investigate, report, and fix
-them when possible. When they're not real failures, we waste our time
-(and yours, in this case).
-
-By adding the tests to TEST_GEN_PROGS, you're adding them to the general
-test set that those of us running test farms try to run continuously
-across a wide range of hardware environments and kernel branches.
-
-My suggestion is that if you do not want us running them, don't add them
-to TEST_GEN_PROGS. I thought the suggestion of testing for adequate
-clang support and adding them conditionally at build-time was an idea
-worth consideration.
-
-Thanks,
-Dan
-
--- 
-Linaro - Kernel Validation
+--William
