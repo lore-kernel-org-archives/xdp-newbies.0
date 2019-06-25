@@ -1,33 +1,54 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([23.128.96.9]:50920 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726053AbfFYUqM (ORCPT
+Received: from mail-qt1-f196.google.com ([209.85.160.196]:37779 "EHLO
+        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725782AbfFYWWS (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 25 Jun 2019 16:46:12 -0400
-Date: Tue, 25 Jun 2019 13:46:11 -0700 (PDT)
-Message-Id: <20190625.134611.1728588998382878928.davem@davemloft.net>
-Subject: Re: [PATCH v4 net-next 0/4] net: ethernet: ti: cpsw: Add XDP
- support
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20190625175948.24771-1-ivan.khoronzhuk@linaro.org>
-References: <20190625175948.24771-1-ivan.khoronzhuk@linaro.org>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+        Tue, 25 Jun 2019 18:22:18 -0400
+MIME-Version: 1.0
+References: <20190625114246.14726-1-ivan.khoronzhuk@linaro.org>
+In-Reply-To: <20190625114246.14726-1-ivan.khoronzhuk@linaro.org>
+From: Song Liu <liu.song.a23@gmail.com>
+Date: Tue, 25 Jun 2019 15:22:06 -0700
+Message-ID: <CAPhsuW4oB55TNJx9stfOq68d1O8quxuhonLv0466pdAo0cR=bg@mail.gmail.com>
+Subject: Re: [[PATCH net-next]] net: core: xdp: make __mem_id_disconnect to be static
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: ivan.khoronzhuk@linaro.org
-Cc: grygorii.strashko@ti.com, hawk@kernel.org, brouer@redhat.com, saeedm@mellanox.com, leon@kernel.org, ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com
+To: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Cc: Networking <netdev@vger.kernel.org>, "David S . Miller" <davem@davemloft.net>, xdp-newbies@vger.kernel.org, open list <linux-kernel@vger.kernel.org>, Alexei Starovoitov <ast@kernel.org>, hawk@kernel.org
 
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Date: Tue, 25 Jun 2019 20:59:44 +0300
+On Tue, Jun 25, 2019 at 6:11 AM Ivan Khoronzhuk
+<ivan.khoronzhuk@linaro.org> wrote:
+>
+> Add missed static for local __mem_id_disconnect().
+>
+> Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-> This patchset adds XDP support for TI cpsw driver and base it on
-> page_pool allocator. It was verified on af_xdp socket drop,
-> af_xdp l2f, ebpf XDP_DROP, XDP_REDIRECT, XDP_PASS, XDP_TX.
+https://patchwork.ozlabs.org/patch/1121730/
 
-So happy to watch the progress of this patch set.
+I guess you are a little late. :)
 
-Jesper and others, please review.
+Please ack the other patch.
 
-Thank you.
+Song
+
+> ---
+>  net/core/xdp.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>
+> diff --git a/net/core/xdp.c b/net/core/xdp.c
+> index b29d7b513a18..829377cc83db 100644
+> --- a/net/core/xdp.c
+> +++ b/net/core/xdp.c
+> @@ -85,7 +85,7 @@ static void __xdp_mem_allocator_rcu_free(struct rcu_head *rcu)
+>         kfree(xa);
+>  }
+>
+> -bool __mem_id_disconnect(int id, bool force)
+> +static bool __mem_id_disconnect(int id, bool force)
+>  {
+>         struct xdp_mem_allocator *xa;
+>         bool safe_to_remove = true;
+> --
+> 2.17.1
+>
