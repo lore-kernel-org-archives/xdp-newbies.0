@@ -1,62 +1,81 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-io1-f67.google.com ([209.85.166.67]:36544 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732127AbfFYRlE (ORCPT
+Received: from mail-lj1-f170.google.com ([209.85.208.170]:39580 "EHLO
+        mail-lj1-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731315AbfFYR7y (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 25 Jun 2019 13:41:04 -0400
-Received: by mail-io1-f67.google.com with SMTP id h6so3395226ioh.3
-        for <xdp-newbies@vger.kernel.org>; Tue, 25 Jun 2019 10:41:03 -0700 (PDT)
-MIME-Version: 1.0
-References: <CAMDScmn0Mge9mK14AS+y=JY-hGoXZGYo+Q-yG3VsrCXiYc9eDg@mail.gmail.com>
-In-Reply-To: <CAMDScmn0Mge9mK14AS+y=JY-hGoXZGYo+Q-yG3VsrCXiYc9eDg@mail.gmail.com>
-From: Y Song <ys114321@gmail.com>
-Date: Tue, 25 Jun 2019 10:40:26 -0700
-Message-ID: <CAH3MdRVzmB=WJz4vvvpX34X_Yd1K3EDRXzUFzib3Jkj4wsALiQ@mail.gmail.com>
-Subject: Re: Still need to inline functions?
-Content-Type: text/plain; charset="UTF-8"
+        Tue, 25 Jun 2019 13:59:54 -0400
+Received: by mail-lj1-f170.google.com with SMTP id v18so17168342ljh.6
+        for <xdp-newbies@vger.kernel.org>; Tue, 25 Jun 2019 10:59:53 -0700 (PDT)
+From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Subject: [PATCH v4 net-next 0/4]  net: ethernet: ti: cpsw: Add XDP support
+Date: Tue, 25 Jun 2019 20:59:44 +0300
+Message-Id: <20190625175948.24771-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Elerion <elerion1000@gmail.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>
+To: davem@davemloft.net, grygorii.strashko@ti.com, hawk@kernel.org, brouer@redhat.com, saeedm@mellanox.com, leon@kernel.org
+Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-As of today, the `__always_inline` is still required. Some work will
-be needed, e.g., to merge codes between different sections, before
-`__always_inline` can be removed.
+This patchset adds XDP support for TI cpsw driver and base it on
+page_pool allocator. It was verified on af_xdp socket drop,
+af_xdp l2f, ebpf XDP_DROP, XDP_REDIRECT, XDP_PASS, XDP_TX.
 
-On Sat, Jun 15, 2019 at 5:07 PM Elerion <elerion1000@gmail.com> wrote:
->
-> What version of Linux is required so I can use functions without
-> __always_inline in the xdp kernel object?
->
-> I read here https://lwn.net/Articles/741773/ it was supposed to be
-> allowed a long time ago.
->
-> When I remove __always_inline on a medium sized function,
-> bpf_load_program() will say:
->
-> "jump out of range from insn 5 to 796"
->
-> Is this possible to fix, or do you still need to put __always_inline
-> on every function?
->
-> Software versions:
->
-> Ubuntu 18.04.02 LTS x64
-> 4.18.0-20-generic
-> 5.0.0-16-generic
->
-> clang version 6.0.0-1ubuntu2 (tags/RELEASE_600/final)
-> Target: x86_64-pc-linux-gnu
-> Thread model: posix
-> InstalledDir: /usr/bin
->
-> LLVM (http://llvm.org/):
->   LLVM version 6.0.0
->
->   Optimized build.
->   Default target: x86_64-pc-linux-gnu
->   Host CPU: broadwell
->
-> Compile flags:
->
-> clang -O2 -target bpf -I/usr/include/x86_64-linux-gnu -c kern.c -o kern.o
+It was verified with following configs enabled:
+CONFIG_JIT=y
+CONFIG_BPFILTER=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_XDP_SOCKETS=y
+CONFIG_BPF_EVENTS=y
+CONFIG_HAVE_EBPF_JIT=y
+CONFIG_BPF_JIT=y
+CONFIG_CGROUP_BPF=y
+
+Link on previous v3:
+https://lkml.org/lkml/2019/6/5/446
+
+Also regular tests with iperf2 were done in order to verify impact on
+regular netstack performance, compared with base commit:
+https://pastebin.com/JSMT0iZ4
+
+v3..v4:
+- added page pool user counter
+- use same pool for ndevs in dual mac
+- restructured page pool create/destroy according to the last changes in API
+
+v2..v3:
+- each rxq and ndev has its own page pool
+
+v1..v2:
+- combined xdp_xmit functions
+- used page allocation w/o refcnt juggle
+- unmapped page for skb netstack
+- moved rxq/page pool allocation to open/close pair
+- added several preliminary patches:
+  net: page_pool: add helper function to retrieve dma addresses
+  net: page_pool: add helper function to unmap dma addresses
+  net: ethernet: ti: cpsw: use cpsw as drv data
+  net: ethernet: ti: cpsw_ethtool: simplify slave loops
+
+
+Based on net-next/master
+
+Ivan Khoronzhuk (4):
+  net: core: page_pool: add user cnt preventing pool deletion
+  net: ethernet: ti: davinci_cpdma: add dma mapped submit
+  net: ethernet: ti: davinci_cpdma: return handler status
+  net: ethernet: ti: cpsw: add XDP support
+
+ .../net/ethernet/mellanox/mlx5/core/en_main.c |   8 +-
+ drivers/net/ethernet/ti/Kconfig               |   1 +
+ drivers/net/ethernet/ti/cpsw.c                | 536 ++++++++++++++++--
+ drivers/net/ethernet/ti/cpsw_ethtool.c        |  25 +-
+ drivers/net/ethernet/ti/cpsw_priv.h           |   9 +-
+ drivers/net/ethernet/ti/davinci_cpdma.c       | 123 +++-
+ drivers/net/ethernet/ti/davinci_cpdma.h       |   8 +-
+ drivers/net/ethernet/ti/davinci_emac.c        |  18 +-
+ include/net/page_pool.h                       |   7 +
+ net/core/page_pool.c                          |   7 +
+ net/core/xdp.c                                |   3 +
+ 11 files changed, 640 insertions(+), 105 deletions(-)
+
+-- 
+2.17.1
