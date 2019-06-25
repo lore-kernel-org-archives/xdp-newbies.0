@@ -1,142 +1,54 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lj1-f193.google.com ([209.85.208.193]:44937 "EHLO
-        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731784AbfFYR74 (ORCPT
+Received: from mail-ed1-f67.google.com ([209.85.208.67]:35137 "EHLO
+        mail-ed1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727138AbfFYSYH (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 25 Jun 2019 13:59:56 -0400
-Received: by mail-lj1-f193.google.com with SMTP id k18so17159625ljc.11
-        for <xdp-newbies@vger.kernel.org>; Tue, 25 Jun 2019 10:59:54 -0700 (PDT)
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH v4 net-next 1/4] net: core: page_pool: add user cnt preventing pool deletion
-Date: Tue, 25 Jun 2019 20:59:45 +0300
-Message-Id: <20190625175948.24771-2-ivan.khoronzhuk@linaro.org>
-In-Reply-To: <20190625175948.24771-1-ivan.khoronzhuk@linaro.org>
-References: <20190625175948.24771-1-ivan.khoronzhuk@linaro.org>
+        Tue, 25 Jun 2019 14:24:07 -0400
+From: Nathan Chancellor <natechancellor@gmail.com>
+Subject: [PATCH] xsk: Properly terminate assignment in xskq_produce_flush_desc
+Date: Tue, 25 Jun 2019 11:23:52 -0700
+Message-Id: <20190625182352.13918-1-natechancellor@gmail.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: davem@davemloft.net, grygorii.strashko@ti.com, hawk@kernel.org, brouer@redhat.com, saeedm@mellanox.com, leon@kernel.org
-Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+To: =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>
+Cc: netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-kernel@vger.kernel.org, clang-built-linux@googlegroups.com, Nick Desaulniers <ndesaulniers@google.com>, Nathan Huckleberry <nhuck@google.com>, Nathan Chancellor <natechancellor@gmail.com>
 
-Add user counter allowing to delete pool only when no users.
-It doesn't prevent pool from flush, only prevents freeing the
-pool instance. Helps when no need to delete the pool and now
-it's user responsibility to free it by calling page_pool_free()
-while destroying procedure. It also makes to use page_pool_free()
-explicitly, not fully hidden in xdp unreg, which looks more
-correct after page pool "create" routine.
+Clang warns:
 
-Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+In file included from net/xdp/xsk_queue.c:10:
+net/xdp/xsk_queue.h:292:2: warning: expression result unused
+[-Wunused-value]
+        WRITE_ONCE(q->ring->producer, q->prod_tail);
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+include/linux/compiler.h:284:6: note: expanded from macro 'WRITE_ONCE'
+        __u.__val;                                      \
+        ~~~ ^~~~~
+1 warning generated.
+
+The q->prod_tail assignment has a comma at the end, not a semi-colon.
+Fix that so clang no longer warns and everything works as expected.
+
+Fixes: c497176cb2e4 ("xsk: add Rx receive functions and poll support")
+Link: https://github.com/ClangBuiltLinux/linux/issues/544
+Signed-off-by: Nathan Chancellor <natechancellor@gmail.com>
 ---
- drivers/net/ethernet/mellanox/mlx5/core/en_main.c | 8 +++++---
- include/net/page_pool.h                           | 7 +++++++
- net/core/page_pool.c                              | 7 +++++++
- net/core/xdp.c                                    | 3 +++
- 4 files changed, 22 insertions(+), 3 deletions(-)
+ net/xdp/xsk_queue.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en_main.c b/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
-index 5e40db8f92e6..cb028de64a1d 100644
---- a/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
-+++ b/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
-@@ -545,10 +545,8 @@ static int mlx5e_alloc_rq(struct mlx5e_channel *c,
- 	}
- 	err = xdp_rxq_info_reg_mem_model(&rq->xdp_rxq,
- 					 MEM_TYPE_PAGE_POOL, rq->page_pool);
--	if (err) {
--		page_pool_free(rq->page_pool);
-+	if (err)
- 		goto err_free;
--	}
+diff --git a/net/xdp/xsk_queue.h b/net/xdp/xsk_queue.h
+index 88b9ae24658d..cba4a640d5e8 100644
+--- a/net/xdp/xsk_queue.h
++++ b/net/xdp/xsk_queue.h
+@@ -288,7 +288,7 @@ static inline void xskq_produce_flush_desc(struct xsk_queue *q)
+ 	/* Order producer and data */
+ 	smp_wmb(); /* B, matches C */
  
- 	for (i = 0; i < wq_sz; i++) {
- 		if (rq->wq_type == MLX5_WQ_TYPE_LINKED_LIST_STRIDING_RQ) {
-@@ -613,6 +611,8 @@ static int mlx5e_alloc_rq(struct mlx5e_channel *c,
- 	if (rq->xdp_prog)
- 		bpf_prog_put(rq->xdp_prog);
- 	xdp_rxq_info_unreg(&rq->xdp_rxq);
-+	if (rq->page_pool)
-+		page_pool_free(rq->page_pool);
- 	mlx5_wq_destroy(&rq->wq_ctrl);
- 
- 	return err;
-@@ -643,6 +643,8 @@ static void mlx5e_free_rq(struct mlx5e_rq *rq)
- 	}
- 
- 	xdp_rxq_info_unreg(&rq->xdp_rxq);
-+	if (rq->page_pool)
-+		page_pool_free(rq->page_pool);
- 	mlx5_wq_destroy(&rq->wq_ctrl);
+-	q->prod_tail = q->prod_head,
++	q->prod_tail = q->prod_head;
+ 	WRITE_ONCE(q->ring->producer, q->prod_tail);
  }
  
-diff --git a/include/net/page_pool.h b/include/net/page_pool.h
-index f07c518ef8a5..1ec838e9927e 100644
---- a/include/net/page_pool.h
-+++ b/include/net/page_pool.h
-@@ -101,6 +101,7 @@ struct page_pool {
- 	struct ptr_ring ring;
- 
- 	atomic_t pages_state_release_cnt;
-+	atomic_t user_cnt;
- };
- 
- struct page *page_pool_alloc_pages(struct page_pool *pool, gfp_t gfp);
-@@ -183,6 +184,12 @@ static inline dma_addr_t page_pool_get_dma_addr(struct page *page)
- 	return page->dma_addr;
- }
- 
-+/* used to prevent pool from deallocation */
-+static inline void page_pool_get(struct page_pool *pool)
-+{
-+	atomic_inc(&pool->user_cnt);
-+}
-+
- static inline bool is_page_pool_compiled_in(void)
- {
- #ifdef CONFIG_PAGE_POOL
-diff --git a/net/core/page_pool.c b/net/core/page_pool.c
-index b366f59885c1..169b0e3c870e 100644
---- a/net/core/page_pool.c
-+++ b/net/core/page_pool.c
-@@ -48,6 +48,7 @@ static int page_pool_init(struct page_pool *pool,
- 		return -ENOMEM;
- 
- 	atomic_set(&pool->pages_state_release_cnt, 0);
-+	atomic_set(&pool->user_cnt, 0);
- 
- 	if (pool->p.flags & PP_FLAG_DMA_MAP)
- 		get_device(pool->p.dev);
-@@ -70,6 +71,8 @@ struct page_pool *page_pool_create(const struct page_pool_params *params)
- 		kfree(pool);
- 		return ERR_PTR(err);
- 	}
-+
-+	page_pool_get(pool);
- 	return pool;
- }
- EXPORT_SYMBOL(page_pool_create);
-@@ -356,6 +359,10 @@ static void __warn_in_flight(struct page_pool *pool)
- 
- void __page_pool_free(struct page_pool *pool)
- {
-+	/* free only if no users */
-+	if (!atomic_dec_and_test(&pool->user_cnt))
-+		return;
-+
- 	WARN(pool->alloc.count, "API usage violation");
- 	WARN(!ptr_ring_empty(&pool->ring), "ptr_ring is not empty");
- 
-diff --git a/net/core/xdp.c b/net/core/xdp.c
-index 829377cc83db..04bdcd784d2e 100644
---- a/net/core/xdp.c
-+++ b/net/core/xdp.c
-@@ -372,6 +372,9 @@ int xdp_rxq_info_reg_mem_model(struct xdp_rxq_info *xdp_rxq,
- 
- 	mutex_unlock(&mem_id_lock);
- 
-+	if (type == MEM_TYPE_PAGE_POOL)
-+		page_pool_get(xdp_alloc->page_pool);
-+
- 	trace_mem_connect(xdp_alloc, xdp_rxq);
- 	return 0;
- err:
 -- 
-2.17.1
+2.22.0
