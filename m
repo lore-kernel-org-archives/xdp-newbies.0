@@ -1,17 +1,17 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ed1-f67.google.com ([209.85.208.67]:43579 "EHLO
-        mail-ed1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726029AbfFZPBp (ORCPT
+Received: from mail-ed1-f54.google.com ([209.85.208.54]:36286 "EHLO
+        mail-ed1-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728286AbfFZPOf (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 26 Jun 2019 11:01:45 -0400
-Received: by mail-ed1-f67.google.com with SMTP id e3so3778899edr.10
-        for <xdp-newbies@vger.kernel.org>; Wed, 26 Jun 2019 08:01:43 -0700 (PDT)
+        Wed, 26 Jun 2019 11:14:35 -0400
+Received: by mail-ed1-f54.google.com with SMTP id k21so3878002edq.3
+        for <xdp-newbies@vger.kernel.org>; Wed, 26 Jun 2019 08:14:34 -0700 (PDT)
 From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
 Subject: Re: XDP multi-buffer incl. jumbo-frames (Was: [RFC V1 net-next 1/1] net: ena: implement XDP drop support)
 In-Reply-To: <20190626164059.4a9511cf@carbon>
 References: <20190623070649.18447-1-sameehj@amazon.com> <20190623070649.18447-2-sameehj@amazon.com> <20190623162133.6b7f24e1@carbon> <A658E65E-93D2-4F10-823D-CC25B081C1B7@amazon.com> <20190626103829.5360ef2d@carbon> <87a7e4d0nj.fsf@toke.dk> <20190626164059.4a9511cf@carbon>
-Date: Wed, 26 Jun 2019 17:01:41 +0200
-Message-ID: <87h88cbdbe.fsf@toke.dk>
+Date: Wed, 26 Jun 2019 17:14:32 +0200
+Message-ID: <87ef3gbcpz.fsf@toke.dk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8BIT
@@ -85,10 +85,7 @@ Jesper Dangaard Brouer <brouer@redhat.com> writes:
 >
 > 1. It is valuable for XDP bpf_prog to know "full" length?
 >    (if so, then we need to extend xdp ctx with info)
-
-Valuable, quite likely. A hard requirement, probably not (for all use
-cases).
-
+>
 >  But if we need to know the full length, when the first-buffer is
 >  processed. Then realize that this affect the drivers RX-loop, because
 >  then we need to "collect" all the buffers before we can know the
@@ -98,26 +95,15 @@ cases).
 >  XDP_REDIRECT will also need to "collect" all buffers before the packet
 >  can be forwarded. (Although this could potentially happen later in
 >  driver loop when it meet/find the End-Of-Packet descriptor bit).
->  
->
-> 2. Can we even allow helper bpf_xdp_adjust_tail() ?
->
->  Wouldn't it be easier to disallow a BPF-prog with this helper, when
->  driver have configured multi-buffer?
 
-Easier, certainly. But then it's even easier to not implement this at
-all ;)
+A few more points (mostly thinking out loud here):
 
->  Or will it be too restrictive, if jumbo-frame is very uncommon and
->  only enabled because switch infra could not be changed (like Amazon
->  case).
+- In any case we probably need to loop through the subsequent
+  descriptors in all cases, right? (i.e., if we run XDP on first
+  segment, and that returns DROP, the rest that are part of the packet
+  still need to be discarded). So we may as well delay XDP execution
+  until we have the whole packet?
 
-I think it would be preferable to support it; but maybe we can let that
-depend on how difficult it actually turns out to be to allow it?
-
->  Perhaps it is better to let bpf_xdp_adjust_tail() fail runtime?
-
-If we do disallow it, I think I'd lean towards failing the call at
-runtime...
+- Will this allow us to run XDP on hardware-assembled GRO super-packets?
 
 -Toke
