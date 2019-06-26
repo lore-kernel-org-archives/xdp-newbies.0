@@ -1,67 +1,80 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk1-f195.google.com ([209.85.222.195]:33403 "EHLO
-        mail-qk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726223AbfFZBOH (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 25 Jun 2019 21:14:07 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:21720 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725379AbfFZIjV (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 26 Jun 2019 04:39:21 -0400
+Date: Wed, 26 Jun 2019 10:38:29 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: XDP multi-buffer incl. jumbo-frames (Was: [RFC V1 net-next 1/1]
+ net: ena: implement XDP drop support)
+Message-ID: <20190626103829.5360ef2d@carbon>
+In-Reply-To: <A658E65E-93D2-4F10-823D-CC25B081C1B7@amazon.com>
+References: <20190623070649.18447-1-sameehj@amazon.com>
+        <20190623070649.18447-2-sameehj@amazon.com>
+        <20190623162133.6b7f24e1@carbon>
+        <A658E65E-93D2-4F10-823D-CC25B081C1B7@amazon.com>
 MIME-Version: 1.0
-References: <20190625182352.13918-1-natechancellor@gmail.com>
-In-Reply-To: <20190625182352.13918-1-natechancellor@gmail.com>
-From: Song Liu <liu.song.a23@gmail.com>
-Date: Tue, 25 Jun 2019 18:13:55 -0700
-Message-ID: <CAPhsuW5XRqNpcw7WEsg=E6----XG6-9Cs8=wQbPRfAOXnOYv8Q@mail.gmail.com>
-Subject: Re: [PATCH] xsk: Properly terminate assignment in xskq_produce_flush_desc
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8BIT
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Nathan Chancellor <natechancellor@gmail.com>
-Cc: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Networking <netdev@vger.kernel.org>, bpf <bpf@vger.kernel.org>, xdp-newbies@vger.kernel.org, open list <linux-kernel@vger.kernel.org>, clang-built-linux@googlegroups.com, Nick Desaulniers <ndesaulniers@google.com>, Nathan Huckleberry <nhuck@google.com>
+To: "Machulsky, Zorik" <zorik@amazon.com>
+Cc: "Jubran, Samih" <sameehj@amazon.com>, "davem@davemloft.net" <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "Woodhouse, David" <dwmw@amazon.co.uk>, "Matushevsky, Alexander" <matua@amazon.com>, "Bshara, Saeed" <saeedb@amazon.com>, "Wilson, Matt" <msw@amazon.com>, "Liguori, Anthony" <aliguori@amazon.com>, "Bshara, Nafea" <nafea@amazon.com>, "Tzalik, Guy" <gtzalik@amazon.com>, "Belgazal, Netanel" <netanel@amazon.com>, "Saidi, Ali" <alisaidi@amazon.com>, "Herrenschmidt, Benjamin" <benh@amazon.com>, "Kiyanovski, Arthur" <akiyano@amazon.com>, Daniel Borkmann <borkmann@iogearbox.net>, brouer@redhat.com, Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>, Ilias Apalodimas <ilias.apalodimas@linaro.org>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-On Tue, Jun 25, 2019 at 12:54 PM Nathan Chancellor
-<natechancellor@gmail.com> wrote:
->
-> Clang warns:
->
-> In file included from net/xdp/xsk_queue.c:10:
-> net/xdp/xsk_queue.h:292:2: warning: expression result unused
-> [-Wunused-value]
->         WRITE_ONCE(q->ring->producer, q->prod_tail);
->         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-> include/linux/compiler.h:284:6: note: expanded from macro 'WRITE_ONCE'
->         __u.__val;                                      \
->         ~~~ ^~~~~
-> 1 warning generated.
->
-> The q->prod_tail assignment has a comma at the end, not a semi-colon.
-> Fix that so clang no longer warns and everything works as expected.
->
-> Fixes: c497176cb2e4 ("xsk: add Rx receive functions and poll support")
-> Link: https://github.com/ClangBuiltLinux/linux/issues/544
-> Signed-off-by: Nathan Chancellor <natechancellor@gmail.com>
+On Tue, 25 Jun 2019 03:19:22 +0000
+"Machulsky, Zorik" <zorik@amazon.com> wrote:
 
-Cc: <stable@vger.kernel.org> # v4.18+
-Acked-by: Song Liu <songliubraving@fb.com>
+> ﻿On 6/23/19, 7:21 AM, "Jesper Dangaard Brouer" <brouer@redhat.com> wrote:
+> 
+>     On Sun, 23 Jun 2019 10:06:49 +0300 <sameehj@amazon.com> wrote:
+>     
+>     > This commit implements the basic functionality of drop/pass logic in the
+>     > ena driver.  
+>     
+>     Usually we require a driver to implement all the XDP return codes,
+>     before we accept it.  But as Daniel and I discussed with Zorik during
+>     NetConf[1], we are going to make an exception and accept the driver
+>     if you also implement XDP_TX.
+>     
+>     As we trust that Zorik/Amazon will follow and implement XDP_REDIRECT
+>     later, given he/you wants AF_XDP support which requires XDP_REDIRECT.
+> 
+> Jesper, thanks for your comments and very helpful discussion during
+> NetConf! That's the plan, as we agreed. From our side I would like to
+> reiterate again the importance of multi-buffer support by xdp frame.
+> We would really prefer not to see our MTU shrinking because of xdp
+> support.   
 
-Thanks for the fix!
+Okay we really need to make a serious attempt to find a way to support
+multi-buffer packets with XDP. With the important criteria of not
+hurting performance of the single-buffer per packet design.
+
+I've created a design document[2], that I will update based on our
+discussions: [2] https://github.com/xdp-project/xdp-project/blob/master/areas/core/xdp-multi-buffer01-design.org
+
+The use-case that really convinced me was Eric's packet header-split.
 
 
-> ---
->  net/xdp/xsk_queue.h | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/net/xdp/xsk_queue.h b/net/xdp/xsk_queue.h
-> index 88b9ae24658d..cba4a640d5e8 100644
-> --- a/net/xdp/xsk_queue.h
-> +++ b/net/xdp/xsk_queue.h
-> @@ -288,7 +288,7 @@ static inline void xskq_produce_flush_desc(struct xsk_queue *q)
->         /* Order producer and data */
->         smp_wmb(); /* B, matches C */
->
-> -       q->prod_tail = q->prod_head,
-> +       q->prod_tail = q->prod_head;
->         WRITE_ONCE(q->ring->producer, q->prod_tail);
->  }
->
-> --
-> 2.22.0
->
+Lets refresh: Why XDP don't have multi-buffer support:
+
+XDP is designed for maximum performance, which is why certain driver-level
+use-cases were not supported, like multi-buffer packets (like jumbo-frames).
+As it e.g. complicated the driver RX-loop and memory model handling.
+
+The single buffer per packet design, is also tied into eBPF Direct-Access
+(DA) to packet data, which can only be allowed if the packet memory is in
+contiguous memory.  This DA feature is essential for XDP performance.
+
+
+One way forward is to define that XDP only get access to the first
+packet buffer, and it cannot see subsequent buffers.  For XDP_TX and
+XDP_REDIRECT to work then XDP still need to carry pointers (plus
+len+offset) to the other buffers, which is 16 bytes per extra buffer.
+
+ 
+>     [1] http://vger.kernel.org/netconf2019.html
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
