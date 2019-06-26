@@ -1,140 +1,49 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59474 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726014AbfFZQgj (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 26 Jun 2019 12:36:39 -0400
-Date: Wed, 26 Jun 2019 18:36:01 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: XDP multi-buffer incl. jumbo-frames (Was: [RFC V1 net-next 1/1]
- net: ena: implement XDP drop support)
-Message-ID: <20190626183601.1bd43d00@carbon>
-In-Reply-To: <87ef3gbcpz.fsf@toke.dk>
-References: <20190623070649.18447-1-sameehj@amazon.com>
-        <20190623070649.18447-2-sameehj@amazon.com>
-        <20190623162133.6b7f24e1@carbon>
-        <A658E65E-93D2-4F10-823D-CC25B081C1B7@amazon.com>
-        <20190626103829.5360ef2d@carbon>
-        <87a7e4d0nj.fsf@toke.dk>
-        <20190626164059.4a9511cf@carbon>
-        <87ef3gbcpz.fsf@toke.dk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+Received: from mailout1.w1.samsung.com ([210.118.77.11]:47139 "EHLO
+        mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726223AbfFZSPY (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 26 Jun 2019 14:15:24 -0400
+Received: from eucas1p1.samsung.com (unknown [182.198.249.206])
+        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190626181522euoutp01153a2dd54d8690403efbeb5867f81377~r0kyvsy_p0227202272euoutp01P
+        for <xdp-newbies@vger.kernel.org>; Wed, 26 Jun 2019 18:15:22 +0000 (GMT)
+From: Ilya Maximets <i.maximets@samsung.com>
+Subject: [PATCH bpf v4 0/2] xdp: fix hang while unregistering device bound
+ to xdp socket
+Date: Wed, 26 Jun 2019 21:15:13 +0300
+Message-Id: <20190626181515.1640-1-i.maximets@samsung.com>
+Content-Type: text/plain; charset="utf-8"
+References: <CGME20190626181520eucas1p1817d31d958b8755600f0745e92edef5a@eucas1p1.samsung.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>
-Cc: "Machulsky, Zorik" <zorik@amazon.com>, "Jubran, Samih" <sameehj@amazon.com>, "davem@davemloft.net" <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "Woodhouse, David" <dwmw@amazon.co.uk>, "Matushevsky, Alexander" <matua@amazon.com>, "Bshara, Saeed" <saeedb@amazon.com>, "Wilson, Matt" <msw@amazon.com>, "Liguori, Anthony" <aliguori@amazon.com>, "Bshara, Nafea" <nafea@amazon.com>, "Tzalik, Guy" <gtzalik@amazon.com>, "Belgazal, Netanel" <netanel@amazon.com>, "Saidi, Ali" <alisaidi@amazon.com>, "Herrenschmidt, Benjamin" <benh@amazon.com>, "Kiyanovski, Arthur" <akiyano@amazon.com>, Daniel Borkmann <borkmann@iogearbox.net>, Ilias Apalodimas <ilias.apalodimas@linaro.org>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, brouer@redhat.com
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Daniel Borkmann <daniel@iogearbox.net>, Ilya Maximets <i.maximets@samsung.com>
 
-On Wed, 26 Jun 2019 17:14:32 +0200
-Toke Høiland-Jørgensen <toke@redhat.com> wrote:
+Version 4:
 
-> Jesper Dangaard Brouer <brouer@redhat.com> writes:
-> 
-> > On Wed, 26 Jun 2019 13:52:16 +0200
-> > Toke Høiland-Jørgensen <toke@redhat.com> wrote:
-> >  
-> >> Jesper Dangaard Brouer <brouer@redhat.com> writes:
-> >>   
-> >> > On Tue, 25 Jun 2019 03:19:22 +0000
-> >> > "Machulsky, Zorik" <zorik@amazon.com> wrote:
-> >> >    
-> >> >> ﻿On 6/23/19, 7:21 AM, "Jesper Dangaard Brouer" <brouer@redhat.com> wrote:
-> >> >> 
-> >> >>     On Sun, 23 Jun 2019 10:06:49 +0300 <sameehj@amazon.com> wrote:
-> >> >>         
-> >> >>     > This commit implements the basic functionality of drop/pass logic in the
-> >> >>     > ena driver.      
-> >> >>     
-> >> >>     Usually we require a driver to implement all the XDP return codes,
-> >> >>     before we accept it.  But as Daniel and I discussed with Zorik during
-> >> >>     NetConf[1], we are going to make an exception and accept the driver
-> >> >>     if you also implement XDP_TX.
-> >> >>     
-> >> >>     As we trust that Zorik/Amazon will follow and implement XDP_REDIRECT
-> >> >>     later, given he/you wants AF_XDP support which requires XDP_REDIRECT.
-> >> >> 
-> >> >> Jesper, thanks for your comments and very helpful discussion during
-> >> >> NetConf! That's the plan, as we agreed. From our side I would like to
-> >> >> reiterate again the importance of multi-buffer support by xdp frame.
-> >> >> We would really prefer not to see our MTU shrinking because of xdp
-> >> >> support.       
-> >> >
-> >> > Okay we really need to make a serious attempt to find a way to support
-> >> > multi-buffer packets with XDP. With the important criteria of not
-> >> > hurting performance of the single-buffer per packet design.
-> >> >
-> >> > I've created a design document[2], that I will update based on our
-> >> > discussions: [2] https://github.com/xdp-project/xdp-project/blob/master/areas/core/xdp-multi-buffer01-design.org
-> >> >
-> >> > The use-case that really convinced me was Eric's packet header-split.
-> >> >
-> >> >
-> >> > Lets refresh: Why XDP don't have multi-buffer support:
-> >> >
-> >> > XDP is designed for maximum performance, which is why certain driver-level
-> >> > use-cases were not supported, like multi-buffer packets (like jumbo-frames).
-> >> > As it e.g. complicated the driver RX-loop and memory model handling.
-> >> >
-> >> > The single buffer per packet design, is also tied into eBPF Direct-Access
-> >> > (DA) to packet data, which can only be allowed if the packet memory is in
-> >> > contiguous memory.  This DA feature is essential for XDP performance.
-> >> >
-> >> >
-> >> > One way forward is to define that XDP only get access to the first
-> >> > packet buffer, and it cannot see subsequent buffers. For XDP_TX and
-> >> > XDP_REDIRECT to work then XDP still need to carry pointers (plus
-> >> > len+offset) to the other buffers, which is 16 bytes per extra buffer.    
-> >> 
-> >> Yeah, I think this would be reasonable. As long as we can have a
-> >> metadata field with the full length + still give XDP programs the
-> >> ability to truncate the packet (i.e., discard the subsequent pages)  
-> >
-> > You touch upon some interesting complications already:
-> >
-> > 1. It is valuable for XDP bpf_prog to know "full" length?
-> >    (if so, then we need to extend xdp ctx with info)
-> >
-> >  But if we need to know the full length, when the first-buffer is
-> >  processed. Then realize that this affect the drivers RX-loop, because
-> >  then we need to "collect" all the buffers before we can know the
-> >  length (although some HW provide this in first descriptor).
-> >
-> >  We likely have to change drivers RX-loop anyhow, as XDP_TX and
-> >  XDP_REDIRECT will also need to "collect" all buffers before the packet
-> >  can be forwarded. (Although this could potentially happen later in
-> >  driver loop when it meet/find the End-Of-Packet descriptor bit).  
-> 
-> A few more points (mostly thinking out loud here):
-> 
-> - In any case we probably need to loop through the subsequent
->   descriptors in all cases, right? (i.e., if we run XDP on first
->   segment, and that returns DROP, the rest that are part of the packet
->   still need to be discarded). So we may as well delay XDP execution
->   until we have the whole packet?
+    * 'xdp_umem_clear_dev' exposed to be used while unregistering.
+    * Added XDP socket state to track if resources already unbinded.
+    * Splitted in two fixes.
 
-For the XDP_DROP case, drivers usually have way to discard remaining
-buffers/segments, to handle error cases.  But it heavily depend on the
-driver, how tricky/convoluted this code is...
+Version 3:
 
-Generally I would say it would make sense to delay XDP execution until
-all buffers/segments are "collected".  It would be the clean approach,
-but will likely require refactoring of driver level code.
+    * Declaration lines ordered from longest to shortest.
+    * Checking of event type moved to the top to avoid unnecessary
+      locking.
 
- 
-> - Will this allow us to run XDP on hardware-assembled GRO super-packets?
+Version 2:
 
-Big YES.  This is usually called LRO or TSO packets.  And yes, I also
-want to support this use-case, which is also listed in [2].  If we go
-down this road, this use-case is also important. (Especially related to
-my alloc SKBs outside drivers[3], this is a hardware offload we must
-support).
+    * Completely re-implemented using netdev event handler.
 
+Ilya Maximets (2):
+  xdp: hold device for umem regardless of zero-copy mode
+  xdp: fix hang while unregistering device bound to xdp socket
 
-[2] https://github.com/xdp-project/xdp-project/blob/master/areas/core/xdp-multi-buffer01-design.org
+ include/net/xdp_sock.h |  5 +++
+ net/xdp/xdp_umem.c     | 27 +++++++------
+ net/xdp/xdp_umem.h     |  1 +
+ net/xdp/xsk.c          | 88 ++++++++++++++++++++++++++++++++++++------
+ 4 files changed, 99 insertions(+), 22 deletions(-)
 
-[3] http://vger.kernel.org/netconf2019_files/xdp-metadata-discussion.pdf
 -- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+2.17.1
