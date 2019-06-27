@@ -1,12 +1,12 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:38482 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:38414 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727439AbfF0AeU (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 26 Jun 2019 20:34:20 -0400
+        id S1727430AbfF0AeR (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 26 Jun 2019 20:34:17 -0400
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 5.1 70/95] bpf, devmap: Add missing RCU read lock on flush
-Date: Wed, 26 Jun 2019 20:29:55 -0400
-Message-Id: <20190627003021.19867-70-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.1 69/95] bpf, devmap: Add missing bulk queue free
+Date: Wed, 26 Jun 2019 20:29:54 -0400
+Message-Id: <20190627003021.19867-69-sashal@kernel.org>
 In-Reply-To: <20190627003021.19867-1-sashal@kernel.org>
 References: <20190627003021.19867-1-sashal@kernel.org>
 MIME-Version: 1.0
@@ -14,60 +14,34 @@ Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Toshiaki Makita <toshiaki.makita1@gmail.com>, David Ahern <dsahern@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+Cc: Toshiaki Makita <toshiaki.makita1@gmail.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
 
 From: Toshiaki Makita <toshiaki.makita1@gmail.com>
 
-[ Upstream commit 86723c8640633bee4b4588d3c7784ee7a0032f65 ]
+[ Upstream commit edabf4d9dd905acd60048ea1579943801e3a4876 ]
 
-.ndo_xdp_xmit() assumes it is called under RCU. For example virtio_net
-uses RCU to detect it has setup the resources for tx. The assumption
-accidentally broke when introducing bulk queue in devmap.
+dev_map_free() forgot to free bulk queue when freeing its entries.
 
 Fixes: 5d053f9da431 ("bpf: devmap prepare xdp frames for bulking")
-Reported-by: David Ahern <dsahern@gmail.com>
 Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
+Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
 Signed-off-by: Daniel Borkmann <daniel@iogearbox.net>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- kernel/bpf/devmap.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ kernel/bpf/devmap.c | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
-index a126d95d12de..1defea4b2755 100644
+index e001fb1a96b1..a126d95d12de 100644
 --- a/kernel/bpf/devmap.c
 +++ b/kernel/bpf/devmap.c
-@@ -282,6 +282,7 @@ void __dev_map_flush(struct bpf_map *map)
- 	unsigned long *bitmap = this_cpu_ptr(dtab->flush_needed);
- 	u32 bit;
+@@ -186,6 +186,7 @@ static void dev_map_free(struct bpf_map *map)
+ 		if (!dev)
+ 			continue;
  
-+	rcu_read_lock();
- 	for_each_set_bit(bit, bitmap, map->max_entries) {
- 		struct bpf_dtab_netdev *dev = READ_ONCE(dtab->netdev_map[bit]);
- 		struct xdp_bulk_queue *bq;
-@@ -297,6 +298,7 @@ void __dev_map_flush(struct bpf_map *map)
- 
- 		__clear_bit(bit, bitmap);
++		free_percpu(dev->bulkq);
+ 		dev_put(dev->dev);
+ 		kfree(dev);
  	}
-+	rcu_read_unlock();
- }
- 
- /* rcu_read_lock (from syscall and BPF contexts) ensures that if a delete and/or
-@@ -389,6 +391,7 @@ static void dev_map_flush_old(struct bpf_dtab_netdev *dev)
- 
- 		int cpu;
- 
-+		rcu_read_lock();
- 		for_each_online_cpu(cpu) {
- 			bitmap = per_cpu_ptr(dev->dtab->flush_needed, cpu);
- 			__clear_bit(dev->bit, bitmap);
-@@ -396,6 +399,7 @@ static void dev_map_flush_old(struct bpf_dtab_netdev *dev)
- 			bq = per_cpu_ptr(dev->bulkq, cpu);
- 			bq_xmit_all(dev, bq, XDP_XMIT_FLUSH, false);
- 		}
-+		rcu_read_unlock();
- 	}
- }
- 
 -- 
 2.20.1
