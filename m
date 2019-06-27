@@ -1,12 +1,12 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:38414 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:37470 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727430AbfF0AeR (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 26 Jun 2019 20:34:17 -0400
+        id S1727237AbfF0Ada (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 26 Jun 2019 20:33:30 -0400
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 5.1 69/95] bpf, devmap: Add missing bulk queue free
-Date: Wed, 26 Jun 2019 20:29:54 -0400
-Message-Id: <20190627003021.19867-69-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.1 54/95] xdp: check device pointer before clearing
+Date: Wed, 26 Jun 2019 20:29:39 -0400
+Message-Id: <20190627003021.19867-54-sashal@kernel.org>
 In-Reply-To: <20190627003021.19867-1-sashal@kernel.org>
 References: <20190627003021.19867-1-sashal@kernel.org>
 MIME-Version: 1.0
@@ -14,34 +14,51 @@ Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Toshiaki Makita <toshiaki.makita1@gmail.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+Cc: Ilya Maximets <i.maximets@samsung.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org
 
-From: Toshiaki Makita <toshiaki.makita1@gmail.com>
+From: Ilya Maximets <i.maximets@samsung.com>
 
-[ Upstream commit edabf4d9dd905acd60048ea1579943801e3a4876 ]
+[ Upstream commit 01d76b5317003e019ace561a9b775f51aafdfdc4 ]
 
-dev_map_free() forgot to free bulk queue when freeing its entries.
+We should not call 'ndo_bpf()' or 'dev_put()' with NULL argument.
 
-Fixes: 5d053f9da431 ("bpf: devmap prepare xdp frames for bulking")
-Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
-Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Fixes: c9b47cc1fabc ("xsk: fix bug when trying to use both copy and zero-copy on one queue id")
+Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+Acked-by: Jonathan Lemon <jonathan.lemon@gmail.com>
 Signed-off-by: Daniel Borkmann <daniel@iogearbox.net>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- kernel/bpf/devmap.c | 1 +
- 1 file changed, 1 insertion(+)
+ net/xdp/xdp_umem.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
-index e001fb1a96b1..a126d95d12de 100644
---- a/kernel/bpf/devmap.c
-+++ b/kernel/bpf/devmap.c
-@@ -186,6 +186,7 @@ static void dev_map_free(struct bpf_map *map)
- 		if (!dev)
- 			continue;
+diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
+index 989e52386c35..2f7e2c33a812 100644
+--- a/net/xdp/xdp_umem.c
++++ b/net/xdp/xdp_umem.c
+@@ -143,6 +143,9 @@ static void xdp_umem_clear_dev(struct xdp_umem *umem)
+ 	struct netdev_bpf bpf;
+ 	int err;
  
-+		free_percpu(dev->bulkq);
- 		dev_put(dev->dev);
- 		kfree(dev);
++	if (!umem->dev)
++		return;
++
+ 	if (umem->zc) {
+ 		bpf.command = XDP_SETUP_XSK_UMEM;
+ 		bpf.xsk.umem = NULL;
+@@ -156,11 +159,9 @@ static void xdp_umem_clear_dev(struct xdp_umem *umem)
+ 			WARN(1, "failed to disable umem!\n");
  	}
+ 
+-	if (umem->dev) {
+-		rtnl_lock();
+-		xdp_clear_umem_at_qid(umem->dev, umem->queue_id);
+-		rtnl_unlock();
+-	}
++	rtnl_lock();
++	xdp_clear_umem_at_qid(umem->dev, umem->queue_id);
++	rtnl_unlock();
+ 
+ 	if (umem->zc) {
+ 		dev_put(umem->dev);
 -- 
 2.20.1
