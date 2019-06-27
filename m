@@ -1,14 +1,14 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:42910 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:38482 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727078AbfF0Aih (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 26 Jun 2019 20:38:37 -0400
+        id S1727439AbfF0AeU (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 26 Jun 2019 20:34:20 -0400
 From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.19 44/60] bpf, devmap: Add missing RCU read lock on flush
-Date: Wed, 26 Jun 2019 20:35:59 -0400
-Message-Id: <20190627003616.20767-44-sashal@kernel.org>
-In-Reply-To: <20190627003616.20767-1-sashal@kernel.org>
-References: <20190627003616.20767-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.1 70/95] bpf, devmap: Add missing RCU read lock on flush
+Date: Wed, 26 Jun 2019 20:29:55 -0400
+Message-Id: <20190627003021.19867-70-sashal@kernel.org>
+In-Reply-To: <20190627003021.19867-1-sashal@kernel.org>
+References: <20190627003021.19867-1-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
@@ -34,7 +34,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 4 insertions(+)
 
 diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
-index 357d456d57b9..fc500ca464d0 100644
+index a126d95d12de..1defea4b2755 100644
 --- a/kernel/bpf/devmap.c
 +++ b/kernel/bpf/devmap.c
 @@ -282,6 +282,7 @@ void __dev_map_flush(struct bpf_map *map)
