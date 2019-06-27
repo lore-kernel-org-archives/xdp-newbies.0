@@ -1,64 +1,82 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from condef-08.nifty.com ([202.248.20.73]:43923 "EHLO
-        condef-08.nifty.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726880AbfF0CCM (ORCPT
+Received: from mailout1.w1.samsung.com ([210.118.77.11]:56346 "EHLO
+        mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726480AbfF0HXg (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 26 Jun 2019 22:02:12 -0400
-Received: from conuserg-08.nifty.com ([10.126.8.71])by condef-08.nifty.com with ESMTP id x5R1nkns026735
-        for <xdp-newbies@vger.kernel.org>; Thu, 27 Jun 2019 10:49:47 +0900
-From: Masahiro Yamada <yamada.masahiro@socionext.com>
-Subject: [PATCH v2 0/4] Compile-test UAPI and kernel headers
-Date: Thu, 27 Jun 2019 10:46:13 +0900
-Message-Id: <20190627014617.600-1-yamada.masahiro@socionext.com>
+        Thu, 27 Jun 2019 03:23:36 -0400
+Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
+        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190627072334euoutp01306211fb94c4c46758ed8781ffba7042~r-U_xRYv00403804038euoutp01O
+        for <xdp-newbies@vger.kernel.org>; Thu, 27 Jun 2019 07:23:34 +0000 (GMT)
+Subject: Re: [PATCH bpf v4 2/2] xdp: fix hang while unregistering device
+ bound to xdp socket
+From: Ilya Maximets <i.maximets@samsung.com>
+Message-ID: <30d4e214-f53b-ac2d-e7f7-99bbd7b96b8f@samsung.com>
+Date: Thu, 27 Jun 2019 10:23:27 +0300
+MIME-Version: 1.0
+In-Reply-To: <20190626113427.761cc845@cakuba.netronome.com>
+Content-Language: en-GB
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+References: <20190626181515.1640-1-i.maximets@samsung.com>
+        <CGME20190626181528eucas1p190f20427a1d2a64f2efa6cedcfac0826@eucas1p1.samsung.com>
+        <20190626181515.1640-3-i.maximets@samsung.com>
+        <20190626113427.761cc845@cakuba.netronome.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: linux-kbuild@vger.kernel.org
-Cc: Sam Ravnborg <sam@ravnborg.org>, Masahiro Yamada <yamada.masahiro@socionext.com>, Tony Luck <tony.luck@intel.com>, linux-doc@vger.kernel.org, John Fastabend <john.fastabend@gmail.com>, Jonathan Corbet <corbet@lwn.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, linux-riscv@lists.infradead.org, Daniel Borkmann <daniel@iogearbox.net>, xdp-newbies@vger.kernel.org, Anton Vorontsov <anton@enomsg.org>, Palmer Dabbelt <palmer@sifive.com>, Matthias Brugger <matthias.bgg@gmail.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, Michal Marek <michal.lkml@markovi.net>, Jesper Dangaard Brouer <hawk@kernel.org>, Martin KaFai Lau <kafai@fb.com>, linux-mediatek@lists.infradead.org, linux-arm-kernel@lists.infradead.org, Albert Ou <aou@eecs.berkeley.edu>, Colin Cross <ccross@android.com>, "David S. Miller" <davem@davemloft.net>, Kees Cook <keescook@chromium.org>, Alexei Starovoitov <ast@kernel.org>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org
+To: Jakub Kicinski <jakub.kicinski@netronome.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>
 
+On 26.06.2019 21:34, Jakub Kicinski wrote:
+> On Wed, 26 Jun 2019 21:15:15 +0300, Ilya Maximets wrote:
+>> diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
+>> index 267b82a4cbcf..56729e74cbea 100644
+>> --- a/net/xdp/xdp_umem.c
+>> +++ b/net/xdp/xdp_umem.c
+>> @@ -140,34 +140,38 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, struct net_device *dev,
+>>  	return err;
+>>  }
+>>  
+>> -static void xdp_umem_clear_dev(struct xdp_umem *umem)
+>> +void xdp_umem_clear_dev(struct xdp_umem *umem)
+>>  {
+>> +	bool lock = rtnl_is_locked();
+> 
+> How do you know it's not just locked by someone else?  You need to pass
+> the locked state in if this is called from different paths, some of
+> which already hold rtnl.
 
-1/4: reworked v2.
+Oh. That's a shame. I need more sleep.
 
-2/4: fix a flaw I noticed when I was working on this series
+Thanks for spotting. I'll re-work this part.
 
-3/4: maybe useful for 4/4 and in some other places
+Best regards, Ilya Maximets.
 
-4/4: v2. compile as many headers as possible.
-
-
-Changes in v2:
- - Add CONFIG_CPU_{BIG,LITTLE}_ENDIAN guard to avoid build error
- - Use 'header-test-' instead of 'no-header-test'
- - Avoid weird 'find' warning when cleaning
-  - New patch
-  - New patch
-  - Add everything to test coverage, and exclude broken ones
-  - Rename 'Makefile' to 'Kbuild'
-  - Add CONFIG_KERNEL_HEADER_TEST option
-
-Masahiro Yamada (4):
-  kbuild: compile-test UAPI headers to ensure they are self-contained
-  kbuild: do not create wrappers for header-test-y
-  kbuild: support header-test-pattern-y
-  kbuild: compile-test kernel headers to ensure they are self-contained
-
- .gitignore                         |    1 -
- Documentation/dontdiff             |    1 -
- Documentation/kbuild/makefiles.txt |   13 +-
- Makefile                           |    4 +-
- include/Kbuild                     | 1134 ++++++++++++++++++++++++++++
- init/Kconfig                       |   22 +
- scripts/Makefile.build             |   10 +-
- scripts/Makefile.lib               |   12 +-
- scripts/cc-system-headers.sh       |    8 +
- usr/.gitignore                     |    1 -
- usr/Makefile                       |    2 +
- usr/include/.gitignore             |    3 +
- usr/include/Makefile               |  133 ++++
- 13 files changed, 1331 insertions(+), 13 deletions(-)
- create mode 100644 include/Kbuild
- create mode 100755 scripts/cc-system-headers.sh
- create mode 100644 usr/include/.gitignore
- create mode 100644 usr/include/Makefile
-
--- 
-2.17.1
+> 
+> Preferably factor the code which needs the lock out into a separate
+> function like this:
+> 
+> void __function()
+> {
+> 	do();
+> 	the();
+> 	things();
+> 	under();
+> 	the();
+> 	lock();
+> }
+> 
+> void function()
+> {
+> 	rtnl_lock();
+> 	__function();
+> 	rtnl_unlock();
+> }
+> 
+>>  	struct netdev_bpf bpf;
+>>  	int err;
+>>  
+>> +	if (!lock)
+>> +		rtnl_lock();
+> 
+> 
+> 
