@@ -1,77 +1,47 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f196.google.com ([209.85.160.196]:36817 "EHLO
-        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726223AbfFZUuf (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 26 Jun 2019 16:50:35 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42844 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727078AbfF0Aid (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 26 Jun 2019 20:38:33 -0400
+From: Sasha Levin <sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 43/60] bpf, devmap: Add missing bulk queue free
+Date: Wed, 26 Jun 2019 20:35:58 -0400
+Message-Id: <20190627003616.20767-43-sashal@kernel.org>
+In-Reply-To: <20190627003616.20767-1-sashal@kernel.org>
+References: <20190627003616.20767-1-sashal@kernel.org>
 MIME-Version: 1.0
-References: <20190626155911.13574-1-ivan.khoronzhuk@linaro.org>
-In-Reply-To: <20190626155911.13574-1-ivan.khoronzhuk@linaro.org>
-From: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
-Date: Wed, 26 Jun 2019 22:50:23 +0200
-Message-ID: <CAJ+HfNid3PntipAJHuPR-tQudf+E6UQK6mPDHdc0O=wCUSjEEA@mail.gmail.com>
-Subject: Re: [PATCH net-next] xdp: xdp_umem: fix umem pages mapping for 32bits systems
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
-To: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Cc: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, David Miller <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Netdev <netdev@vger.kernel.org>, bpf <bpf@vger.kernel.org>, Xdp <xdp-newbies@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc: Toshiaki Makita <toshiaki.makita1@gmail.com>, Jesper Dangaard Brouer <brouer@redhat.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
 
-On Wed, 26 Jun 2019 at 17:59, Ivan Khoronzhuk
-<ivan.khoronzhuk@linaro.org> wrote:
->
-> Use kmap instead of page_address as it's not always in low memory.
->
+From: Toshiaki Makita <toshiaki.makita1@gmail.com>
 
-Ah, some 32-bit love. :-) Thanks for working on this!
+[ Upstream commit edabf4d9dd905acd60048ea1579943801e3a4876 ]
 
-For future patches, please base AF_XDP patches on the bpf/bpf-next
-tree instead of net/net-next.
+dev_map_free() forgot to free bulk queue when freeing its entries.
 
-Acked-by: Björn Töpel <bjorn.topel@intel.com>
+Fixes: 5d053f9da431 ("bpf: devmap prepare xdp frames for bulking")
+Signed-off-by: Toshiaki Makita <toshiaki.makita1@gmail.com>
+Acked-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Signed-off-by: Daniel Borkmann <daniel@iogearbox.net>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ kernel/bpf/devmap.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-> Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-> ---
->  net/xdp/xdp_umem.c | 11 ++++++++++-
->  1 file changed, 10 insertions(+), 1 deletion(-)
->
-> diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
-> index 9c6de4f114f8..d3c1411420fd 100644
-> --- a/net/xdp/xdp_umem.c
-> +++ b/net/xdp/xdp_umem.c
-> @@ -169,6 +169,14 @@ static void xdp_umem_clear_dev(struct xdp_umem *umem)
->         }
->  }
->
-> +static void xdp_umem_unmap_pages(struct xdp_umem *umem)
-> +{
-> +       unsigned int i;
-> +
-> +       for (i = 0; i < umem->npgs; i++)
-> +               kunmap(umem->pgs[i]);
-> +}
-> +
->  static void xdp_umem_unpin_pages(struct xdp_umem *umem)
->  {
->         unsigned int i;
-> @@ -210,6 +218,7 @@ static void xdp_umem_release(struct xdp_umem *umem)
->
->         xsk_reuseq_destroy(umem);
->
-> +       xdp_umem_unmap_pages(umem);
->         xdp_umem_unpin_pages(umem);
->
->         kfree(umem->pages);
-> @@ -372,7 +381,7 @@ static int xdp_umem_reg(struct xdp_umem *umem, struct xdp_umem_reg *mr)
->         }
->
->         for (i = 0; i < umem->npgs; i++)
-> -               umem->pages[i].addr = page_address(umem->pgs[i]);
-> +               umem->pages[i].addr = kmap(umem->pgs[i]);
->
->         return 0;
->
-> --
-> 2.17.1
->
+diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
+index 99353ac28cd4..357d456d57b9 100644
+--- a/kernel/bpf/devmap.c
++++ b/kernel/bpf/devmap.c
+@@ -186,6 +186,7 @@ static void dev_map_free(struct bpf_map *map)
+ 		if (!dev)
+ 			continue;
+ 
++		free_percpu(dev->bulkq);
+ 		dev_put(dev->dev);
+ 		kfree(dev);
+ 	}
+-- 
+2.20.1
