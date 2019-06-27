@@ -1,70 +1,310 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mailout1.w1.samsung.com ([210.118.77.11]:39319 "EHLO
+Received: from mailout1.w1.samsung.com ([210.118.77.11]:39349 "EHLO
         mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726511AbfF0KPl (ORCPT
+        with ESMTP id S1726524AbfF0KPn (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 27 Jun 2019 06:15:41 -0400
+        Thu, 27 Jun 2019 06:15:43 -0400
 Received: from eucas1p1.samsung.com (unknown [182.198.249.206])
-        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190627101539euoutp017ff449189154c319067b69496fa74f00~sBrPBbVXY0553905539euoutp01-
-        for <xdp-newbies@vger.kernel.org>; Thu, 27 Jun 2019 10:15:39 +0000 (GMT)
+        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190627101542euoutp01c8be6a0788b796d6f0ce67d3bcf47567~sBrQ-vXQw0582305823euoutp01l
+        for <xdp-newbies@vger.kernel.org>; Thu, 27 Jun 2019 10:15:42 +0000 (GMT)
 From: Ilya Maximets <i.maximets@samsung.com>
-Subject: [PATCH bpf v5 1/2] xdp: hold device for umem regardless of
- zero-copy mode
-Date: Thu, 27 Jun 2019 13:15:28 +0300
-Message-Id: <20190627101529.11234-2-i.maximets@samsung.com>
+Subject: [PATCH bpf v5 2/2] xdp: fix hang while unregistering device bound
+ to xdp socket
+Date: Thu, 27 Jun 2019 13:15:29 +0300
+Message-Id: <20190627101529.11234-3-i.maximets@samsung.com>
 In-Reply-To: <20190627101529.11234-1-i.maximets@samsung.com>
 Content-Type: text/plain; charset="utf-8"
 References: <20190627101529.11234-1-i.maximets@samsung.com>
-        <CGME20190627101538eucas1p23924bd4173eb4b7b59c624b588ecb787@eucas1p2.samsung.com>
+        <CGME20190627101540eucas1p149805b39e12bf7ecf5864b7ff1b0c934@eucas1p1.samsung.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Daniel Borkmann <daniel@iogearbox.net>, Ilya Maximets <i.maximets@samsung.com>
 
-Device pointer stored in umem regardless of zero-copy mode,
-so we heed to hold the device in all cases.
+Device that bound to XDP socket will not have zero refcount until the
+userspace application will not close it. This leads to hang inside
+'netdev_wait_allrefs()' if device unregistering requested:
 
-Fixes: c9b47cc1fabc ("xsk: fix bug when trying to use both copy and zero-copy on one queue id")
+  # ip link del p1
+  < hang on recvmsg on netlink socket >
+
+  # ps -x | grep ip
+  5126  pts/0    D+   0:00 ip link del p1
+
+  # journalctl -b
+
+  Jun 05 07:19:16 kernel:
+  unregister_netdevice: waiting for p1 to become free. Usage count = 1
+
+  Jun 05 07:19:27 kernel:
+  unregister_netdevice: waiting for p1 to become free. Usage count = 1
+  ...
+
+Fix that by implementing NETDEV_UNREGISTER event notification handler
+to properly clean up all the resources and unref device.
+
+This should also allow socket killing via ss(8) utility.
+
+Fixes: 965a99098443 ("xsk: add support for bind for Rx")
 Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
 ---
- net/xdp/xdp_umem.c | 11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
+ include/net/xdp_sock.h |  5 +++
+ net/xdp/xdp_umem.c     | 10 ++---
+ net/xdp/xdp_umem.h     |  1 +
+ net/xdp/xsk.c          | 87 ++++++++++++++++++++++++++++++++++++------
+ 4 files changed, 87 insertions(+), 16 deletions(-)
 
+diff --git a/include/net/xdp_sock.h b/include/net/xdp_sock.h
+index d074b6d60f8a..82d153a637c7 100644
+--- a/include/net/xdp_sock.h
++++ b/include/net/xdp_sock.h
+@@ -61,6 +61,11 @@ struct xdp_sock {
+ 	struct xsk_queue *tx ____cacheline_aligned_in_smp;
+ 	struct list_head list;
+ 	bool zc;
++	enum {
++		XSK_UNINITIALIZED = 0,
++		XSK_BINDED,
++		XSK_UNBINDED,
++	} state;
+ 	/* Protects multiple processes in the control path */
+ 	struct mutex mutex;
+ 	/* Mutual exclusion of NAPI TX thread and sendmsg error paths
 diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
-index 9c6de4f114f8..267b82a4cbcf 100644
+index 267b82a4cbcf..20c91f02d3d8 100644
 --- a/net/xdp/xdp_umem.c
 +++ b/net/xdp/xdp_umem.c
-@@ -105,6 +105,9 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, struct net_device *dev,
- 
- 	umem->dev = dev;
- 	umem->queue_id = queue_id;
-+
-+	dev_hold(dev);
-+
- 	if (force_copy)
- 		/* For copy-mode, we are done. */
- 		goto out_rtnl_unlock;
-@@ -124,7 +127,6 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, struct net_device *dev,
- 		goto err_unreg_umem;
- 	rtnl_unlock();
- 
--	dev_hold(dev);
- 	umem->zc = true;
- 	return 0;
- 
-@@ -163,10 +165,9 @@ static void xdp_umem_clear_dev(struct xdp_umem *umem)
- 	xdp_clear_umem_at_qid(umem->dev, umem->queue_id);
- 	rtnl_unlock();
- 
--	if (umem->zc) {
--		dev_put(umem->dev);
--		umem->zc = false;
--	}
-+	dev_put(umem->dev);
-+	umem->dev = NULL;
-+	umem->zc = false;
+@@ -140,11 +140,13 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, struct net_device *dev,
+ 	return err;
  }
  
- static void xdp_umem_unpin_pages(struct xdp_umem *umem)
+-static void xdp_umem_clear_dev(struct xdp_umem *umem)
++void xdp_umem_clear_dev(struct xdp_umem *umem)
+ {
+ 	struct netdev_bpf bpf;
+ 	int err;
+ 
++	ASSERT_RTNL();
++
+ 	if (!umem->dev)
+ 		return;
+ 
+@@ -153,17 +155,13 @@ static void xdp_umem_clear_dev(struct xdp_umem *umem)
+ 		bpf.xsk.umem = NULL;
+ 		bpf.xsk.queue_id = umem->queue_id;
+ 
+-		rtnl_lock();
+ 		err = umem->dev->netdev_ops->ndo_bpf(umem->dev, &bpf);
+-		rtnl_unlock();
+ 
+ 		if (err)
+ 			WARN(1, "failed to disable umem!\n");
+ 	}
+ 
+-	rtnl_lock();
+ 	xdp_clear_umem_at_qid(umem->dev, umem->queue_id);
+-	rtnl_unlock();
+ 
+ 	dev_put(umem->dev);
+ 	umem->dev = NULL;
+@@ -195,7 +193,9 @@ static void xdp_umem_unaccount_pages(struct xdp_umem *umem)
+ 
+ static void xdp_umem_release(struct xdp_umem *umem)
+ {
++	rtnl_lock();
+ 	xdp_umem_clear_dev(umem);
++	rtnl_unlock();
+ 
+ 	ida_simple_remove(&umem_ida, umem->id);
+ 
+diff --git a/net/xdp/xdp_umem.h b/net/xdp/xdp_umem.h
+index 27603227601b..a63a9fb251f5 100644
+--- a/net/xdp/xdp_umem.h
++++ b/net/xdp/xdp_umem.h
+@@ -10,6 +10,7 @@
+ 
+ int xdp_umem_assign_dev(struct xdp_umem *umem, struct net_device *dev,
+ 			u16 queue_id, u16 flags);
++void xdp_umem_clear_dev(struct xdp_umem *umem);
+ bool xdp_umem_validate_queues(struct xdp_umem *umem);
+ void xdp_get_umem(struct xdp_umem *umem);
+ void xdp_put_umem(struct xdp_umem *umem);
+diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
+index a14e8864e4fa..336723948a36 100644
+--- a/net/xdp/xsk.c
++++ b/net/xdp/xsk.c
+@@ -335,6 +335,22 @@ static int xsk_init_queue(u32 entries, struct xsk_queue **queue,
+ 	return 0;
+ }
+ 
++static void xsk_unbind_dev(struct xdp_sock *xs)
++{
++	struct net_device *dev = xs->dev;
++
++	if (!dev || xs->state != XSK_BINDED)
++		return;
++
++	xs->state = XSK_UNBINDED;
++
++	/* Wait for driver to stop using the xdp socket. */
++	xdp_del_sk_umem(xs->umem, xs);
++	xs->dev = NULL;
++	synchronize_net();
++	dev_put(dev);
++}
++
+ static int xsk_release(struct socket *sock)
+ {
+ 	struct sock *sk = sock->sk;
+@@ -354,15 +370,7 @@ static int xsk_release(struct socket *sock)
+ 	sock_prot_inuse_add(net, sk->sk_prot, -1);
+ 	local_bh_enable();
+ 
+-	if (xs->dev) {
+-		struct net_device *dev = xs->dev;
+-
+-		/* Wait for driver to stop using the xdp socket. */
+-		xdp_del_sk_umem(xs->umem, xs);
+-		xs->dev = NULL;
+-		synchronize_net();
+-		dev_put(dev);
+-	}
++	xsk_unbind_dev(xs);
+ 
+ 	xskq_destroy(xs->rx);
+ 	xskq_destroy(xs->tx);
+@@ -412,7 +420,7 @@ static int xsk_bind(struct socket *sock, struct sockaddr *addr, int addr_len)
+ 		return -EINVAL;
+ 
+ 	mutex_lock(&xs->mutex);
+-	if (xs->dev) {
++	if (xs->state != XSK_UNINITIALIZED) {
+ 		err = -EBUSY;
+ 		goto out_release;
+ 	}
+@@ -492,6 +500,8 @@ static int xsk_bind(struct socket *sock, struct sockaddr *addr, int addr_len)
+ out_unlock:
+ 	if (err)
+ 		dev_put(dev);
++	else
++		xs->state = XSK_BINDED;
+ out_release:
+ 	mutex_unlock(&xs->mutex);
+ 	return err;
+@@ -520,6 +530,10 @@ static int xsk_setsockopt(struct socket *sock, int level, int optname,
+ 			return -EFAULT;
+ 
+ 		mutex_lock(&xs->mutex);
++		if (xs->state != XSK_UNINITIALIZED) {
++			mutex_unlock(&xs->mutex);
++			return -EBUSY;
++		}
+ 		q = (optname == XDP_TX_RING) ? &xs->tx : &xs->rx;
+ 		err = xsk_init_queue(entries, q, false);
+ 		mutex_unlock(&xs->mutex);
+@@ -534,7 +548,7 @@ static int xsk_setsockopt(struct socket *sock, int level, int optname,
+ 			return -EFAULT;
+ 
+ 		mutex_lock(&xs->mutex);
+-		if (xs->umem) {
++		if (xs->state != XSK_UNINITIALIZED || xs->umem) {
+ 			mutex_unlock(&xs->mutex);
+ 			return -EBUSY;
+ 		}
+@@ -561,6 +575,10 @@ static int xsk_setsockopt(struct socket *sock, int level, int optname,
+ 			return -EFAULT;
+ 
+ 		mutex_lock(&xs->mutex);
++		if (xs->state != XSK_UNINITIALIZED) {
++			mutex_unlock(&xs->mutex);
++			return -EBUSY;
++		}
+ 		if (!xs->umem) {
+ 			mutex_unlock(&xs->mutex);
+ 			return -EINVAL;
+@@ -662,6 +680,9 @@ static int xsk_mmap(struct file *file, struct socket *sock,
+ 	unsigned long pfn;
+ 	struct page *qpg;
+ 
++	if (xs->state != XSK_UNINITIALIZED)
++		return -EBUSY;
++
+ 	if (offset == XDP_PGOFF_RX_RING) {
+ 		q = READ_ONCE(xs->rx);
+ 	} else if (offset == XDP_PGOFF_TX_RING) {
+@@ -693,6 +714,38 @@ static int xsk_mmap(struct file *file, struct socket *sock,
+ 			       size, vma->vm_page_prot);
+ }
+ 
++static int xsk_notifier(struct notifier_block *this,
++			unsigned long msg, void *ptr)
++{
++	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
++	struct net *net = dev_net(dev);
++	struct sock *sk;
++
++	switch (msg) {
++	case NETDEV_UNREGISTER:
++		mutex_lock(&net->xdp.lock);
++		sk_for_each(sk, &net->xdp.list) {
++			struct xdp_sock *xs = xdp_sk(sk);
++
++			mutex_lock(&xs->mutex);
++			if (xs->dev == dev) {
++				sk->sk_err = ENETDOWN;
++				if (!sock_flag(sk, SOCK_DEAD))
++					sk->sk_error_report(sk);
++
++				xsk_unbind_dev(xs);
++
++				/* Clear device references in umem. */
++				xdp_umem_clear_dev(xs->umem);
++			}
++			mutex_unlock(&xs->mutex);
++		}
++		mutex_unlock(&net->xdp.lock);
++		break;
++	}
++	return NOTIFY_DONE;
++}
++
+ static struct proto xsk_proto = {
+ 	.name =		"XDP",
+ 	.owner =	THIS_MODULE,
+@@ -764,6 +817,7 @@ static int xsk_create(struct net *net, struct socket *sock, int protocol,
+ 	sock_set_flag(sk, SOCK_RCU_FREE);
+ 
+ 	xs = xdp_sk(sk);
++	xs->state = XSK_UNINITIALIZED;
+ 	mutex_init(&xs->mutex);
+ 	spin_lock_init(&xs->tx_completion_lock);
+ 
+@@ -784,6 +838,10 @@ static const struct net_proto_family xsk_family_ops = {
+ 	.owner	= THIS_MODULE,
+ };
+ 
++static struct notifier_block xsk_netdev_notifier = {
++	.notifier_call	= xsk_notifier,
++};
++
+ static int __net_init xsk_net_init(struct net *net)
+ {
+ 	mutex_init(&net->xdp.lock);
+@@ -816,8 +874,15 @@ static int __init xsk_init(void)
+ 	err = register_pernet_subsys(&xsk_net_ops);
+ 	if (err)
+ 		goto out_sk;
++
++	err = register_netdevice_notifier(&xsk_netdev_notifier);
++	if (err)
++		goto out_pernet;
++
+ 	return 0;
+ 
++out_pernet:
++	unregister_pernet_subsys(&xsk_net_ops);
+ out_sk:
+ 	sock_unregister(PF_XDP);
+ out_proto:
 -- 
 2.17.1
