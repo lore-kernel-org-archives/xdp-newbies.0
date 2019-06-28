@@ -1,129 +1,53 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46752 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726558AbfF1LuL (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 28 Jun 2019 07:50:11 -0400
-From: "Eelco Chaudron" <echaudro@redhat.com>
-Subject: Re: XDP multi-buffer incl. jumbo-frames (Was: [RFC V1 net-next 1/1]
- net: ena: implement XDP drop support)
-Date: Fri, 28 Jun 2019 13:49:43 +0200
-Message-ID: <5127F708-7CDD-4471-9767-D8C87DC23888@redhat.com>
-In-Reply-To: <87y31m884a.fsf@toke.dk>
-References: <20190623070649.18447-1-sameehj@amazon.com>
- <20190623070649.18447-2-sameehj@amazon.com> <20190623162133.6b7f24e1@carbon>
- <A658E65E-93D2-4F10-823D-CC25B081C1B7@amazon.com>
- <20190626103829.5360ef2d@carbon>
- <CC99D6DE-5B6B-42F3-8D68-7F9AFF1712FF@redhat.com> <87y31m884a.fsf@toke.dk>
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:35568 "EHLO
+        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726730AbfF1PRU (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 28 Jun 2019 11:17:20 -0400
+Subject: Re: WARNING in is_bpf_text_address
+References: <000000000000104b00058c61eda4@google.com>
+From: Bart Van Assche <bvanassche@acm.org>
+Message-ID: <c0e440a1-30aa-a636-fe5c-44f71705857b@acm.org>
+Date: Fri, 28 Jun 2019 08:17:16 -0700
 MIME-Version: 1.0
+In-Reply-To: <000000000000104b00058c61eda4@google.com>
 Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8BIT
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Toke =?utf-8?b?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, "Machulsky, Zorik" <zorik@amazon.com>, "Jubran, Samih" <sameehj@amazon.com>, davem@davemloft.net, netdev@vger.kernel.org, "Woodhouse, David" <dwmw@amazon.co.uk>, "Matushevsky, Alexander" <matua@amazon.com>, "Bshara, Saeed" <saeedb@amazon.com>, "Wilson, Matt" <msw@amazon.com>, "Liguori, Anthony" <aliguori@amazon.com>, "Bshara, Nafea" <nafea@amazon.com>, "Tzalik, Guy" <gtzalik@amazon.com>, "Belgazal, Netanel" <netanel@amazon.com>, "Saidi, Ali" <alisaidi@amazon.com>, "Herrenschmidt, Benjamin" <benh@amazon.com>, "Kiyanovski, Arthur" <akiyano@amazon.com>, Daniel Borkmann <borkmann@iogearbox.net>, Ilias Apalodimas <ilias.apalodimas@linaro.org>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, xdp-newbies@vger.kernel.org
+To: syzbot <syzbot+bd3bba6ff3fcea7a6ec6@syzkaller.appspotmail.com>, akpm@linux-foundation.org, ast@kernel.org, bpf@vger.kernel.org, daniel@iogearbox.net, davem@davemloft.net, hawk@kernel.org, jakub.kicinski@netronome.com, johannes.berg@intel.com, johannes@sipsolutions.net, john.fastabend@gmail.com, kafai@fb.com, linux-kernel@vger.kernel.org, longman@redhat.com, mingo@kernel.org, netdev@vger.kernel.org, paulmck@linux.vnet.ibm.com, peterz@infradead.org, songliubraving@fb.com, syzkaller-bugs@googlegroups.com, tglx@linutronix.de, tj@kernel.org, torvalds@linux-foundation.org, will.deacon@arm.com, xdp-newbies@vger.kernel.org, yhs@fb.com, Dmitry Vyukov <dvyukov@google.com>
 
+On 6/28/19 6:05 AM, syzbot wrote:
+> syzbot has bisected this bug to:
+> 
+> commit a0b0fd53e1e67639b303b15939b9c653dbe7a8c4
+> Author: Bart Van Assche <bvanassche@acm.org>
+> Date:   Thu Feb 14 23:00:46 2019 +0000
+> 
+>      locking/lockdep: Free lock classes that are no longer in use
+> 
+> bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=152f6a9da00000
+> start commit:   abf02e29 Merge tag 'pm-5.2-rc6' of 
+> git://git.kernel.org/pu..
+> git tree:       upstream
+> final crash:    https://syzkaller.appspot.com/x/report.txt?x=172f6a9da00000
+> console output: https://syzkaller.appspot.com/x/log.txt?x=132f6a9da00000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=28ec3437a5394ee0
+> dashboard link: 
+> https://syzkaller.appspot.com/bug?extid=bd3bba6ff3fcea7a6ec6
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=14ae828aa00000
+> 
+> Reported-by: syzbot+bd3bba6ff3fcea7a6ec6@syzkaller.appspotmail.com
+> Fixes: a0b0fd53e1e6 ("locking/lockdep: Free lock classes that are no 
+> longer in use")
+> 
+> For information about bisection process see: 
+> https://goo.gl/tpsmEJ#bisection
 
+Dmitry, this bisection result does not make any sense to me. Can I mark 
+this bisection result myself as invalid?
 
-On 28 Jun 2019, at 9:46, Toke Høiland-Jørgensen wrote:
+Thanks,
 
-> "Eelco Chaudron" <echaudro@redhat.com> writes:
->
->> On 26 Jun 2019, at 10:38, Jesper Dangaard Brouer wrote:
->>
->>> On Tue, 25 Jun 2019 03:19:22 +0000
->>> "Machulsky, Zorik" <zorik@amazon.com> wrote:
->>>
->>>> ﻿On 6/23/19, 7:21 AM, "Jesper Dangaard Brouer" 
->>>> <brouer@redhat.com>
->>>> wrote:
->>>>
->>>>     On Sun, 23 Jun 2019 10:06:49 +0300 <sameehj@amazon.com> wrote:
->>>>
->>>>     > This commit implements the basic functionality of drop/pass
->>>> logic in the
->>>>     > ena driver.
->>>>
->>>>     Usually we require a driver to implement all the XDP return
->>>> codes,
->>>>     before we accept it.  But as Daniel and I discussed with Zorik
->>>> during
->>>>     NetConf[1], we are going to make an exception and accept the
->>>> driver
->>>>     if you also implement XDP_TX.
->>>>
->>>>     As we trust that Zorik/Amazon will follow and implement
->>>> XDP_REDIRECT
->>>>     later, given he/you wants AF_XDP support which requires
->>>> XDP_REDIRECT.
->>>>
->>>> Jesper, thanks for your comments and very helpful discussion during
->>>> NetConf! That's the plan, as we agreed. From our side I would like 
->>>> to
->>>> reiterate again the importance of multi-buffer support by xdp 
->>>> frame.
->>>> We would really prefer not to see our MTU shrinking because of xdp
->>>> support.
->>>
->>> Okay we really need to make a serious attempt to find a way to 
->>> support
->>> multi-buffer packets with XDP. With the important criteria of not
->>> hurting performance of the single-buffer per packet design.
->>>
->>> I've created a design document[2], that I will update based on our
->>> discussions: [2]
->>> https://github.com/xdp-project/xdp-project/blob/master/areas/core/xdp-multi-buffer01-design.org
->>>
->>> The use-case that really convinced me was Eric's packet 
->>> header-split.
->>>
->>>
->>> Lets refresh: Why XDP don't have multi-buffer support:
->>>
->>> XDP is designed for maximum performance, which is why certain
->>> driver-level
->>> use-cases were not supported, like multi-buffer packets (like
->>> jumbo-frames).
->>> As it e.g. complicated the driver RX-loop and memory model handling.
->>>
->>> The single buffer per packet design, is also tied into eBPF
->>> Direct-Access
->>> (DA) to packet data, which can only be allowed if the packet memory 
->>> is
->>> in
->>> contiguous memory.  This DA feature is essential for XDP 
->>> performance.
->>>
->>>
->>> One way forward is to define that XDP only get access to the first
->>> packet buffer, and it cannot see subsequent buffers.  For XDP_TX and
->>> XDP_REDIRECT to work then XDP still need to carry pointers (plus
->>> len+offset) to the other buffers, which is 16 bytes per extra 
->>> buffer.
->>
->>
->> I’ve seen various network processor HW designs, and they normally 
->> get
->> the first x bytes (128 - 512) which they can manipulate
->> (append/prepend/insert/modify/delete).
->>
->> There are designs where they can “page in” the additional 
->> fragments
->> but it’s expensive as it requires additional memory transfers. But 
->> the
->> majority do not care (cannot change) the remaining fragments. Can 
->> also
->> not think of a reason why you might want to remove something at the 
->> end
->> of the frame (thinking about routing/forwarding needs here).
->>
->> If we do want XDP to access other fragments we could do this through 
->> a
->> helper which swaps the packet context?
->
-> Yeah, I was also going to suggest a helper for that. It doesn't
-> necessarily need to swap the packet context, it could just return a 
-> new
-> pointer?
-
-Yes that will work, my head was still thinking ASICs where there is 
-limited SRAM space…
+Bart.
