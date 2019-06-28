@@ -1,119 +1,129 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42552 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46752 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725873AbfF1IsL (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 28 Jun 2019 04:48:11 -0400
-Date: Fri, 28 Jun 2019 10:46:23 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+        id S1726558AbfF1LuL (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 28 Jun 2019 07:50:11 -0400
+From: "Eelco Chaudron" <echaudro@redhat.com>
 Subject: Re: XDP multi-buffer incl. jumbo-frames (Was: [RFC V1 net-next 1/1]
  net: ena: implement XDP drop support)
-Message-ID: <20190628104557.1ffef3e5@carbon>
-In-Reply-To: <CA+FuTSfKnhv9rr=cDa_4m7Dd9qkEm_oabDfyvH0T0sM+fQTU=w@mail.gmail.com>
+Date: Fri, 28 Jun 2019 13:49:43 +0200
+Message-ID: <5127F708-7CDD-4471-9767-D8C87DC23888@redhat.com>
+In-Reply-To: <87y31m884a.fsf@toke.dk>
 References: <20190623070649.18447-1-sameehj@amazon.com>
-        <20190623070649.18447-2-sameehj@amazon.com>
-        <20190623162133.6b7f24e1@carbon>
-        <A658E65E-93D2-4F10-823D-CC25B081C1B7@amazon.com>
-        <20190626103829.5360ef2d@carbon>
-        <87a7e4d0nj.fsf@toke.dk>
-        <20190626164059.4a9511cf@carbon>
-        <87h88cbdbe.fsf@toke.dk>
-        <CA+FuTSfKnhv9rr=cDa_4m7Dd9qkEm_oabDfyvH0T0sM+fQTU=w@mail.gmail.com>
+ <20190623070649.18447-2-sameehj@amazon.com> <20190623162133.6b7f24e1@carbon>
+ <A658E65E-93D2-4F10-823D-CC25B081C1B7@amazon.com>
+ <20190626103829.5360ef2d@carbon>
+ <CC99D6DE-5B6B-42F3-8D68-7F9AFF1712FF@redhat.com> <87y31m884a.fsf@toke.dk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 8BIT
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Willem de Bruijn <willemdebruijn.kernel@gmail.com>
-Cc: Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>, "Machulsky, Zorik" <zorik@amazon.com>, "Jubran, Samih" <sameehj@amazon.com>, "davem@davemloft.net" <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "Woodhouse, David" <dwmw@amazon.co.uk>, "Matushevsky, Alexander" <matua@amazon.com>, "Bshara, Saeed" <saeedb@amazon.com>, "Wilson, Matt" <msw@amazon.com>, "Liguori, Anthony" <aliguori@amazon.com>, "Bshara, Nafea" <nafea@amazon.com>, "Tzalik, Guy" <gtzalik@amazon.com>, "Belgazal, Netanel" <netanel@amazon.com>, "Saidi, Ali" <alisaidi@amazon.com>, "Herrenschmidt, Benjamin" <benh@amazon.com>, "Kiyanovski, Arthur" <akiyano@amazon.com>, Daniel Borkmann <borkmann@iogearbox.net>, Ilias Apalodimas <ilias.apalodimas@linaro.org>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, brouer@redhat.com
+To: Toke =?utf-8?b?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, "Machulsky, Zorik" <zorik@amazon.com>, "Jubran, Samih" <sameehj@amazon.com>, davem@davemloft.net, netdev@vger.kernel.org, "Woodhouse, David" <dwmw@amazon.co.uk>, "Matushevsky, Alexander" <matua@amazon.com>, "Bshara, Saeed" <saeedb@amazon.com>, "Wilson, Matt" <msw@amazon.com>, "Liguori, Anthony" <aliguori@amazon.com>, "Bshara, Nafea" <nafea@amazon.com>, "Tzalik, Guy" <gtzalik@amazon.com>, "Belgazal, Netanel" <netanel@amazon.com>, "Saidi, Ali" <alisaidi@amazon.com>, "Herrenschmidt, Benjamin" <benh@amazon.com>, "Kiyanovski, Arthur" <akiyano@amazon.com>, Daniel Borkmann <borkmann@iogearbox.net>, Ilias Apalodimas <ilias.apalodimas@linaro.org>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, xdp-newbies@vger.kernel.org
 
 
-On Wed, 26 Jun 2019 11:20:45 -0400 Willem de Bruijn <willemdebruijn.kernel@gmail.com> wrote:
-> On Wed, Jun 26, 2019 at 11:01 AM Toke Høiland-Jørgensen <toke@redhat.com> wrote:
-> > Jesper Dangaard Brouer <brouer@redhat.com> writes:
-> > > On Wed, 26 Jun 2019 13:52:16 +0200
-> > > Toke Høiland-Jørgensen <toke@redhat.com> wrote:
-> > >  
-> > >> Jesper Dangaard Brouer <brouer@redhat.com> writes:
-> > >>  
-[...]
-> > >
-> > > You touch upon some interesting complications already:
-> > >
-> > > 1. It is valuable for XDP bpf_prog to know "full" length?
-> > >    (if so, then we need to extend xdp ctx with info)  
-> >
-> > Valuable, quite likely. A hard requirement, probably not (for all use
-> > cases).  
-> 
-> Agreed.
-> 
-> One common validation use would be to drop any packets whose header
-> length disagrees with the actual packet length.
 
-That is a good point.
+On 28 Jun 2019, at 9:46, Toke Høiland-Jørgensen wrote:
 
-Added a section "XDP access to full packet length?" to capture this:
-- https://github.com/xdp-project/xdp-project/commit/da5b84264b85b0d
-- https://github.com/xdp-project/xdp-project/blob/master/areas/core/xdp-multi-buffer01-design.org#xdp-access-to-full-packet-length
-
-
-> > >  But if we need to know the full length, when the first-buffer is
-> > >  processed. Then realize that this affect the drivers RX-loop, because
-> > >  then we need to "collect" all the buffers before we can know the
-> > >  length (although some HW provide this in first descriptor).
-> > >
-> > >  We likely have to change drivers RX-loop anyhow, as XDP_TX and
-> > >  XDP_REDIRECT will also need to "collect" all buffers before the packet
-> > >  can be forwarded. (Although this could potentially happen later in
-> > >  driver loop when it meet/find the End-Of-Packet descriptor bit).  
-> 
-> Yes, this might be quite a bit of refactoring of device driver code.
-> 
-> Should we move forward with some initial constraints, e.g., no
-> XDP_REDIRECT, no "full" length and no bpf_xdp_adjust_tail?
-
-I generally like this...
-
-If not adding "full" length. Maybe we could add an indication to
-XDP-developer, that his is a multi-buffer/multi-segment packet, such
-that header length validation code against packet length (data_end-data)
-is not possible.  This is user visible, so we would have to keep it
-forever... I'm leaning towards adding "full" length from beginning.
-
-> That already allows many useful programs.
+> "Eelco Chaudron" <echaudro@redhat.com> writes:
 >
-> As long as we don't arrive at a design that cannot be extended with
-> those features later.
+>> On 26 Jun 2019, at 10:38, Jesper Dangaard Brouer wrote:
+>>
+>>> On Tue, 25 Jun 2019 03:19:22 +0000
+>>> "Machulsky, Zorik" <zorik@amazon.com> wrote:
+>>>
+>>>> ﻿On 6/23/19, 7:21 AM, "Jesper Dangaard Brouer" 
+>>>> <brouer@redhat.com>
+>>>> wrote:
+>>>>
+>>>>     On Sun, 23 Jun 2019 10:06:49 +0300 <sameehj@amazon.com> wrote:
+>>>>
+>>>>     > This commit implements the basic functionality of drop/pass
+>>>> logic in the
+>>>>     > ena driver.
+>>>>
+>>>>     Usually we require a driver to implement all the XDP return
+>>>> codes,
+>>>>     before we accept it.  But as Daniel and I discussed with Zorik
+>>>> during
+>>>>     NetConf[1], we are going to make an exception and accept the
+>>>> driver
+>>>>     if you also implement XDP_TX.
+>>>>
+>>>>     As we trust that Zorik/Amazon will follow and implement
+>>>> XDP_REDIRECT
+>>>>     later, given he/you wants AF_XDP support which requires
+>>>> XDP_REDIRECT.
+>>>>
+>>>> Jesper, thanks for your comments and very helpful discussion during
+>>>> NetConf! That's the plan, as we agreed. From our side I would like 
+>>>> to
+>>>> reiterate again the importance of multi-buffer support by xdp 
+>>>> frame.
+>>>> We would really prefer not to see our MTU shrinking because of xdp
+>>>> support.
+>>>
+>>> Okay we really need to make a serious attempt to find a way to 
+>>> support
+>>> multi-buffer packets with XDP. With the important criteria of not
+>>> hurting performance of the single-buffer per packet design.
+>>>
+>>> I've created a design document[2], that I will update based on our
+>>> discussions: [2]
+>>> https://github.com/xdp-project/xdp-project/blob/master/areas/core/xdp-multi-buffer01-design.org
+>>>
+>>> The use-case that really convinced me was Eric's packet 
+>>> header-split.
+>>>
+>>>
+>>> Lets refresh: Why XDP don't have multi-buffer support:
+>>>
+>>> XDP is designed for maximum performance, which is why certain
+>>> driver-level
+>>> use-cases were not supported, like multi-buffer packets (like
+>>> jumbo-frames).
+>>> As it e.g. complicated the driver RX-loop and memory model handling.
+>>>
+>>> The single buffer per packet design, is also tied into eBPF
+>>> Direct-Access
+>>> (DA) to packet data, which can only be allowed if the packet memory 
+>>> is
+>>> in
+>>> contiguous memory.  This DA feature is essential for XDP 
+>>> performance.
+>>>
+>>>
+>>> One way forward is to define that XDP only get access to the first
+>>> packet buffer, and it cannot see subsequent buffers.  For XDP_TX and
+>>> XDP_REDIRECT to work then XDP still need to carry pointers (plus
+>>> len+offset) to the other buffers, which is 16 bytes per extra 
+>>> buffer.
+>>
+>>
+>> I’ve seen various network processor HW designs, and they normally 
+>> get
+>> the first x bytes (128 - 512) which they can manipulate
+>> (append/prepend/insert/modify/delete).
+>>
+>> There are designs where they can “page in” the additional 
+>> fragments
+>> but it’s expensive as it requires additional memory transfers. But 
+>> the
+>> majority do not care (cannot change) the remaining fragments. Can 
+>> also
+>> not think of a reason why you might want to remove something at the 
+>> end
+>> of the frame (thinking about routing/forwarding needs here).
+>>
+>> If we do want XDP to access other fragments we could do this through 
+>> a
+>> helper which swaps the packet context?
+>
+> Yeah, I was also going to suggest a helper for that. It doesn't
+> necessarily need to swap the packet context, it could just return a 
+> new
+> pointer?
 
-That is the important part...
-
- 
-> > > 2. Can we even allow helper bpf_xdp_adjust_tail() ?
-[...]
-> >  
-> > >  Perhaps it is better to let bpf_xdp_adjust_tail() fail runtime?  
-> >
-> > If we do disallow it, I think I'd lean towards failing the call at
-> > runtime...  
-> 
-> Disagree. I'd rather have a program fail at load if it depends on
-> multi-frag support while the (driver) implementation does not yet
-> support it.
-
-I usually agree that we should fail the program, early at load time.
-For XDP we are unfortunately missing some knobs to do this, see[1].
-
-Specifically for bpf_xdp_adjust_tail(), it might be better to fail
-runtime.  Because, the driver might have enabled TSO for TCP packets,
-while your XDP use-case is for adjusting UDP-packets (and do XDP level
-replies), which will never see multi-buffer packets.  If we fail use of
-bpf_xdp_adjust_tail(), then you would have to disable TSO to allow
-loading your XDP-prog, hurting the other TSO-TCP use-case.
-
-
-[1] http://vger.kernel.org/netconf2019_files/xdp-feature-detection.pdf
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+Yes that will work, my head was still thinking ASICs where there is 
+limited SRAM space…
