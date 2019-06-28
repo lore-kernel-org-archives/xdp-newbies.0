@@ -1,107 +1,93 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ed1-f46.google.com ([209.85.208.46]:47044 "EHLO
-        mail-ed1-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726408AbfF1Hqt (ORCPT
+Received: from mailout1.w1.samsung.com ([210.118.77.11]:51588 "EHLO
+        mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726476AbfF1IBT (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 28 Jun 2019 03:46:49 -0400
-Received: by mail-ed1-f46.google.com with SMTP id d4so9711598edr.13
-        for <xdp-newbies@vger.kernel.org>; Fri, 28 Jun 2019 00:46:47 -0700 (PDT)
-From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-Subject: Re: XDP multi-buffer incl. jumbo-frames (Was: [RFC V1 net-next 1/1] net: ena: implement XDP drop support)
-In-Reply-To: <CC99D6DE-5B6B-42F3-8D68-7F9AFF1712FF@redhat.com>
-References: <20190623070649.18447-1-sameehj@amazon.com> <20190623070649.18447-2-sameehj@amazon.com> <20190623162133.6b7f24e1@carbon> <A658E65E-93D2-4F10-823D-CC25B081C1B7@amazon.com> <20190626103829.5360ef2d@carbon> <CC99D6DE-5B6B-42F3-8D68-7F9AFF1712FF@redhat.com>
-Date: Fri, 28 Jun 2019 09:46:45 +0200
-Message-ID: <87y31m884a.fsf@toke.dk>
+        Fri, 28 Jun 2019 04:01:19 -0400
+Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
+        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190628080117euoutp010829ba6d6d75d95966f50f4d08834a32~sTfMNl6SX1355813558euoutp01V
+        for <xdp-newbies@vger.kernel.org>; Fri, 28 Jun 2019 08:01:17 +0000 (GMT)
+Subject: Re: [PATCH bpf v5 2/2] xdp: fix hang while unregistering device
+ bound to xdp socket
+From: Ilya Maximets <i.maximets@samsung.com>
+Message-ID: <2190070e-db72-6fbe-8dc9-7567847e48ff@samsung.com>
+Date: Fri, 28 Jun 2019 11:01:09 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+In-Reply-To: <74C6C13C-651D-4CD1-BCA1-1B8998A4FA31@gmail.com>
+Content-Language: en-GB
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+References: <20190627101529.11234-1-i.maximets@samsung.com>
+        <CGME20190627101540eucas1p149805b39e12bf7ecf5864b7ff1b0c934@eucas1p1.samsung.com>
+        <20190627101529.11234-3-i.maximets@samsung.com>
+        <74C6C13C-651D-4CD1-BCA1-1B8998A4FA31@gmail.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Eelco Chaudron <echaudro@redhat.com>, Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: "Machulsky, Zorik" <zorik@amazon.com>, "Jubran, Samih" <sameehj@amazon.com>, davem@davemloft.net, netdev@vger.kernel.org, "Woodhouse, David" <dwmw@amazon.co.uk>, "Matushevsky, Alexander" <matua@amazon.com>, "Bshara, Saeed" <saeedb@amazon.com>, "Wilson, Matt" <msw@amazon.com>, "Liguori, Anthony" <aliguori@amazon.com>, "Bshara, Nafea" <nafea@amazon.com>, "Tzalik, Guy" <gtzalik@amazon.com>, "Belgazal, Netanel" <netanel@amazon.com>, "Saidi, Ali" <alisaidi@amazon.com>, "Herrenschmidt, Benjamin" <benh@amazon.com>, "Kiyanovski, Arthur" <akiyano@amazon.com>, Daniel Borkmann <borkmann@iogearbox.net>, Ilias Apalodimas <ilias.apalodimas@linaro.org>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, xdp-newbies@vger.kernel.org
+To: Jonathan Lemon <jonathan.lemon@gmail.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Daniel Borkmann <daniel@iogearbox.net>
 
-"Eelco Chaudron" <echaudro@redhat.com> writes:
+On 28.06.2019 1:04, Jonathan Lemon wrote:
+> On 27 Jun 2019, at 3:15, Ilya Maximets wrote:
+> 
+>> Device that bound to XDP socket will not have zero refcount until the
+>> userspace application will not close it. This leads to hang inside
+>> 'netdev_wait_allrefs()' if device unregistering requested:
+>>
+>>   # ip link del p1
+>>   < hang on recvmsg on netlink socket >
+>>
+>>   # ps -x | grep ip
+>>   5126  pts/0    D+   0:00 ip link del p1
+>>
+>>   # journalctl -b
+>>
+>>   Jun 05 07:19:16 kernel:
+>>   unregister_netdevice: waiting for p1 to become free. Usage count = 1
+>>
+>>   Jun 05 07:19:27 kernel:
+>>   unregister_netdevice: waiting for p1 to become free. Usage count = 1
+>>   ...
+>>
+>> Fix that by implementing NETDEV_UNREGISTER event notification handler
+>> to properly clean up all the resources and unref device.
+>>
+>> This should also allow socket killing via ss(8) utility.
+>>
+>> Fixes: 965a99098443 ("xsk: add support for bind for Rx")
+>> Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+>> ---
+>>  include/net/xdp_sock.h |  5 +++
+>>  net/xdp/xdp_umem.c     | 10 ++---
+>>  net/xdp/xdp_umem.h     |  1 +
+>>  net/xdp/xsk.c          | 87 ++++++++++++++++++++++++++++++++++++------
+>>  4 files changed, 87 insertions(+), 16 deletions(-)
+>>
+>> diff --git a/include/net/xdp_sock.h b/include/net/xdp_sock.h
+>> index d074b6d60f8a..82d153a637c7 100644
+>> --- a/include/net/xdp_sock.h
+>> +++ b/include/net/xdp_sock.h
+>> @@ -61,6 +61,11 @@ struct xdp_sock {
+>>      struct xsk_queue *tx ____cacheline_aligned_in_smp;
+>>      struct list_head list;
+>>      bool zc;
+>> +    enum {
+>> +        XSK_UNINITIALIZED = 0,
+>> +        XSK_BINDED,
+>> +        XSK_UNBINDED,
+>> +    } state;
+> 
+> I'd prefer that these were named better, perhaps:
+>    XSK_READY,
+>    XSK_BOUND,
+>    XSK_UNBOUND,
 
-> On 26 Jun 2019, at 10:38, Jesper Dangaard Brouer wrote:
->
->> On Tue, 25 Jun 2019 03:19:22 +0000
->> "Machulsky, Zorik" <zorik@amazon.com> wrote:
->>
->>> ﻿On 6/23/19, 7:21 AM, "Jesper Dangaard Brouer" <brouer@redhat.com> 
->>> wrote:
->>>
->>>     On Sun, 23 Jun 2019 10:06:49 +0300 <sameehj@amazon.com> wrote:
->>>
->>>     > This commit implements the basic functionality of drop/pass 
->>> logic in the
->>>     > ena driver.
->>>
->>>     Usually we require a driver to implement all the XDP return 
->>> codes,
->>>     before we accept it.  But as Daniel and I discussed with Zorik 
->>> during
->>>     NetConf[1], we are going to make an exception and accept the 
->>> driver
->>>     if you also implement XDP_TX.
->>>
->>>     As we trust that Zorik/Amazon will follow and implement 
->>> XDP_REDIRECT
->>>     later, given he/you wants AF_XDP support which requires 
->>> XDP_REDIRECT.
->>>
->>> Jesper, thanks for your comments and very helpful discussion during
->>> NetConf! That's the plan, as we agreed. From our side I would like to
->>> reiterate again the importance of multi-buffer support by xdp frame.
->>> We would really prefer not to see our MTU shrinking because of xdp
->>> support.
->>
->> Okay we really need to make a serious attempt to find a way to support
->> multi-buffer packets with XDP. With the important criteria of not
->> hurting performance of the single-buffer per packet design.
->>
->> I've created a design document[2], that I will update based on our
->> discussions: [2] 
->> https://github.com/xdp-project/xdp-project/blob/master/areas/core/xdp-multi-buffer01-design.org
->>
->> The use-case that really convinced me was Eric's packet header-split.
->>
->>
->> Lets refresh: Why XDP don't have multi-buffer support:
->>
->> XDP is designed for maximum performance, which is why certain 
->> driver-level
->> use-cases were not supported, like multi-buffer packets (like 
->> jumbo-frames).
->> As it e.g. complicated the driver RX-loop and memory model handling.
->>
->> The single buffer per packet design, is also tied into eBPF 
->> Direct-Access
->> (DA) to packet data, which can only be allowed if the packet memory is 
->> in
->> contiguous memory.  This DA feature is essential for XDP performance.
->>
->>
->> One way forward is to define that XDP only get access to the first
->> packet buffer, and it cannot see subsequent buffers.  For XDP_TX and
->> XDP_REDIRECT to work then XDP still need to carry pointers (plus
->> len+offset) to the other buffers, which is 16 bytes per extra buffer.
->
->
-> I’ve seen various network processor HW designs, and they normally get 
-> the first x bytes (128 - 512) which they can manipulate 
-> (append/prepend/insert/modify/delete).
->
-> There are designs where they can “page in” the additional fragments 
-> but it’s expensive as it requires additional memory transfers. But the 
-> majority do not care (cannot change) the remaining fragments. Can also 
-> not think of a reason why you might want to remove something at the end 
-> of the frame (thinking about routing/forwarding needs here).
->
-> If we do want XDP to access other fragments we could do this through a 
-> helper which swaps the packet context?
+Sure. Thanks for suggestion!
 
-Yeah, I was also going to suggest a helper for that. It doesn't
-necessarily need to swap the packet context, it could just return a new
-pointer?
+> 
+> Other than that:
+> Acked-by: Jonathan Lemon <jonathan.lemon@gmail.com>
+> 
 
--Toke
+I'll send a new version with the new state names keeping your ACK.
+
+Best regards, Ilya Maximets.
