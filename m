@@ -1,96 +1,67 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lj1-f194.google.com ([209.85.208.194]:34245 "EHLO
-        mail-lj1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726829AbfF3RYY (ORCPT
+Received: from conuserg-12.nifty.com ([210.131.2.79]:64182 "EHLO
+        conuserg-12.nifty.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726040AbfGABCZ (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Sun, 30 Jun 2019 13:24:24 -0400
-Received: by mail-lj1-f194.google.com with SMTP id p17so10669021ljg.1
-        for <xdp-newbies@vger.kernel.org>; Sun, 30 Jun 2019 10:24:23 -0700 (PDT)
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH v5 net-next 4/6] net: ethernet: ti: davinci_cpdma: allow desc split while down
-Date: Sun, 30 Jun 2019 20:23:46 +0300
-Message-Id: <20190630172348.5692-5-ivan.khoronzhuk@linaro.org>
-In-Reply-To: <20190630172348.5692-1-ivan.khoronzhuk@linaro.org>
-References: <20190630172348.5692-1-ivan.khoronzhuk@linaro.org>
+        Sun, 30 Jun 2019 21:02:25 -0400
+From: Masahiro Yamada <yamada.masahiro@socionext.com>
+Subject: [PATCH 0/7] Compile-test UAPI and kernel headers
+Date: Mon,  1 Jul 2019 09:58:38 +0900
+Message-Id: <20190701005845.12475-1-yamada.masahiro@socionext.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net
-Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+To: linux-kbuild@vger.kernel.org
+Cc: Sam Ravnborg <sam@ravnborg.org>, Joel Fernandes <joel@joelfernandes.org>, Masahiro Yamada <yamada.masahiro@socionext.com>, Tony Luck <tony.luck@intel.com>, linux-doc@vger.kernel.org, John Fastabend <john.fastabend@gmail.com>, Jonathan Corbet <corbet@lwn.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, linux-riscv@lists.infradead.org, Daniel Borkmann <daniel@iogearbox.net>, xdp-newbies@vger.kernel.org, Anton Vorontsov <anton@enomsg.org>, Palmer Dabbelt <palmer@sifive.com>, Matthias Brugger <matthias.bgg@gmail.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, Michal Marek <michal.lkml@markovi.net>, Jesper Dangaard Brouer <hawk@kernel.org>, Martin KaFai Lau <kafai@fb.com>, linux-mediatek@lists.infradead.org, linux-arm-kernel@lists.infradead.org, Albert Ou <aou@eecs.berkeley.edu>, Colin Cross <ccross@android.com>, "David S. Miller" <davem@davemloft.net>, Kees Cook <keescook@chromium.org>, Alexei Starovoitov <ast@kernel.org>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org
 
-That's possible to set ring params while interfaces are down. When
-interface gets up it uses number of descs to fill rx queue and on
-later on changes to create rx pools. Usually, this resplit can happen
-after phy is up, but it can be needed before this, so allow it to
-happen while setting number of rx descs, when interfaces are down.
-Also, if no dependency on intf state, move it to cpdma layer, where
-it should be.
 
-Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
----
- drivers/net/ethernet/ti/cpsw_ethtool.c  |  9 ++++-----
- drivers/net/ethernet/ti/davinci_cpdma.c | 10 +++++++++-
- drivers/net/ethernet/ti/davinci_cpdma.h |  3 +--
- 3 files changed, 14 insertions(+), 8 deletions(-)
+1/7: add CONFIG_CC_CAN_LINK to use it in 2/7
 
-diff --git a/drivers/net/ethernet/ti/cpsw_ethtool.c b/drivers/net/ethernet/ti/cpsw_ethtool.c
-index 7c19eebbabcc..6ab0cec8560a 100644
---- a/drivers/net/ethernet/ti/cpsw_ethtool.c
-+++ b/drivers/net/ethernet/ti/cpsw_ethtool.c
-@@ -664,15 +664,14 @@ int cpsw_set_ringparam(struct net_device *ndev,
- 
- 	cpsw_suspend_data_pass(ndev);
- 
--	cpdma_set_num_rx_descs(cpsw->dma, ering->rx_pending);
--
--	if (cpsw->usage_count)
--		cpdma_chan_split_pool(cpsw->dma);
-+	ret = cpdma_set_num_rx_descs(cpsw->dma, ering->rx_pending);
-+	if (ret)
-+		goto err;
- 
- 	ret = cpsw_resume_data_pass(ndev);
- 	if (!ret)
- 		return 0;
--
-+err:
- 	dev_err(cpsw->dev, "cannot set ring params, closing device\n");
- 	dev_close(ndev);
- 	return ret;
-diff --git a/drivers/net/ethernet/ti/davinci_cpdma.c b/drivers/net/ethernet/ti/davinci_cpdma.c
-index ea25b23c8058..7dc2c1ee6238 100644
---- a/drivers/net/ethernet/ti/davinci_cpdma.c
-+++ b/drivers/net/ethernet/ti/davinci_cpdma.c
-@@ -1427,8 +1427,16 @@ int cpdma_get_num_tx_descs(struct cpdma_ctlr *ctlr)
- 	return ctlr->num_tx_desc;
- }
- 
--void cpdma_set_num_rx_descs(struct cpdma_ctlr *ctlr, int num_rx_desc)
-+int cpdma_set_num_rx_descs(struct cpdma_ctlr *ctlr, int num_rx_desc)
- {
-+	unsigned long flags;
-+	int ret;
-+
-+	spin_lock_irqsave(&ctlr->lock, flags);
- 	ctlr->num_rx_desc = num_rx_desc;
- 	ctlr->num_tx_desc = ctlr->pool->num_desc - ctlr->num_rx_desc;
-+	ret = cpdma_chan_split_pool(ctlr);
-+	spin_unlock_irqrestore(&ctlr->lock, flags);
-+
-+	return ret;
- }
-diff --git a/drivers/net/ethernet/ti/davinci_cpdma.h b/drivers/net/ethernet/ti/davinci_cpdma.h
-index aafa8889c789..df66b8c797ee 100644
---- a/drivers/net/ethernet/ti/davinci_cpdma.h
-+++ b/drivers/net/ethernet/ti/davinci_cpdma.h
-@@ -116,8 +116,7 @@ enum cpdma_control {
- int cpdma_control_get(struct cpdma_ctlr *ctlr, int control);
- int cpdma_control_set(struct cpdma_ctlr *ctlr, int control, int value);
- int cpdma_get_num_rx_descs(struct cpdma_ctlr *ctlr);
--void cpdma_set_num_rx_descs(struct cpdma_ctlr *ctlr, int num_rx_desc);
-+int cpdma_set_num_rx_descs(struct cpdma_ctlr *ctlr, int num_rx_desc);
- int cpdma_get_num_tx_descs(struct cpdma_ctlr *ctlr);
--int cpdma_chan_split_pool(struct cpdma_ctlr *ctlr);
- 
- #endif
+2/7: Compile-test exported headers
+
+3/7: Do not generate intermediate wrappers.
+     This will avoid header search path issue.
+
+4/7: maybe useful for 7/7 and in some other places.
+     Add header-test-pattern-y syntax.
+
+5/7: Minor cleanup of gen_kheaders.sh
+
+6/7: Exclude all files without ".h" extension
+     from the kheaders_data.tar.xz
+     This will be needed by 7/7 because we need to
+     exclude "*.h.s" from the archive
+
+7/7: Compile-test kernel-space headers in include/.
+
+
+Masahiro Yamada (7):
+  init/Kconfig: add CONFIG_CC_CAN_LINK
+  kbuild: compile-test exported headers to ensure they are
+    self-contained
+  kbuild: do not create wrappers for header-test-y
+  kbuild: support header-test-pattern-y
+  kheaders: remove meaningless -R option of 'ls'
+  kheaders: include only headers into kheaders_data.tar.xz
+  kbuild: compile-test kernel headers to ensure they are self-contained
+
+ .gitignore                         |    1 -
+ Documentation/dontdiff             |    1 -
+ Documentation/kbuild/makefiles.txt |   13 +-
+ Makefile                           |    4 +-
+ include/Kbuild                     | 1253 ++++++++++++++++++++++++++++
+ init/Kconfig                       |   24 +
+ kernel/gen_kheaders.sh             |   51 +-
+ net/bpfilter/Kconfig               |    2 +-
+ scripts/Makefile.build             |   10 +-
+ scripts/Makefile.lib               |   13 +-
+ usr/.gitignore                     |    1 -
+ usr/Makefile                       |    2 +
+ usr/include/.gitignore             |    3 +
+ usr/include/Makefile               |  131 +++
+ 14 files changed, 1462 insertions(+), 47 deletions(-)
+ create mode 100644 include/Kbuild
+ create mode 100644 usr/include/.gitignore
+ create mode 100644 usr/include/Makefile
+
 -- 
 2.17.1
