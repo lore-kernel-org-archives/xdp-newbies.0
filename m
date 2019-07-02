@@ -1,48 +1,116 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f195.google.com ([209.85.160.195]:39804 "EHLO
-        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726329AbfGANKy (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 1 Jul 2019 09:10:54 -0400
-MIME-Version: 1.0
-References: <20190626155911.13574-1-ivan.khoronzhuk@linaro.org>
- <CAJ+HfNid3PntipAJHuPR-tQudf+E6UQK6mPDHdc0O=wCUSjEEA@mail.gmail.com> <20190629.105306.762888643756822083.davem@davemloft.net>
-In-Reply-To: <20190629.105306.762888643756822083.davem@davemloft.net>
-From: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
-Date: Mon, 1 Jul 2019 15:10:40 +0200
-Message-ID: <CAJ+HfNi3+hu+D=nJOrtC_xVzE442BoYo4mXqT28rGPG83Dr_sw@mail.gmail.com>
-Subject: Re: [PATCH net-next] xdp: xdp_umem: fix umem pages mapping for 32bits systems
-Content-Type: text/plain; charset="UTF-8"
+Received: from mailout2.w1.samsung.com ([210.118.77.12]:48785 "EHLO
+        mailout2.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725940AbfGBOgn (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 2 Jul 2019 10:36:43 -0400
+Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
+        by mailout2.w1.samsung.com (KnoxPortal) with ESMTP id 20190702143641euoutp02a668241473ec02c9e112edf10928d958~tndkYMvks3036530365euoutp02G
+        for <xdp-newbies@vger.kernel.org>; Tue,  2 Jul 2019 14:36:41 +0000 (GMT)
+From: Ilya Maximets <i.maximets@samsung.com>
+Subject: [PATCH bpf] xdp: fix race on generic receive path
+Date: Tue,  2 Jul 2019 17:36:34 +0300
+Message-Id: <20190702143634.19688-1-i.maximets@samsung.com>
+Content-Type: text/plain; charset="utf-8"
+References: <CGME20190702143639eucas1p2b168c68c35b70aac75cad6c72ccc81ad@eucas1p2.samsung.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
-To: David Miller <davem@davemloft.net>, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Cc: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Netdev <netdev@vger.kernel.org>, bpf <bpf@vger.kernel.org>, Xdp <xdp-newbies@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Ilya Maximets <i.maximets@samsung.com>
 
-On Sat, 29 Jun 2019 at 19:53, David Miller <davem@davemloft.net> wrote:
->
-> From: Björn Töpel <bjorn.topel@gmail.com>
-> Date: Wed, 26 Jun 2019 22:50:23 +0200
->
-> > On Wed, 26 Jun 2019 at 17:59, Ivan Khoronzhuk
-> > <ivan.khoronzhuk@linaro.org> wrote:
-> >>
-> >> Use kmap instead of page_address as it's not always in low memory.
-> >>
-> >
-> > Ah, some 32-bit love. :-) Thanks for working on this!
-> >
-> > For future patches, please base AF_XDP patches on the bpf/bpf-next
-> > tree instead of net/net-next.
-> >
-> > Acked-by: Björn Töpel <bjorn.topel@intel.com>
->
-> Alexei and Daniel, I'll let you guys take this one.
->
-> Thanks.
+Unlike driver mode, generic xdp receive could be triggered
+by different threads on different CPU cores at the same time
+leading to the fill and rx queue breakage. For example, this
+could happen while sending packets from two processes to the
+first interface of veth pair while the second part of it is
+open with AF_XDP socket.
 
-Ivan, kbuild reported some build issues. Faulty, or not; Please have a
-look at them.
+Need to take a lock for each generic receive to avoid race.
 
+Fixes: c497176cb2e4 ("xsk: add Rx receive functions and poll support")
+Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+---
+ include/net/xdp_sock.h |  2 ++
+ net/xdp/xsk.c          | 32 +++++++++++++++++++++++---------
+ 2 files changed, 25 insertions(+), 9 deletions(-)
 
-Cheers,
-Björn
+diff --git a/include/net/xdp_sock.h b/include/net/xdp_sock.h
+index d074b6d60f8a..ac3c047d058c 100644
+--- a/include/net/xdp_sock.h
++++ b/include/net/xdp_sock.h
+@@ -67,6 +67,8 @@ struct xdp_sock {
+ 	 * in the SKB destructor callback.
+ 	 */
+ 	spinlock_t tx_completion_lock;
++	/* Protects generic receive. */
++	spinlock_t rx_lock;
+ 	u64 rx_dropped;
+ };
+ 
+diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
+index a14e8864e4fa..19f41d2b670c 100644
+--- a/net/xdp/xsk.c
++++ b/net/xdp/xsk.c
+@@ -119,17 +119,22 @@ int xsk_generic_rcv(struct xdp_sock *xs, struct xdp_buff *xdp)
+ {
+ 	u32 metalen = xdp->data - xdp->data_meta;
+ 	u32 len = xdp->data_end - xdp->data;
++	unsigned long flags;
+ 	void *buffer;
+ 	u64 addr;
+ 	int err;
+ 
+-	if (xs->dev != xdp->rxq->dev || xs->queue_id != xdp->rxq->queue_index)
+-		return -EINVAL;
++	spin_lock_irqsave(&xs->rx_lock, flags);
++
++	if (xs->dev != xdp->rxq->dev || xs->queue_id != xdp->rxq->queue_index) {
++		err = -EINVAL;
++		goto out_unlock;
++	}
+ 
+ 	if (!xskq_peek_addr(xs->umem->fq, &addr) ||
+ 	    len > xs->umem->chunk_size_nohr - XDP_PACKET_HEADROOM) {
+-		xs->rx_dropped++;
+-		return -ENOSPC;
++		err = -ENOSPC;
++		goto out_drop;
+ 	}
+ 
+ 	addr += xs->umem->headroom;
+@@ -138,13 +143,21 @@ int xsk_generic_rcv(struct xdp_sock *xs, struct xdp_buff *xdp)
+ 	memcpy(buffer, xdp->data_meta, len + metalen);
+ 	addr += metalen;
+ 	err = xskq_produce_batch_desc(xs->rx, addr, len);
+-	if (!err) {
+-		xskq_discard_addr(xs->umem->fq);
+-		xsk_flush(xs);
+-		return 0;
+-	}
++	if (err)
++		goto out_drop;
++
++	xskq_discard_addr(xs->umem->fq);
++	xskq_produce_flush_desc(xs->rx);
+ 
++	spin_unlock_irqrestore(&xs->rx_lock, flags);
++
++	xs->sk.sk_data_ready(&xs->sk);
++	return 0;
++
++out_drop:
+ 	xs->rx_dropped++;
++out_unlock:
++	spin_unlock_irqrestore(&xs->rx_lock, flags);
+ 	return err;
+ }
+ 
+@@ -765,6 +778,7 @@ static int xsk_create(struct net *net, struct socket *sock, int protocol,
+ 
+ 	xs = xdp_sk(sk);
+ 	mutex_init(&xs->mutex);
++	spin_lock_init(&xs->rx_lock);
+ 	spin_lock_init(&xs->tx_completion_lock);
+ 
+ 	mutex_lock(&net->xdp.lock);
+-- 
+2.17.1
