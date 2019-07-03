@@ -1,79 +1,115 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mailout1.w1.samsung.com ([210.118.77.11]:49111 "EHLO
+Received: from mailout1.w1.samsung.com ([210.118.77.11]:51053 "EHLO
         mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725943AbfGCMDM (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 3 Jul 2019 08:03:12 -0400
+        with ESMTP id S1725943AbfGCMJZ (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 3 Jul 2019 08:09:25 -0400
 Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
-        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190703120310euoutp01358c9d507e96fa5e0bdbd6f33105b6ed~t5Az86dYg1393413934euoutp01e
-        for <xdp-newbies@vger.kernel.org>; Wed,  3 Jul 2019 12:03:10 +0000 (GMT)
-Subject: Re: [PATCH bpf] xdp: fix race on generic receive path
+        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190703120923euoutp0198dae2099dada96258820a8a15c4ec89~t5GPvw_Zt1888218882euoutp01D
+        for <xdp-newbies@vger.kernel.org>; Wed,  3 Jul 2019 12:09:23 +0000 (GMT)
 From: Ilya Maximets <i.maximets@samsung.com>
-Message-ID: <687d9498-87a9-11e5-dc53-f09f42d6371b@samsung.com>
-Date: Wed, 3 Jul 2019 15:03:03 +0300
-MIME-Version: 1.0
-In-Reply-To: <20190702174014.005a3166@cakuba.netronome.com>
-Content-Language: en-GB
-Content-Transfer-Encoding: 7bit
+Subject: [PATCH bpf v2] xdp: fix race on generic receive path
+Date: Wed,  3 Jul 2019 15:09:16 +0300
+Message-Id: <20190703120916.19973-1-i.maximets@samsung.com>
 Content-Type: text/plain; charset="utf-8"
-References: <CGME20190702143639eucas1p2b168c68c35b70aac75cad6c72ccc81ad@eucas1p2.samsung.com>
-        <20190702143634.19688-1-i.maximets@samsung.com>
-        <20190702174014.005a3166@cakuba.netronome.com>
+References: <CGME20190703120922eucas1p2d97e3b994425ecdd2dadd13744ac2a77@eucas1p2.samsung.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jakub Kicinski <jakub.kicinski@netronome.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Ilya Maximets <i.maximets@samsung.com>
 
-On 03.07.2019 3:40, Jakub Kicinski wrote:
-> On Tue,  2 Jul 2019 17:36:34 +0300, Ilya Maximets wrote:
->> Unlike driver mode, generic xdp receive could be triggered
->> by different threads on different CPU cores at the same time
->> leading to the fill and rx queue breakage. For example, this
->> could happen while sending packets from two processes to the
->> first interface of veth pair while the second part of it is
->> open with AF_XDP socket.
->>
->> Need to take a lock for each generic receive to avoid race.
->>
->> Fixes: c497176cb2e4 ("xsk: add Rx receive functions and poll support")
->> Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
-> 
->> diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
->> index a14e8864e4fa..19f41d2b670c 100644
->> --- a/net/xdp/xsk.c
->> +++ b/net/xdp/xsk.c
->> @@ -119,17 +119,22 @@ int xsk_generic_rcv(struct xdp_sock *xs, struct xdp_buff *xdp)
->>  {
->>  	u32 metalen = xdp->data - xdp->data_meta;
->>  	u32 len = xdp->data_end - xdp->data;
->> +	unsigned long flags;
->>  	void *buffer;
->>  	u64 addr;
->>  	int err;
->>  
->> -	if (xs->dev != xdp->rxq->dev || xs->queue_id != xdp->rxq->queue_index)
->> -		return -EINVAL;
->> +	spin_lock_irqsave(&xs->rx_lock, flags);
-> 
-> Why _irqsave, rather than _bh?
+Unlike driver mode, generic xdp receive could be triggered
+by different threads on different CPU cores at the same time
+leading to the fill and rx queue breakage. For example, this
+could happen while sending packets from two processes to the
+first interface of veth pair while the second part of it is
+open with AF_XDP socket.
 
-Yes, spin_lock_bh() is enough here. Will change in v2.
-Thanks.
+Need to take a lock for each generic receive to avoid race.
 
-> 
->> +	if (xs->dev != xdp->rxq->dev || xs->queue_id != xdp->rxq->queue_index) {
->> +		err = -EINVAL;
->> +		goto out_unlock;
->> +	}
->>  
->>  	if (!xskq_peek_addr(xs->umem->fq, &addr) ||
->>  	    len > xs->umem->chunk_size_nohr - XDP_PACKET_HEADROOM) {
->> -		xs->rx_dropped++;
->> -		return -ENOSPC;
->> +		err = -ENOSPC;
->> +		goto out_drop;
->>  	}
->>  
->>  	addr += xs->umem->headroom;
-> 
-> 
-> 
+Fixes: c497176cb2e4 ("xsk: add Rx receive functions and poll support")
+Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+---
+
+Version 2:
+    * spin_lock_irqsave --> spin_lock_bh.
+
+ include/net/xdp_sock.h |  2 ++
+ net/xdp/xsk.c          | 31 ++++++++++++++++++++++---------
+ 2 files changed, 24 insertions(+), 9 deletions(-)
+
+diff --git a/include/net/xdp_sock.h b/include/net/xdp_sock.h
+index d074b6d60f8a..ac3c047d058c 100644
+--- a/include/net/xdp_sock.h
++++ b/include/net/xdp_sock.h
+@@ -67,6 +67,8 @@ struct xdp_sock {
+ 	 * in the SKB destructor callback.
+ 	 */
+ 	spinlock_t tx_completion_lock;
++	/* Protects generic receive. */
++	spinlock_t rx_lock;
+ 	u64 rx_dropped;
+ };
+ 
+diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
+index a14e8864e4fa..5e0637db92ea 100644
+--- a/net/xdp/xsk.c
++++ b/net/xdp/xsk.c
+@@ -123,13 +123,17 @@ int xsk_generic_rcv(struct xdp_sock *xs, struct xdp_buff *xdp)
+ 	u64 addr;
+ 	int err;
+ 
+-	if (xs->dev != xdp->rxq->dev || xs->queue_id != xdp->rxq->queue_index)
+-		return -EINVAL;
++	spin_lock_bh(&xs->rx_lock);
++
++	if (xs->dev != xdp->rxq->dev || xs->queue_id != xdp->rxq->queue_index) {
++		err = -EINVAL;
++		goto out_unlock;
++	}
+ 
+ 	if (!xskq_peek_addr(xs->umem->fq, &addr) ||
+ 	    len > xs->umem->chunk_size_nohr - XDP_PACKET_HEADROOM) {
+-		xs->rx_dropped++;
+-		return -ENOSPC;
++		err = -ENOSPC;
++		goto out_drop;
+ 	}
+ 
+ 	addr += xs->umem->headroom;
+@@ -138,13 +142,21 @@ int xsk_generic_rcv(struct xdp_sock *xs, struct xdp_buff *xdp)
+ 	memcpy(buffer, xdp->data_meta, len + metalen);
+ 	addr += metalen;
+ 	err = xskq_produce_batch_desc(xs->rx, addr, len);
+-	if (!err) {
+-		xskq_discard_addr(xs->umem->fq);
+-		xsk_flush(xs);
+-		return 0;
+-	}
++	if (err)
++		goto out_drop;
++
++	xskq_discard_addr(xs->umem->fq);
++	xskq_produce_flush_desc(xs->rx);
+ 
++	spin_unlock_bh(&xs->rx_lock);
++
++	xs->sk.sk_data_ready(&xs->sk);
++	return 0;
++
++out_drop:
+ 	xs->rx_dropped++;
++out_unlock:
++	spin_unlock_bh(&xs->rx_lock);
+ 	return err;
+ }
+ 
+@@ -765,6 +777,7 @@ static int xsk_create(struct net *net, struct socket *sock, int protocol,
+ 
+ 	xs = xdp_sk(sk);
+ 	mutex_init(&xs->mutex);
++	spin_lock_init(&xs->rx_lock);
+ 	spin_lock_init(&xs->tx_completion_lock);
+ 
+ 	mutex_lock(&net->xdp.lock);
+-- 
+2.17.1
