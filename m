@@ -1,89 +1,95 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f68.google.com ([209.85.167.68]:35089 "EHLO
-        mail-lf1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726598AbfGCKTJ (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 3 Jul 2019 06:19:09 -0400
-Received: by mail-lf1-f68.google.com with SMTP id p197so1385654lfa.2
-        for <xdp-newbies@vger.kernel.org>; Wed, 03 Jul 2019 03:19:08 -0700 (PDT)
+Received: from mail-lf1-f43.google.com ([209.85.167.43]:45365 "EHLO
+        mail-lf1-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727121AbfGCKTN (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 3 Jul 2019 06:19:13 -0400
+Received: by mail-lf1-f43.google.com with SMTP id u10so1351757lfm.12
+        for <xdp-newbies@vger.kernel.org>; Wed, 03 Jul 2019 03:19:11 -0700 (PDT)
 From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH v6 net-next 0/5] net: ethernet: ti: cpsw: Add XDP support
-Date: Wed,  3 Jul 2019 13:18:58 +0300
-Message-Id: <20190703101903.8411-1-ivan.khoronzhuk@linaro.org>
+Subject: [PATCH v6 net-next 3/5] net: ethernet: ti: davinci_cpdma: allow desc split while down
+Date: Wed,  3 Jul 2019 13:19:01 +0300
+Message-Id: <20190703101903.8411-4-ivan.khoronzhuk@linaro.org>
+In-Reply-To: <20190703101903.8411-1-ivan.khoronzhuk@linaro.org>
+References: <20190703101903.8411-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net
 Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-This patchset adds XDP support for TI cpsw driver and base it on
-page_pool allocator. It was verified on af_xdp socket drop,
-af_xdp l2f, ebpf XDP_DROP, XDP_REDIRECT, XDP_PASS, XDP_TX.
+That's possible to set ring params while interfaces are down. When
+interface gets up it uses number of descs to fill rx queue and on
+later on changes to create rx pools. Usually, this resplit can happen
+after phy is up, but it can be needed before this, so allow it to
+happen while setting number of rx descs, when interfaces are down.
+Also, if no dependency on intf state, move it to cpdma layer, where
+it should be.
 
-It was verified with following configs enabled:
-CONFIG_JIT=y
-CONFIG_BPFILTER=y
-CONFIG_BPF_SYSCALL=y
-CONFIG_XDP_SOCKETS=y
-CONFIG_BPF_EVENTS=y
-CONFIG_HAVE_EBPF_JIT=y
-CONFIG_BPF_JIT=y
-CONFIG_CGROUP_BPF=y
+Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+---
+ drivers/net/ethernet/ti/cpsw_ethtool.c  |  9 ++++-----
+ drivers/net/ethernet/ti/davinci_cpdma.c | 10 +++++++++-
+ drivers/net/ethernet/ti/davinci_cpdma.h |  3 +--
+ 3 files changed, 14 insertions(+), 8 deletions(-)
 
-Link on previous v5:
-https://lkml.org/lkml/2019/6/30/89
-
-Also regular tests with iperf2 were done in order to verify impact on
-regular netstack performance, compared with base commit:
-https://pastebin.com/JSMT0iZ4
-
-v5..v6:
-- do changes that is rx_dev while redirect/flush cycle is kept the same
-- dropped net: ethernet: ti: davinci_cpdma: return handler status
-- other changes desc in patches
-
-v4..v5:
-- added two plreliminary patches:
-  net: ethernet: ti: davinci_cpdma: allow desc split while down
-  net: ethernet: ti: cpsw_ethtool: allow res split while down
-- added xdp alocator refcnt on xdp level, avoiding page pool refcnt
-- moved flush status as separate argument for cpdma_chan_process
-- reworked cpsw code according to last changes to allocator
-- added missed statistic counter
-
-v3..v4:
-- added page pool user counter
-- use same pool for ndevs in dual mac
-- restructured page pool create/destroy according to the last changes in API
-
-v2..v3:
-- each rxq and ndev has its own page pool
-
-v1..v2:
-- combined xdp_xmit functions
-- used page allocation w/o refcnt juggle
-- unmapped page for skb netstack
-- moved rxq/page pool allocation to open/close pair
-- added several preliminary patches:
-  net: page_pool: add helper function to retrieve dma addresses
-  net: page_pool: add helper function to unmap dma addresses
-  net: ethernet: ti: cpsw: use cpsw as drv data
-  net: ethernet: ti: cpsw_ethtool: simplify slave loops
-
-Ivan Khoronzhuk (5):
-  xdp: allow same allocator usage
-  net: ethernet: ti: davinci_cpdma: add dma mapped submit
-  net: ethernet: ti: davinci_cpdma: allow desc split while down
-  net: ethernet: ti: cpsw_ethtool: allow res split while down
-  net: ethernet: ti: cpsw: add XDP support
-
- drivers/net/ethernet/ti/Kconfig         |   1 +
- drivers/net/ethernet/ti/cpsw.c          | 485 +++++++++++++++++++++---
- drivers/net/ethernet/ti/cpsw_ethtool.c  |  76 +++-
- drivers/net/ethernet/ti/cpsw_priv.h     |   7 +
- drivers/net/ethernet/ti/davinci_cpdma.c |  99 ++++-
- drivers/net/ethernet/ti/davinci_cpdma.h |   7 +-
- include/net/xdp_priv.h                  |   2 +
- net/core/xdp.c                          |  55 +++
- 8 files changed, 656 insertions(+), 76 deletions(-)
-
+diff --git a/drivers/net/ethernet/ti/cpsw_ethtool.c b/drivers/net/ethernet/ti/cpsw_ethtool.c
+index f60dc1dfc443..08d7aaee8299 100644
+--- a/drivers/net/ethernet/ti/cpsw_ethtool.c
++++ b/drivers/net/ethernet/ti/cpsw_ethtool.c
+@@ -664,15 +664,14 @@ int cpsw_set_ringparam(struct net_device *ndev,
+ 
+ 	cpsw_suspend_data_pass(ndev);
+ 
+-	cpdma_set_num_rx_descs(cpsw->dma, ering->rx_pending);
+-
+-	if (cpsw->usage_count)
+-		cpdma_chan_split_pool(cpsw->dma);
++	ret = cpdma_set_num_rx_descs(cpsw->dma, ering->rx_pending);
++	if (ret)
++		goto err;
+ 
+ 	ret = cpsw_resume_data_pass(ndev);
+ 	if (!ret)
+ 		return 0;
+-
++err:
+ 	dev_err(cpsw->dev, "cannot set ring params, closing device\n");
+ 	dev_close(ndev);
+ 	return ret;
+diff --git a/drivers/net/ethernet/ti/davinci_cpdma.c b/drivers/net/ethernet/ti/davinci_cpdma.c
+index 8da46394c0e7..4167b0b77c8e 100644
+--- a/drivers/net/ethernet/ti/davinci_cpdma.c
++++ b/drivers/net/ethernet/ti/davinci_cpdma.c
+@@ -1423,8 +1423,16 @@ int cpdma_get_num_tx_descs(struct cpdma_ctlr *ctlr)
+ 	return ctlr->num_tx_desc;
+ }
+ 
+-void cpdma_set_num_rx_descs(struct cpdma_ctlr *ctlr, int num_rx_desc)
++int cpdma_set_num_rx_descs(struct cpdma_ctlr *ctlr, int num_rx_desc)
+ {
++	unsigned long flags;
++	int ret;
++
++	spin_lock_irqsave(&ctlr->lock, flags);
+ 	ctlr->num_rx_desc = num_rx_desc;
+ 	ctlr->num_tx_desc = ctlr->pool->num_desc - ctlr->num_rx_desc;
++	ret = cpdma_chan_split_pool(ctlr);
++	spin_unlock_irqrestore(&ctlr->lock, flags);
++
++	return ret;
+ }
+diff --git a/drivers/net/ethernet/ti/davinci_cpdma.h b/drivers/net/ethernet/ti/davinci_cpdma.h
+index 0271a20c2e09..d3cfe234d16a 100644
+--- a/drivers/net/ethernet/ti/davinci_cpdma.h
++++ b/drivers/net/ethernet/ti/davinci_cpdma.h
+@@ -116,8 +116,7 @@ enum cpdma_control {
+ int cpdma_control_get(struct cpdma_ctlr *ctlr, int control);
+ int cpdma_control_set(struct cpdma_ctlr *ctlr, int control, int value);
+ int cpdma_get_num_rx_descs(struct cpdma_ctlr *ctlr);
+-void cpdma_set_num_rx_descs(struct cpdma_ctlr *ctlr, int num_rx_desc);
++int cpdma_set_num_rx_descs(struct cpdma_ctlr *ctlr, int num_rx_desc);
+ int cpdma_get_num_tx_descs(struct cpdma_ctlr *ctlr);
+-int cpdma_chan_split_pool(struct cpdma_ctlr *ctlr);
+ 
+ #endif
 -- 
 2.17.1
