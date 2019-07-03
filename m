@@ -1,59 +1,49 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:53904 "EHLO
-        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726675AbfGCPFa (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 3 Jul 2019 11:05:30 -0400
-Subject: Re: [PATCH bpf v6 0/2] xdp: fix hang while unregistering device bound
- to xdp socket
-References: <CGME20190628080413eucas1p13f3400f657b4827414737af42f02a57b@eucas1p1.samsung.com>
- <20190628080407.30354-1-i.maximets@samsung.com>
-From: Daniel Borkmann <daniel@iogearbox.net>
-Message-ID: <ae128ab7-0983-921e-7e56-7f42cb419113@iogearbox.net>
-Date: Wed, 3 Jul 2019 17:05:08 +0200
+Received: from mail-qt1-f195.google.com ([209.85.160.195]:43936 "EHLO
+        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726430AbfGCQsw (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 3 Jul 2019 12:48:52 -0400
 MIME-Version: 1.0
-In-Reply-To: <20190628080407.30354-1-i.maximets@samsung.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+References: <CGME20190703120922eucas1p2d97e3b994425ecdd2dadd13744ac2a77@eucas1p2.samsung.com>
+ <20190703120916.19973-1-i.maximets@samsung.com> <CAJ8uoz1Wr+bJrO+HNtSD5b79ych-pNg7BxFiHVhzaMSGGAdqLA@mail.gmail.com>
+In-Reply-To: <CAJ8uoz1Wr+bJrO+HNtSD5b79ych-pNg7BxFiHVhzaMSGGAdqLA@mail.gmail.com>
+From: William Tu <u9012063@gmail.com>
+Date: Wed, 3 Jul 2019 09:48:09 -0700
+Message-ID: <CALDO+SYj79zCV9A85OSbMFBQeor_z=ZT305HEoK3YWtCZLeR-A@mail.gmail.com>
+Subject: Re: [PATCH bpf v2] xdp: fix race on generic receive path
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Ilya Maximets <i.maximets@samsung.com>, netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>
+To: Magnus Karlsson <magnus.karlsson@gmail.com>
+Cc: Ilya Maximets <i.maximets@samsung.com>, Network Development <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, bpf <bpf@vger.kernel.org>, Xdp <xdp-newbies@vger.kernel.org>, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
 
-On 06/28/2019 10:04 AM, Ilya Maximets wrote:
-> Version 6:
-> 
->     * Better names for socket state.
-> 
-> Version 5:
-> 
->     * Fixed incorrect handling of rtnl_lock.
-> 
-> Version 4:
-> 
->     * 'xdp_umem_clear_dev' exposed to be used while unregistering.
->     * Added XDP socket state to track if resources already unbinded.
->     * Splitted in two fixes.
-> 
-> Version 3:
-> 
->     * Declaration lines ordered from longest to shortest.
->     * Checking of event type moved to the top to avoid unnecessary
->       locking.
-> 
-> Version 2:
-> 
->     * Completely re-implemented using netdev event handler.
-> 
-> Ilya Maximets (2):
->   xdp: hold device for umem regardless of zero-copy mode
->   xdp: fix hang while unregistering device bound to xdp socket
-> 
->  include/net/xdp_sock.h |  5 +++
->  net/xdp/xdp_umem.c     | 21 +++++-----
->  net/xdp/xdp_umem.h     |  1 +
->  net/xdp/xsk.c          | 87 ++++++++++++++++++++++++++++++++++++------
->  4 files changed, 93 insertions(+), 21 deletions(-)
-> 
+On Wed, Jul 3, 2019 at 6:20 AM Magnus Karlsson
+<magnus.karlsson@gmail.com> wrote:
+>
+> On Wed, Jul 3, 2019 at 2:09 PM Ilya Maximets <i.maximets@samsung.com> wrote:
+> >
+> > Unlike driver mode, generic xdp receive could be triggered
+> > by different threads on different CPU cores at the same time
+> > leading to the fill and rx queue breakage. For example, this
+> > could happen while sending packets from two processes to the
+> > first interface of veth pair while the second part of it is
+> > open with AF_XDP socket.
+> >
+> > Need to take a lock for each generic receive to avoid race.
+>
+> I measured the performance degradation of rxdrop on my local machine
+> and it went from 2.19 to 2.08, so roughly a 5% drop. I think we can
+> live with this in XDP_SKB mode. If we at some later point in time need
+> to boost performance in this mode, let us look at it then from a
+> broader perspective and find the most low hanging fruit.
+>
+> Thanks Ilya for this fix.
+>
+> Acked-by: Magnus Karlsson <magnus.karlsson@intel.com>
+>
+> > Fixes: c497176cb2e4 ("xsk: add Rx receive functions and poll support")
+> > Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+> > ---
 
-Applied, thanks!
+Tested on my machine and works ok.
+Tested-by: William Tu <u9012063@gmail.com>
