@@ -1,83 +1,71 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lj1-f194.google.com ([209.85.208.194]:37348 "EHLO
-        mail-lj1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727298AbfGDJxL (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 4 Jul 2019 05:53:11 -0400
-Received: by mail-lj1-f194.google.com with SMTP id 131so5552799ljf.4
-        for <xdp-newbies@vger.kernel.org>; Thu, 04 Jul 2019 02:53:09 -0700 (PDT)
-Date: Thu, 4 Jul 2019 12:53:06 +0300
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: Re: [PATCH v6 net-next 5/5] net: ethernet: ti: cpsw: add XDP support
-Message-ID: <20190704095305.GC19839@khorivan>
-References: <20190703101903.8411-1-ivan.khoronzhuk@linaro.org>
- <20190703101903.8411-6-ivan.khoronzhuk@linaro.org>
- <20190704111939.5d845071@carbon>
- <20190704093902.GA26927@apalos>
- <20190704094329.GA19839@khorivan>
- <20190704094938.GA27382@apalos>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Disposition: inline
-In-Reply-To: <20190704094938.GA27382@apalos>
+Received: from mailout2.w1.samsung.com ([210.118.77.12]:53964 "EHLO
+        mailout2.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726875AbfGDOZN (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 4 Jul 2019 10:25:13 -0400
+Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
+        by mailout2.w1.samsung.com (KnoxPortal) with ESMTP id 20190704142511euoutp0260b6d36d107a7caf01b7ce92c893ba57~uOmGO3aYJ1485514855euoutp02k
+        for <xdp-newbies@vger.kernel.org>; Thu,  4 Jul 2019 14:25:11 +0000 (GMT)
+From: Ilya Maximets <i.maximets@samsung.com>
+Subject: [PATCH bpf] xdp: fix possible cq entry leak
+Date: Thu,  4 Jul 2019 17:25:03 +0300
+Message-Id: <20190704142503.23501-1-i.maximets@samsung.com>
+Content-Type: text/plain; charset="utf-8"
+References: <CGME20190704142509eucas1p268eb9ca87bcc0bffb60891f88f3f6642@eucas1p2.samsung.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Ilias Apalodimas <ilias.apalodimas@linaro.org>
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>, grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net, ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Ilya Maximets <i.maximets@samsung.com>
 
-On Thu, Jul 04, 2019 at 12:49:38PM +0300, Ilias Apalodimas wrote:
->On Thu, Jul 04, 2019 at 12:43:30PM +0300, Ivan Khoronzhuk wrote:
->> On Thu, Jul 04, 2019 at 12:39:02PM +0300, Ilias Apalodimas wrote:
->> >On Thu, Jul 04, 2019 at 11:19:39AM +0200, Jesper Dangaard Brouer wrote:
->> >>On Wed,  3 Jul 2019 13:19:03 +0300
->> >>Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org> wrote:
->> >>
->> >>> Add XDP support based on rx page_pool allocator, one frame per page.
->> >>> Page pool allocator is used with assumption that only one rx_handler
->> >>> is running simultaneously. DMA map/unmap is reused from page pool
->> >>> despite there is no need to map whole page.
->> >>>
->> >>> Due to specific of cpsw, the same TX/RX handler can be used by 2
->> >>> network devices, so special fields in buffer are added to identify
->> >>> an interface the frame is destined to. Thus XDP works for both
->> >>> interfaces, that allows to test xdp redirect between two interfaces
->> >>> easily. Aslo, each rx queue have own page pools, but common for both
->> >>> netdevs.
->> >>>
->> >>> XDP prog is common for all channels till appropriate changes are added
->> >>> in XDP infrastructure. Also, once page_pool recycling becomes part of
->> >>> skb netstack some simplifications can be added, like removing
->> >>> page_pool_release_page() before skb receive.
->> >>>
->> >>> In order to keep rx_dev while redirect, that can be somehow used in
->> >>> future, do flush in rx_handler, that allows to keep rx dev the same
->> >>> while reidrect. It allows to conform with tracing rx_dev pointed
->> >>> by Jesper.
->> >>
->> >>So, you simply call xdp_do_flush_map() after each xdp_do_redirect().
->> >>It will kill RX-bulk and performance, but I guess it will work.
->> >>
->> >>I guess, we can optimized it later, by e.g. in function calling
->> >>cpsw_run_xdp() have a variable that detect if net_device changed
->> >>(priv->ndev) and then call xdp_do_flush_map() when needed.
->> >I tried something similar on the netsec driver on my initial development.
->> >On the 1gbit speed NICs i saw no difference between flushing per packet vs
->> >flushing on the end of the NAPI handler.
->> >The latter is obviously better but since the performance impact is negligible on
->> >this particular NIC, i don't think this should be a blocker.
->> >Please add a clear comment on this and why you do that on this driver,
->> >so people won't go ahead and copy/paste this approach
->> Sry, but I did this already, is it not enouph?
->The flush *must* happen there to avoid messing the following layers. The comment
->says something like 'just to be sure'. It's not something that might break, it's
->something that *will* break the code and i don't think that's clear with the
->current comment.
->
->So i'd prefer something like
->'We must flush here, per packet, instead of doing it in bulk at the end of
->the napi handler.The RX devices on this particular hardware is sharing a
->common queue, so the incoming device might change per packet'
-Sounds good, will replace on it.
+Completion queue address reservation could not be undone.
+In case of bad 'queue_id' or skb allocation failure, reserved entry
+will be leaked reducing the total capacity of completion queue.
 
+Fix that by moving reservation to the point where failure is not
+possible. Additionally, 'queue_id' checking moved out from the loop
+since there is no point to check it there.
+
+Fixes: 35fcde7f8deb ("xsk: support for Tx")
+Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+---
+ net/xdp/xsk.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
+
+diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
+index f53a6ef7c155..703cf5ea448b 100644
+--- a/net/xdp/xsk.c
++++ b/net/xdp/xsk.c
+@@ -226,6 +226,9 @@ static int xsk_generic_xmit(struct sock *sk, struct msghdr *m,
+ 
+ 	mutex_lock(&xs->mutex);
+ 
++	if (xs->queue_id >= xs->dev->real_num_tx_queues)
++		goto out;
++
+ 	while (xskq_peek_desc(xs->tx, &desc)) {
+ 		char *buffer;
+ 		u64 addr;
+@@ -236,12 +239,6 @@ static int xsk_generic_xmit(struct sock *sk, struct msghdr *m,
+ 			goto out;
+ 		}
+ 
+-		if (xskq_reserve_addr(xs->umem->cq))
+-			goto out;
+-
+-		if (xs->queue_id >= xs->dev->real_num_tx_queues)
+-			goto out;
+-
+ 		len = desc.len;
+ 		skb = sock_alloc_send_skb(sk, len, 1, &err);
+ 		if (unlikely(!skb)) {
+@@ -253,7 +250,7 @@ static int xsk_generic_xmit(struct sock *sk, struct msghdr *m,
+ 		addr = desc.addr;
+ 		buffer = xdp_umem_get_data(xs->umem, addr);
+ 		err = skb_store_bits(skb, 0, buffer, len);
+-		if (unlikely(err)) {
++		if (unlikely(err) || xskq_reserve_addr(xs->umem->cq)) {
+ 			kfree_skb(skb);
+ 			goto out;
+ 		}
 -- 
-Regards,
-Ivan Khoronzhuk
+2.17.1
