@@ -1,103 +1,142 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([217.72.192.74]:57603 "EHLO
-        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728892AbfGHM4Y (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 08:56:24 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH] [net-next] net/mlx5e: xsk: dynamically allocate mlx5e_channel_param
-Date: Mon,  8 Jul 2019 14:55:41 +0200
-Message-Id: <20190708125554.3863901-1-arnd@arndb.de>
+Received: from mail-pf1-f194.google.com ([209.85.210.194]:37065 "EHLO
+        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728596AbfGHOVI (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 10:21:08 -0400
+From: "Jonathan Lemon" <jonathan.lemon@gmail.com>
+Subject: Re: [PATCH bpf] xdp: fix potential deadlock on socket mutex
+Date: Mon, 08 Jul 2019 07:21:05 -0700
+Message-ID: <0617EEA7-7883-4800-B1E2-5D59D8120C67@gmail.com>
+In-Reply-To: <20190708110344.23278-1-i.maximets@samsung.com>
+References: <CGME20190708110350eucas1p16357da1f812ff8309b1edc98d4cdacc1@eucas1p1.samsung.com>
+ <20190708110344.23278-1-i.maximets@samsung.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; format=flowed
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Saeed Mahameed <saeedm@mellanox.com>, Leon Romanovsky <leon@kernel.org>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>
-Cc: Arnd Bergmann <arnd@arndb.de>, Maxim Mikityanskiy <maximmi@mellanox.com>, Tariq Toukan <tariqt@mellanox.com>, netdev@vger.kernel.org, linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+To: Ilya Maximets <i.maximets@samsung.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?utf-8?b?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
 
-The structure is too large to put on the stack, resulting in a
-warning on 32-bit ARM:
+On 8 Jul 2019, at 4:03, Ilya Maximets wrote:
 
-drivers/net/ethernet/mellanox/mlx5/core/en/xsk/setup.c:59:5: error: stack frame size of 1344 bytes in function
-      'mlx5e_open_xsk' [-Werror,-Wframe-larger-than=]
+> There are 2 call chains:
+>
+>   a) xsk_bind --> xdp_umem_assign_dev
+>   b) unregister_netdevice_queue --> xsk_notifier
+>
+> with the following locking order:
+>
+>   a) xs->mutex --> rtnl_lock
+>   b) rtnl_lock --> xdp.lock --> xs->mutex
+>
+> Different order of taking 'xs->mutex' and 'rtnl_lock' could produce a
+> deadlock here. Fix that by moving the 'rtnl_lock' before 'xs->lock' in
+> the bind call chain (a).
+>
+> Reported-by: syzbot+bf64ec93de836d7f4c2c@syzkaller.appspotmail.com
+> Fixes: 455302d1c9ae ("xdp: fix hang while unregistering device bound 
+> to xdp socket")
+> Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
 
-Use kzalloc() instead.
+Thanks, Ilya!
 
-Fixes: a038e9794541 ("net/mlx5e: Add XSK zero-copy support")
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- .../mellanox/mlx5/core/en/xsk/setup.c         | 25 ++++++++++++-------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+I think in the long run the locking needs to be revisited,
+but this should fix the deadlock for now.
 
-diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en/xsk/setup.c b/drivers/net/ethernet/mellanox/mlx5/core/en/xsk/setup.c
-index aaffa6f68dc0..db9bbec68dbf 100644
---- a/drivers/net/ethernet/mellanox/mlx5/core/en/xsk/setup.c
-+++ b/drivers/net/ethernet/mellanox/mlx5/core/en/xsk/setup.c
-@@ -60,24 +60,28 @@ int mlx5e_open_xsk(struct mlx5e_priv *priv, struct mlx5e_params *params,
- 		   struct mlx5e_xsk_param *xsk, struct xdp_umem *umem,
- 		   struct mlx5e_channel *c)
- {
--	struct mlx5e_channel_param cparam = {};
-+	struct mlx5e_channel_param *cparam;
- 	struct dim_cq_moder icocq_moder = {};
- 	int err;
- 
- 	if (!mlx5e_validate_xsk_param(params, xsk, priv->mdev))
- 		return -EINVAL;
- 
--	mlx5e_build_xsk_cparam(priv, params, xsk, &cparam);
-+	cparam = kzalloc(sizeof(*cparam), GFP_KERNEL);
-+	if (!cparam)
-+		return -ENOMEM;
- 
--	err = mlx5e_open_cq(c, params->rx_cq_moderation, &cparam.rx_cq, &c->xskrq.cq);
-+	mlx5e_build_xsk_cparam(priv, params, xsk, cparam);
-+
-+	err = mlx5e_open_cq(c, params->rx_cq_moderation, &cparam->rx_cq, &c->xskrq.cq);
- 	if (unlikely(err))
--		return err;
-+		goto err_kfree_cparam;
- 
--	err = mlx5e_open_rq(c, params, &cparam.rq, xsk, umem, &c->xskrq);
-+	err = mlx5e_open_rq(c, params, &cparam->rq, xsk, umem, &c->xskrq);
- 	if (unlikely(err))
- 		goto err_close_rx_cq;
- 
--	err = mlx5e_open_cq(c, params->tx_cq_moderation, &cparam.tx_cq, &c->xsksq.cq);
-+	err = mlx5e_open_cq(c, params->tx_cq_moderation, &cparam->tx_cq, &c->xsksq.cq);
- 	if (unlikely(err))
- 		goto err_close_rq;
- 
-@@ -87,18 +91,18 @@ int mlx5e_open_xsk(struct mlx5e_priv *priv, struct mlx5e_params *params,
- 	 * is disabled and then reenabled, but the SQ continues receiving CQEs
- 	 * from the old UMEM.
- 	 */
--	err = mlx5e_open_xdpsq(c, params, &cparam.xdp_sq, umem, &c->xsksq, true);
-+	err = mlx5e_open_xdpsq(c, params, &cparam->xdp_sq, umem, &c->xsksq, true);
- 	if (unlikely(err))
- 		goto err_close_tx_cq;
- 
--	err = mlx5e_open_cq(c, icocq_moder, &cparam.icosq_cq, &c->xskicosq.cq);
-+	err = mlx5e_open_cq(c, icocq_moder, &cparam->icosq_cq, &c->xskicosq.cq);
- 	if (unlikely(err))
- 		goto err_close_sq;
- 
- 	/* Create a dedicated SQ for posting NOPs whenever we need an IRQ to be
- 	 * triggered and NAPI to be called on the correct CPU.
- 	 */
--	err = mlx5e_open_icosq(c, params, &cparam.icosq, &c->xskicosq);
-+	err = mlx5e_open_icosq(c, params, &cparam->icosq, &c->xskicosq);
- 	if (unlikely(err))
- 		goto err_close_icocq;
- 
-@@ -123,6 +127,9 @@ int mlx5e_open_xsk(struct mlx5e_priv *priv, struct mlx5e_params *params,
- err_close_rx_cq:
- 	mlx5e_close_cq(&c->xskrq.cq);
- 
-+err_kfree_cparam:
-+	kfree(cparam);
-+
- 	return err;
- }
- 
--- 
-2.20.0
+Acked-by: Jonathan Lemon <jonathan.lemon@gmail.com>
+
+
+
+> This patch is a fix for patch that is not yet in mainline, but
+> already in 'net' tree. I'm not sure what is the correct process
+> for applying such fixes.
+>
+>  net/xdp/xdp_umem.c | 16 ++++++----------
+>  net/xdp/xsk.c      |  2 ++
+>  2 files changed, 8 insertions(+), 10 deletions(-)
+>
+> diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
+> index 20c91f02d3d8..83de74ca729a 100644
+> --- a/net/xdp/xdp_umem.c
+> +++ b/net/xdp/xdp_umem.c
+> @@ -87,21 +87,20 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, 
+> struct net_device *dev,
+>  	struct netdev_bpf bpf;
+>  	int err = 0;
+>
+> +	ASSERT_RTNL();
+> +
+>  	force_zc = flags & XDP_ZEROCOPY;
+>  	force_copy = flags & XDP_COPY;
+>
+>  	if (force_zc && force_copy)
+>  		return -EINVAL;
+>
+> -	rtnl_lock();
+> -	if (xdp_get_umem_from_qid(dev, queue_id)) {
+> -		err = -EBUSY;
+> -		goto out_rtnl_unlock;
+> -	}
+> +	if (xdp_get_umem_from_qid(dev, queue_id))
+> +		return -EBUSY;
+>
+>  	err = xdp_reg_umem_at_qid(dev, umem, queue_id);
+>  	if (err)
+> -		goto out_rtnl_unlock;
+> +		return err;
+>
+>  	umem->dev = dev;
+>  	umem->queue_id = queue_id;
+> @@ -110,7 +109,7 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, 
+> struct net_device *dev,
+>
+>  	if (force_copy)
+>  		/* For copy-mode, we are done. */
+> -		goto out_rtnl_unlock;
+> +		return 0;
+>
+>  	if (!dev->netdev_ops->ndo_bpf ||
+>  	    !dev->netdev_ops->ndo_xsk_async_xmit) {
+> @@ -125,7 +124,6 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, 
+> struct net_device *dev,
+>  	err = dev->netdev_ops->ndo_bpf(dev, &bpf);
+>  	if (err)
+>  		goto err_unreg_umem;
+> -	rtnl_unlock();
+>
+>  	umem->zc = true;
+>  	return 0;
+> @@ -135,8 +133,6 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, 
+> struct net_device *dev,
+>  		err = 0; /* fallback to copy mode */
+>  	if (err)
+>  		xdp_clear_umem_at_qid(dev, queue_id);
+> -out_rtnl_unlock:
+> -	rtnl_unlock();
+>  	return err;
+>  }
+>
+> diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
+> index 703cf5ea448b..2aa6072a3e55 100644
+> --- a/net/xdp/xsk.c
+> +++ b/net/xdp/xsk.c
+> @@ -416,6 +416,7 @@ static int xsk_bind(struct socket *sock, struct 
+> sockaddr *addr, int addr_len)
+>  	if (flags & ~(XDP_SHARED_UMEM | XDP_COPY | XDP_ZEROCOPY))
+>  		return -EINVAL;
+>
+> +	rtnl_lock();
+>  	mutex_lock(&xs->mutex);
+>  	if (xs->state != XSK_READY) {
+>  		err = -EBUSY;
+> @@ -501,6 +502,7 @@ static int xsk_bind(struct socket *sock, struct 
+> sockaddr *addr, int addr_len)
+>  		xs->state = XSK_BOUND;
+>  out_release:
+>  	mutex_unlock(&xs->mutex);
+> +	rtnl_unlock();
+>  	return err;
+>  }
+>
+> -- 
+> 2.17.1
