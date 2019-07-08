@@ -1,125 +1,109 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mailout1.w1.samsung.com ([210.118.77.11]:46220 "EHLO
-        mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727662AbfGHLDx (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 07:03:53 -0400
-Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
-        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190708110352euoutp01417900eff1792b919bccbd8e0166152e~vabdflDrw1172311723euoutp01k
-        for <xdp-newbies@vger.kernel.org>; Mon,  8 Jul 2019 11:03:52 +0000 (GMT)
-From: Ilya Maximets <i.maximets@samsung.com>
-Subject: [PATCH bpf] xdp: fix potential deadlock on socket mutex
-Date: Mon,  8 Jul 2019 14:03:44 +0300
-Message-Id: <20190708110344.23278-1-i.maximets@samsung.com>
-Content-Type: text/plain; charset="utf-8"
-References: <CGME20190708110350eucas1p16357da1f812ff8309b1edc98d4cdacc1@eucas1p1.samsung.com>
+Received: from mail-io1-f72.google.com ([209.85.166.72]:45209 "EHLO
+        mail-io1-f72.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388445AbfGHP1H (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 11:27:07 -0400
+Received: by mail-io1-f72.google.com with SMTP id e20so8520173ioe.12
+        for <xdp-newbies@vger.kernel.org>; Mon, 08 Jul 2019 08:27:06 -0700 (PDT)
+MIME-Version: 1.0
+Date: Mon, 08 Jul 2019 08:27:06 -0700
+Message-ID: <000000000000a5d738058d2d1396@google.com>
+Subject: WARNING in __mark_chain_precision
+From: syzbot <syzbot+4da3ff23081bafe74fc2@syzkaller.appspotmail.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Ilya Maximets <i.maximets@samsung.com>
+To: ast@kernel.org, bcrl@kvack.org, bpf@vger.kernel.org, daniel@iogearbox.net, davem@davemloft.net, hawk@kernel.org, jakub.kicinski@netronome.com, john.fastabend@gmail.com, kafai@fb.com, linux-aio@kvack.org, linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, songliubraving@fb.com, syzkaller-bugs@googlegroups.com, torvalds@linux-foundation.org, viro@zeniv.linux.org.uk, xdp-newbies@vger.kernel.org, yhs@fb.com
 
-There are 2 call chains:
+Hello,
 
-  a) xsk_bind --> xdp_umem_assign_dev
-  b) unregister_netdevice_queue --> xsk_notifier
+syzbot found the following crash on:
 
-with the following locking order:
+HEAD commit:    e5a3e259 Merge branch 'bpf-tcp-rtt-hook'
+git tree:       bpf-next
+console output: https://syzkaller.appspot.com/x/log.txt?x=14190c2da00000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=dd16b8dc9d0d210c
+dashboard link: https://syzkaller.appspot.com/bug?extid=4da3ff23081bafe74fc2
+compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1409ce0da00000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=17226a0da00000
 
-  a) xs->mutex --> rtnl_lock
-  b) rtnl_lock --> xdp.lock --> xs->mutex
+The bug was bisected to:
 
-Different order of taking 'xs->mutex' and 'rtnl_lock' could produce a
-deadlock here. Fix that by moving the 'rtnl_lock' before 'xs->lock' in
-the bind call chain (a).
+commit b53119f13a04879c3bf502828d99d13726639ead
+Author: Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Thu Mar 7 01:22:54 2019 +0000
 
-Reported-by: syzbot+bf64ec93de836d7f4c2c@syzkaller.appspotmail.com
-Fixes: 455302d1c9ae ("xdp: fix hang while unregistering device bound to xdp socket")
-Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+     pin iocb through aio.
+
+bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=11427b8ba00000
+final crash:    https://syzkaller.appspot.com/x/report.txt?x=13427b8ba00000
+console output: https://syzkaller.appspot.com/x/log.txt?x=15427b8ba00000
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+4da3ff23081bafe74fc2@syzkaller.appspotmail.com
+Fixes: b53119f13a04 ("pin iocb through aio.")
+
+------------[ cut here ]------------
+verifier backtracking bug
+WARNING: CPU: 0 PID: 9104 at kernel/bpf/verifier.c:1785  
+__mark_chain_precision+0x19bb/0x1ee0 kernel/bpf/verifier.c:1785
+Kernel panic - not syncing: panic_on_warn set ...
+CPU: 0 PID: 9104 Comm: syz-executor284 Not tainted 5.2.0-rc5+ #34
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x172/0x1f0 lib/dump_stack.c:113
+  panic+0x2cb/0x744 kernel/panic.c:219
+  __warn.cold+0x20/0x4d kernel/panic.c:576
+  report_bug+0x263/0x2b0 lib/bug.c:186
+  fixup_bug arch/x86/kernel/traps.c:179 [inline]
+  fixup_bug arch/x86/kernel/traps.c:174 [inline]
+  do_error_trap+0x11b/0x200 arch/x86/kernel/traps.c:272
+  do_invalid_op+0x37/0x50 arch/x86/kernel/traps.c:291
+  invalid_op+0x14/0x20 arch/x86/entry/entry_64.S:986
+RIP: 0010:__mark_chain_precision+0x19bb/0x1ee0 kernel/bpf/verifier.c:1785
+Code: 08 31 ff 89 de e8 95 ba f2 ff 84 db 0f 85 ce fe ff ff e8 48 b9 f2 ff  
+48 c7 c7 e0 44 91 87 c6 05 1c 15 1f 08 01 e8 03 f1 c4 ff <0f> 0b 41 bc f2  
+ff ff ff e9 af fe ff ff e8 d3 3c 2c 00 e9 c2 e7 ff
+RSP: 0018:ffff88809f04f380 EFLAGS: 00010286
+RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000000
+RDX: 0000000000000000 RSI: ffffffff815ad926 RDI: ffffed1013e09e62
+RBP: ffff88809f04f4d0 R08: ffff88809987a540 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+R13: ffff88809af0c280 R14: 0000000000000001 R15: ffff88809f65cb00
+  mark_chain_precision kernel/bpf/verifier.c:1822 [inline]
+  check_cond_jmp_op+0xcd8/0x3c30 kernel/bpf/verifier.c:5842
+  do_check+0x60f4/0x8a20 kernel/bpf/verifier.c:7782
+  bpf_check+0x6f99/0x9950 kernel/bpf/verifier.c:9293
+  bpf_prog_load+0xe68/0x1670 kernel/bpf/syscall.c:1698
+  __do_sys_bpf+0xa20/0x42d0 kernel/bpf/syscall.c:2849
+  __se_sys_bpf kernel/bpf/syscall.c:2808 [inline]
+  __x64_sys_bpf+0x73/0xb0 kernel/bpf/syscall.c:2808
+  do_syscall_64+0xfd/0x680 arch/x86/entry/common.c:301
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x440369
+Code: 18 89 d0 c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 00 48 89 f8 48 89 f7  
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  
+ff 0f 83 fb 13 fc ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007ffca85a2fa8 EFLAGS: 00000246 ORIG_RAX: 0000000000000141
+RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 0000000000440369
+RDX: 0000000000000048 RSI: 0000000020000200 RDI: 0000000000000005
+RBP: 00000000006ca018 R08: 0000000000000000 R09: 0000000000000000
+R10: 00000000ffffffff R11: 0000000000000246 R12: 0000000000401bf0
+R13: 0000000000401c80 R14: 0000000000000000 R15: 0000000000000000
+Kernel Offset: disabled
+Rebooting in 86400 seconds..
+
+
 ---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-This patch is a fix for patch that is not yet in mainline, but
-already in 'net' tree. I'm not sure what is the correct process
-for applying such fixes.
-
- net/xdp/xdp_umem.c | 16 ++++++----------
- net/xdp/xsk.c      |  2 ++
- 2 files changed, 8 insertions(+), 10 deletions(-)
-
-diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
-index 20c91f02d3d8..83de74ca729a 100644
---- a/net/xdp/xdp_umem.c
-+++ b/net/xdp/xdp_umem.c
-@@ -87,21 +87,20 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, struct net_device *dev,
- 	struct netdev_bpf bpf;
- 	int err = 0;
- 
-+	ASSERT_RTNL();
-+
- 	force_zc = flags & XDP_ZEROCOPY;
- 	force_copy = flags & XDP_COPY;
- 
- 	if (force_zc && force_copy)
- 		return -EINVAL;
- 
--	rtnl_lock();
--	if (xdp_get_umem_from_qid(dev, queue_id)) {
--		err = -EBUSY;
--		goto out_rtnl_unlock;
--	}
-+	if (xdp_get_umem_from_qid(dev, queue_id))
-+		return -EBUSY;
- 
- 	err = xdp_reg_umem_at_qid(dev, umem, queue_id);
- 	if (err)
--		goto out_rtnl_unlock;
-+		return err;
- 
- 	umem->dev = dev;
- 	umem->queue_id = queue_id;
-@@ -110,7 +109,7 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, struct net_device *dev,
- 
- 	if (force_copy)
- 		/* For copy-mode, we are done. */
--		goto out_rtnl_unlock;
-+		return 0;
- 
- 	if (!dev->netdev_ops->ndo_bpf ||
- 	    !dev->netdev_ops->ndo_xsk_async_xmit) {
-@@ -125,7 +124,6 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, struct net_device *dev,
- 	err = dev->netdev_ops->ndo_bpf(dev, &bpf);
- 	if (err)
- 		goto err_unreg_umem;
--	rtnl_unlock();
- 
- 	umem->zc = true;
- 	return 0;
-@@ -135,8 +133,6 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, struct net_device *dev,
- 		err = 0; /* fallback to copy mode */
- 	if (err)
- 		xdp_clear_umem_at_qid(dev, queue_id);
--out_rtnl_unlock:
--	rtnl_unlock();
- 	return err;
- }
- 
-diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
-index 703cf5ea448b..2aa6072a3e55 100644
---- a/net/xdp/xsk.c
-+++ b/net/xdp/xsk.c
-@@ -416,6 +416,7 @@ static int xsk_bind(struct socket *sock, struct sockaddr *addr, int addr_len)
- 	if (flags & ~(XDP_SHARED_UMEM | XDP_COPY | XDP_ZEROCOPY))
- 		return -EINVAL;
- 
-+	rtnl_lock();
- 	mutex_lock(&xs->mutex);
- 	if (xs->state != XSK_READY) {
- 		err = -EBUSY;
-@@ -501,6 +502,7 @@ static int xsk_bind(struct socket *sock, struct sockaddr *addr, int addr_len)
- 		xs->state = XSK_BOUND;
- out_release:
- 	mutex_unlock(&xs->mutex);
-+	rtnl_unlock();
- 	return err;
- }
- 
--- 
-2.17.1
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+For information about bisection process see: https://goo.gl/tpsmEJ#bisection
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
