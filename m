@@ -1,61 +1,39 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lj1-f196.google.com ([209.85.208.196]:45565 "EHLO
-        mail-lj1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729370AbfGHUc7 (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 16:32:59 -0400
-Received: by mail-lj1-f196.google.com with SMTP id m23so17261705lje.12
-        for <xdp-newbies@vger.kernel.org>; Mon, 08 Jul 2019 13:32:58 -0700 (PDT)
-Date: Mon, 8 Jul 2019 23:32:54 +0300
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: Re: [PATCH v8 net-next 0/5] net: ethernet: ti: cpsw: Add XDP support
-Message-ID: <20190708203252.GA12580@khorivan>
-References: <20190705150502.6600-1-ivan.khoronzhuk@linaro.org>
- <20190707.183146.1123763637704790378.davem@davemloft.net>
- <20190707.183511.503486832061897586.davem@davemloft.net>
+Received: from mail-qk1-f196.google.com ([209.85.222.196]:33973 "EHLO
+        mail-qk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729474AbfGHVZ5 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 17:25:57 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20190707.183511.503486832061897586.davem@davemloft.net>
+References: <CGME20190704142509eucas1p268eb9ca87bcc0bffb60891f88f3f6642@eucas1p2.samsung.com>
+ <20190704142503.23501-1-i.maximets@samsung.com> <CAJ+HfNi2EdLwtq9SfccZBymDMv_cW5+vxB-JLqxyvYS_TG3ScA@mail.gmail.com>
+In-Reply-To: <CAJ+HfNi2EdLwtq9SfccZBymDMv_cW5+vxB-JLqxyvYS_TG3ScA@mail.gmail.com>
+From: William Tu <u9012063@gmail.com>
+Date: Mon, 8 Jul 2019 14:25:20 -0700
+Message-ID: <CALDO+SYaR+txmTq_xhaw1cD4v7svtE7BD3mOsBx-X=MEVeZzzA@mail.gmail.com>
+Subject: Re: [PATCH bpf] xdp: fix possible cq entry leak
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: David Miller <davem@davemloft.net>
-Cc: grygorii.strashko@ti.com, hawk@kernel.org, ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com
+Content-Transfer-Encoding: 8bit
+To: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
+Cc: Ilya Maximets <i.maximets@samsung.com>, Netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, bpf <bpf@vger.kernel.org>, Xdp <xdp-newbies@vger.kernel.org>, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
 
-On Sun, Jul 07, 2019 at 06:35:11PM -0700, David Miller wrote:
->From: David Miller <davem@davemloft.net>
->Date: Sun, 07 Jul 2019 18:31:46 -0700 (PDT)
+On Thu, Jul 4, 2019 at 11:49 PM Björn Töpel <bjorn.topel@gmail.com> wrote:
 >
->> From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
->> Date: Fri,  5 Jul 2019 18:04:57 +0300
->>
->>> This patchset adds XDP support for TI cpsw driver and base it on
->>> page_pool allocator. It was verified on af_xdp socket drop,
->>> af_xdp l2f, ebpf XDP_DROP, XDP_REDIRECT, XDP_PASS, XDP_TX.
->>>
->>> It was verified with following configs enabled:
->>  ...
->>
->> I'm applying this to net-next, please deal with whatever follow-ups are
->> necessary.
+> On Thu, 4 Jul 2019 at 16:25, Ilya Maximets <i.maximets@samsung.com> wrote:
+> >
+> > Completion queue address reservation could not be undone.
+> > In case of bad 'queue_id' or skb allocation failure, reserved entry
+> > will be leaked reducing the total capacity of completion queue.
+> >
+> > Fix that by moving reservation to the point where failure is not
+> > possible. Additionally, 'queue_id' checking moved out from the loop
+> > since there is no point to check it there.
+> >
 >
->Nevermind, you really have to fix this:
+> Good catch, Ilya! Thanks for the patch!
 >
->drivers/net/ethernet/ti/davinci_cpdma.c: In function ‘cpdma_chan_submit_si’:
->drivers/net/ethernet/ti/davinci_cpdma.c:1047:12: warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
->   buffer = (u32)si->data;
->            ^
->drivers/net/ethernet/ti/davinci_cpdma.c: In function ‘cpdma_chan_idle_submit_mapped’:
->drivers/net/ethernet/ti/davinci_cpdma.c:1114:12: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
->  si.data = (void *)(u32)data;
->            ^
->drivers/net/ethernet/ti/davinci_cpdma.c: In function ‘cpdma_chan_submit_mapped’:
->drivers/net/ethernet/ti/davinci_cpdma.c:1164:12: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
->  si.data = (void *)(u32)data;
->            ^
-Actrually that's fixed in reply v9 patch.
-But, nevermind, i will send v9 for whole series.
-
--- 
-Regards,
-Ivan Khoronzhuk
+> Acked-by: Björn Töpel <bjorn.topel@intel.com>
+>
+Thanks
+Tested-by: William Tu <u9012063@gmail.com>
