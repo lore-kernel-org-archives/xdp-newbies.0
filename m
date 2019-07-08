@@ -1,39 +1,45 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qk1-f196.google.com ([209.85.222.196]:33973 "EHLO
-        mail-qk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729474AbfGHVZ5 (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 17:25:57 -0400
-MIME-Version: 1.0
-References: <CGME20190704142509eucas1p268eb9ca87bcc0bffb60891f88f3f6642@eucas1p2.samsung.com>
- <20190704142503.23501-1-i.maximets@samsung.com> <CAJ+HfNi2EdLwtq9SfccZBymDMv_cW5+vxB-JLqxyvYS_TG3ScA@mail.gmail.com>
-In-Reply-To: <CAJ+HfNi2EdLwtq9SfccZBymDMv_cW5+vxB-JLqxyvYS_TG3ScA@mail.gmail.com>
-From: William Tu <u9012063@gmail.com>
-Date: Mon, 8 Jul 2019 14:25:20 -0700
-Message-ID: <CALDO+SYaR+txmTq_xhaw1cD4v7svtE7BD3mOsBx-X=MEVeZzzA@mail.gmail.com>
-Subject: Re: [PATCH bpf] xdp: fix possible cq entry leak
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-lf1-f52.google.com ([209.85.167.52]:39846 "EHLO
+        mail-lf1-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2404664AbfGHVen (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 17:34:43 -0400
+Received: by mail-lf1-f52.google.com with SMTP id v85so8989114lfa.6
+        for <xdp-newbies@vger.kernel.org>; Mon, 08 Jul 2019 14:34:41 -0700 (PDT)
+From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Subject: [PATCH v9 net-next 4/5] net: ethernet: ti: cpsw_ethtool: allow res split while down
+Date: Tue,  9 Jul 2019 00:34:31 +0300
+Message-Id: <20190708213432.8525-5-ivan.khoronzhuk@linaro.org>
+In-Reply-To: <20190708213432.8525-1-ivan.khoronzhuk@linaro.org>
+References: <20190708213432.8525-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
-To: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
-Cc: Ilya Maximets <i.maximets@samsung.com>, Netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, bpf <bpf@vger.kernel.org>, Xdp <xdp-newbies@vger.kernel.org>, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
+To: grygorii.strashko@ti.com, hawk@kernel.org, davem@davemloft.net
+Cc: ast@kernel.org, linux-kernel@vger.kernel.org, linux-omap@vger.kernel.org, xdp-newbies@vger.kernel.org, ilias.apalodimas@linaro.org, netdev@vger.kernel.org, daniel@iogearbox.net, jakub.kicinski@netronome.com, john.fastabend@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-On Thu, Jul 4, 2019 at 11:49 PM Björn Töpel <bjorn.topel@gmail.com> wrote:
->
-> On Thu, 4 Jul 2019 at 16:25, Ilya Maximets <i.maximets@samsung.com> wrote:
-> >
-> > Completion queue address reservation could not be undone.
-> > In case of bad 'queue_id' or skb allocation failure, reserved entry
-> > will be leaked reducing the total capacity of completion queue.
-> >
-> > Fix that by moving reservation to the point where failure is not
-> > possible. Additionally, 'queue_id' checking moved out from the loop
-> > since there is no point to check it there.
-> >
->
-> Good catch, Ilya! Thanks for the patch!
->
-> Acked-by: Björn Töpel <bjorn.topel@intel.com>
->
-Thanks
-Tested-by: William Tu <u9012063@gmail.com>
+That's possible to set channel num while interfaces are down. When
+interface gets up it should resplit budget. This resplit can happen
+after phy is up but only if speed is changed, so should be set before
+this, for this allow it to happen while changing number of channels,
+when interfaces are down.
+
+Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+---
+ drivers/net/ethernet/ti/cpsw_ethtool.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/ti/cpsw_ethtool.c b/drivers/net/ethernet/ti/cpsw_ethtool.c
+index c477e6b620d6..e4d7185fde49 100644
+--- a/drivers/net/ethernet/ti/cpsw_ethtool.c
++++ b/drivers/net/ethernet/ti/cpsw_ethtool.c
+@@ -620,8 +620,7 @@ int cpsw_set_channels_common(struct net_device *ndev,
+ 		}
+ 	}
+ 
+-	if (cpsw->usage_count)
+-		cpsw_split_res(cpsw);
++	cpsw_split_res(cpsw);
+ 
+ 	ret = cpsw_resume_data_pass(ndev);
+ 	if (!ret)
+-- 
+2.17.1
