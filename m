@@ -1,142 +1,42 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf1-f194.google.com ([209.85.210.194]:37065 "EHLO
-        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728596AbfGHOVI (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 10:21:08 -0400
-From: "Jonathan Lemon" <jonathan.lemon@gmail.com>
-Subject: Re: [PATCH bpf] xdp: fix potential deadlock on socket mutex
-Date: Mon, 08 Jul 2019 07:21:05 -0700
-Message-ID: <0617EEA7-7883-4800-B1E2-5D59D8120C67@gmail.com>
-In-Reply-To: <20190708110344.23278-1-i.maximets@samsung.com>
-References: <CGME20190708110350eucas1p16357da1f812ff8309b1edc98d4cdacc1@eucas1p1.samsung.com>
- <20190708110344.23278-1-i.maximets@samsung.com>
+Received: from mail-ed1-f65.google.com ([209.85.208.65]:43391 "EHLO
+        mail-ed1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728744AbfGHR3E (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 13:29:04 -0400
+Received: by mail-ed1-f65.google.com with SMTP id e3so15256094edr.10
+        for <xdp-newbies@vger.kernel.org>; Mon, 08 Jul 2019 10:29:03 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+References: <20190704161900.43cec3a7@carbon>
+In-Reply-To: <20190704161900.43cec3a7@carbon>
+From: Zvi Effron <zeffron@riotgames.com>
+Date: Mon, 8 Jul 2019 12:28:52 -0500
+Message-ID: <CAC1LvL2Rx4+9QCDPPFYhi3kZj_srEcfw9n6ODAM2yC5jgZvE5A@mail.gmail.com>
+Subject: Re: Should we remove xdp-newbies from kernel patch CC-list?
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Ilya Maximets <i.maximets@samsung.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?utf-8?b?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-On 8 Jul 2019, at 4:03, Ilya Maximets wrote:
+On Thu, Jul 4, 2019 at 9:19 AM Jesper Dangaard Brouer <brouer@redhat.com> wrote:
+>
+>
+> Question to people subscribed to xdp-newbies@vger.kernel.org mailing
+> list.  As you likely have noticed, patches and kbuild-bot is sending
+> XDP related kernel stuff to this mailing list.  This is caused by being
+> listed in the kernel MAINTAINERS file[1].
+>
 
-> There are 2 call chains:
->
->   a) xsk_bind --> xdp_umem_assign_dev
->   b) unregister_netdevice_queue --> xsk_notifier
->
-> with the following locking order:
->
->   a) xs->mutex --> rtnl_lock
->   b) rtnl_lock --> xdp.lock --> xs->mutex
->
-> Different order of taking 'xs->mutex' and 'rtnl_lock' could produce a
-> deadlock here. Fix that by moving the 'rtnl_lock' before 'xs->lock' in
-> the bind call chain (a).
->
-> Reported-by: syzbot+bf64ec93de836d7f4c2c@syzkaller.appspotmail.com
-> Fixes: 455302d1c9ae ("xdp: fix hang while unregistering device bound 
-> to xdp socket")
-> Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+I cast my vote for both. Having the named newbies channel send many,
+many messages with kernel patches is intimidating to new people (and
+somewhat spammy) which makes it harder to convince my team to sign up
+for the list. At the same time, I've appreciated being able to see
+what's happening on patches as well as questions and discussions.
 
-Thanks, Ilya!
+Would it make sense/be possible to create a mailing list for the
+maintainers file and discussions on patches that is separate from the
+newbies channel? I have to say, the newbies channel is the only newbie
+friendly kernel mailing list I've seen, and it's a big part of why I
+pushed for my company to use XDP over DPDK.
 
-I think in the long run the locking needs to be revisited,
-but this should fix the deadlock for now.
-
-Acked-by: Jonathan Lemon <jonathan.lemon@gmail.com>
-
-
-
-> This patch is a fix for patch that is not yet in mainline, but
-> already in 'net' tree. I'm not sure what is the correct process
-> for applying such fixes.
->
->  net/xdp/xdp_umem.c | 16 ++++++----------
->  net/xdp/xsk.c      |  2 ++
->  2 files changed, 8 insertions(+), 10 deletions(-)
->
-> diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
-> index 20c91f02d3d8..83de74ca729a 100644
-> --- a/net/xdp/xdp_umem.c
-> +++ b/net/xdp/xdp_umem.c
-> @@ -87,21 +87,20 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, 
-> struct net_device *dev,
->  	struct netdev_bpf bpf;
->  	int err = 0;
->
-> +	ASSERT_RTNL();
-> +
->  	force_zc = flags & XDP_ZEROCOPY;
->  	force_copy = flags & XDP_COPY;
->
->  	if (force_zc && force_copy)
->  		return -EINVAL;
->
-> -	rtnl_lock();
-> -	if (xdp_get_umem_from_qid(dev, queue_id)) {
-> -		err = -EBUSY;
-> -		goto out_rtnl_unlock;
-> -	}
-> +	if (xdp_get_umem_from_qid(dev, queue_id))
-> +		return -EBUSY;
->
->  	err = xdp_reg_umem_at_qid(dev, umem, queue_id);
->  	if (err)
-> -		goto out_rtnl_unlock;
-> +		return err;
->
->  	umem->dev = dev;
->  	umem->queue_id = queue_id;
-> @@ -110,7 +109,7 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, 
-> struct net_device *dev,
->
->  	if (force_copy)
->  		/* For copy-mode, we are done. */
-> -		goto out_rtnl_unlock;
-> +		return 0;
->
->  	if (!dev->netdev_ops->ndo_bpf ||
->  	    !dev->netdev_ops->ndo_xsk_async_xmit) {
-> @@ -125,7 +124,6 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, 
-> struct net_device *dev,
->  	err = dev->netdev_ops->ndo_bpf(dev, &bpf);
->  	if (err)
->  		goto err_unreg_umem;
-> -	rtnl_unlock();
->
->  	umem->zc = true;
->  	return 0;
-> @@ -135,8 +133,6 @@ int xdp_umem_assign_dev(struct xdp_umem *umem, 
-> struct net_device *dev,
->  		err = 0; /* fallback to copy mode */
->  	if (err)
->  		xdp_clear_umem_at_qid(dev, queue_id);
-> -out_rtnl_unlock:
-> -	rtnl_unlock();
->  	return err;
->  }
->
-> diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
-> index 703cf5ea448b..2aa6072a3e55 100644
-> --- a/net/xdp/xsk.c
-> +++ b/net/xdp/xsk.c
-> @@ -416,6 +416,7 @@ static int xsk_bind(struct socket *sock, struct 
-> sockaddr *addr, int addr_len)
->  	if (flags & ~(XDP_SHARED_UMEM | XDP_COPY | XDP_ZEROCOPY))
->  		return -EINVAL;
->
-> +	rtnl_lock();
->  	mutex_lock(&xs->mutex);
->  	if (xs->state != XSK_READY) {
->  		err = -EBUSY;
-> @@ -501,6 +502,7 @@ static int xsk_bind(struct socket *sock, struct 
-> sockaddr *addr, int addr_len)
->  		xs->state = XSK_BOUND;
->  out_release:
->  	mutex_unlock(&xs->mutex);
-> +	rtnl_unlock();
->  	return err;
->  }
->
-> -- 
-> 2.17.1
+--Zvi
