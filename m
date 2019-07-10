@@ -1,35 +1,77 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:50184 "EHLO
-        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725912AbfGIANb (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 8 Jul 2019 20:13:31 -0400
-Subject: Re: [PATCH bpf v2] xdp: fix race on generic receive path
-References: <CGME20190703120922eucas1p2d97e3b994425ecdd2dadd13744ac2a77@eucas1p2.samsung.com>
- <20190703120916.19973-1-i.maximets@samsung.com>
-From: Daniel Borkmann <daniel@iogearbox.net>
-Message-ID: <1ac9c018-09c0-1123-ed97-b230a2117533@iogearbox.net>
-Date: Tue, 9 Jul 2019 02:13:21 +0200
+Received: from mail-qt1-f195.google.com ([209.85.160.195]:39916 "EHLO
+        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726708AbfGJXwD (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 10 Jul 2019 19:52:03 -0400
 MIME-Version: 1.0
-In-Reply-To: <20190703120916.19973-1-i.maximets@samsung.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+References: <20190708163121.18477-1-krzesimir@kinvolk.io> <20190708163121.18477-3-krzesimir@kinvolk.io>
+In-Reply-To: <20190708163121.18477-3-krzesimir@kinvolk.io>
+From: Andrii Nakryiko <andrii.nakryiko@gmail.com>
+Date: Wed, 10 Jul 2019 16:51:51 -0700
+Message-ID: <CAEf4BzYra9njHOB8t6kxRu6n5NJdjjAG541OLt8ci=0zbbcUSg@mail.gmail.com>
+Subject: Re: [bpf-next v3 02/12] selftests/bpf: Avoid a clobbering of errno
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Ilya Maximets <i.maximets@samsung.com>, netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>
+To: Krzesimir Nowak <krzesimir@kinvolk.io>
+Cc: open list <linux-kernel@vger.kernel.org>, Alban Crequy <alban@kinvolk.io>, =?UTF-8?Q?Iago_L=C3=B3pez_Galeiras?= <iago@kinvolk.io>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Stanislav Fomichev <sdf@google.com>, Networking <netdev@vger.kernel.org>, bpf <bpf@vger.kernel.org>, xdp-newbies@vger.kernel.org
 
-On 07/03/2019 02:09 PM, Ilya Maximets wrote:
-> Unlike driver mode, generic xdp receive could be triggered
-> by different threads on different CPU cores at the same time
-> leading to the fill and rx queue breakage. For example, this
-> could happen while sending packets from two processes to the
-> first interface of veth pair while the second part of it is
-> open with AF_XDP socket.
-> 
-> Need to take a lock for each generic receive to avoid race.
-> 
-> Fixes: c497176cb2e4 ("xsk: add Rx receive functions and poll support")
-> Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+On Mon, Jul 8, 2019 at 3:42 PM Krzesimir Nowak <krzesimir@kinvolk.io> wrote:
+>
+> Save errno right after bpf_prog_test_run returns, so we later check
+> the error code actually set by bpf_prog_test_run, not by some libcap
+> function.
+>
+> Changes since v1:
+> - Fix the "Fixes:" tag to mention actual commit that introduced the
+>   bug
+>
+> Changes since v2:
+> - Move the declaration so it fits the reverse christmas tree style.
+>
+> Cc: Daniel Borkmann <daniel@iogearbox.net>
+> Fixes: 832c6f2c29ec ("bpf: test make sure to run unpriv test cases in test_verifier")
+> Signed-off-by: Krzesimir Nowak <krzesimir@kinvolk.io>
+> ---
+>  tools/testing/selftests/bpf/test_verifier.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+>
+> diff --git a/tools/testing/selftests/bpf/test_verifier.c b/tools/testing/selftests/bpf/test_verifier.c
+> index b8d065623ead..3fe126e0083b 100644
+> --- a/tools/testing/selftests/bpf/test_verifier.c
+> +++ b/tools/testing/selftests/bpf/test_verifier.c
+> @@ -823,16 +823,18 @@ static int do_prog_test_run(int fd_prog, bool unpriv, uint32_t expected_val,
+>         __u8 tmp[TEST_DATA_LEN << 2];
+>         __u32 size_tmp = sizeof(tmp);
+>         uint32_t retval;
+> +       int saved_errno;
+>         int err;
+>
+>         if (unpriv)
+>                 set_admin(true);
+>         err = bpf_prog_test_run(fd_prog, 1, data, size_data,
+>                                 tmp, &size_tmp, &retval, NULL);
 
-Applied, thanks!
+Given err is either 0 or -1, how about instead making err useful right
+here without extra variable?
+
+if (bpf_prog_test_run(...))
+        err = errno;
+
+> +       saved_errno = errno;
+>         if (unpriv)
+>                 set_admin(false);
+>         if (err) {
+> -               switch (errno) {
+> +               switch (saved_errno) {
+>                 case 524/*ENOTSUPP*/:
+
+ENOTSUPP is defined in include/linux/errno.h, is there any problem
+with using this in selftests?
+
+>                         printf("Did not run the program (not supported) ");
+>                         return 0;
+> --
+> 2.20.1
+>
