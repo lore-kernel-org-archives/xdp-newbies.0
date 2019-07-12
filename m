@@ -1,44 +1,35 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ed1-f46.google.com ([209.85.208.46]:38949 "EHLO
-        mail-ed1-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726057AbfGLKxW (ORCPT
+Received: from www62.your-server.de ([213.133.104.62]:50736 "EHLO
+        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726449AbfGLNHd (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 12 Jul 2019 06:53:22 -0400
-Received: by mail-ed1-f46.google.com with SMTP id m10so8809349edv.6
-        for <xdp-newbies@vger.kernel.org>; Fri, 12 Jul 2019 03:53:21 -0700 (PDT)
-From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-Subject: Re: x710 Checksum Offloading with XDP
-In-Reply-To: <CAH7f-UJUTUT0YKYVMCjNaQzwN3=sFh62Bx7sBO85XyjuNyy4Fg@mail.gmail.com>
-References: <CAH7f-UJUTUT0YKYVMCjNaQzwN3=sFh62Bx7sBO85XyjuNyy4Fg@mail.gmail.com>
-Date: Fri, 12 Jul 2019 12:53:18 +0200
-Message-ID: <87ims7v80x.fsf@toke.dk>
+        Fri, 12 Jul 2019 09:07:33 -0400
+Subject: Re: [PATCH bpf] xdp: fix possible cq entry leak
+References: <CGME20190704142509eucas1p268eb9ca87bcc0bffb60891f88f3f6642@eucas1p2.samsung.com>
+ <20190704142503.23501-1-i.maximets@samsung.com>
+From: Daniel Borkmann <daniel@iogearbox.net>
+Message-ID: <47c7cc21-6e4c-63a6-7649-5486fcd43607@iogearbox.net>
+Date: Fri, 12 Jul 2019 15:07:18 +0200
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <20190704142503.23501-1-i.maximets@samsung.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Cody Haas <chaas@riotgames.com>, xdp-newbies@vger.kernel.org
+To: Ilya Maximets <i.maximets@samsung.com>, netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Alexei Starovoitov <ast@kernel.org>
 
-Cody Haas <chaas@riotgames.com> writes:
+On 07/04/2019 04:25 PM, Ilya Maximets wrote:
+> Completion queue address reservation could not be undone.
+> In case of bad 'queue_id' or skb allocation failure, reserved entry
+> will be leaked reducing the total capacity of completion queue.
+> 
+> Fix that by moving reservation to the point where failure is not
+> possible. Additionally, 'queue_id' checking moved out from the loop
+> since there is no point to check it there.
+> 
+> Fixes: 35fcde7f8deb ("xsk: support for Tx")
+> Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
 
-> Hey,
->
-> Trying to utilize TX checksum offloading while running an XDP
-> application; We're running on Fedora 28, using Intel x710 Network
-> Adapters in unison with the Intel i40e drivers and we've verified that
-> the Fedora sees that TX checksum offloading is enabled. On the
-> receiving side of an XDP_TX we don't see a proper checksum in the
-> transmitted packet. Is this due to XDP bypassing the Linux network
-> stack? If so, is there a way to have XDP instruct the driver to
-> conduct the TX checksum? Or is this intended behavior?
-
-You are quite right that this is because XDP bypasses the stack
-entirely. There is currently no support for interacting with hardware
-offload features from XDP, so if you're using XDP_TX you need to fix up
-the checksum in your eBPF program. There's a bpf_csum_diff() helper
-which may be helpful in this regard.
-
-Getting better support for hardware offloads in concert with XDP is
-something we'd like to get to eventually, but we're not there yet,
-unfortunately.
-
--Toke
+Applied, thanks!
