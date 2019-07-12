@@ -1,101 +1,50 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f196.google.com ([209.85.160.196]:45122 "EHLO
+Received: from mail-qt1-f196.google.com ([209.85.160.196]:35061 "EHLO
         mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728582AbfGLAK3 (ORCPT
+        with ESMTP id S1728102AbfGLAWI (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 11 Jul 2019 20:10:29 -0400
+        Thu, 11 Jul 2019 20:22:08 -0400
 MIME-Version: 1.0
-References: <20190708163121.18477-1-krzesimir@kinvolk.io> <20190708163121.18477-2-krzesimir@kinvolk.io>
- <CAEf4BzYDOyU52wdCinm9cxxvNijpTJgQbCg9UxcO1QKk6vWhNA@mail.gmail.com> <CAGGp+cEaGphDCuZL+sbo2aCVumk2jrq9_Lshifg-Ewphfm40Wg@mail.gmail.com>
-In-Reply-To: <CAGGp+cEaGphDCuZL+sbo2aCVumk2jrq9_Lshifg-Ewphfm40Wg@mail.gmail.com>
+References: <20190708163121.18477-1-krzesimir@kinvolk.io> <20190708163121.18477-9-krzesimir@kinvolk.io>
+In-Reply-To: <20190708163121.18477-9-krzesimir@kinvolk.io>
 From: Andrii Nakryiko <andrii.nakryiko@gmail.com>
-Date: Thu, 11 Jul 2019 17:10:16 -0700
-Message-ID: <CAEf4BzZBzreJOvEzm-OzVPNfwHOhuQ4nh4P04Nh5-u24sjFEcA@mail.gmail.com>
-Subject: Re: [bpf-next v3 01/12] selftests/bpf: Print a message when tester
- could not run a program
+Date: Thu, 11 Jul 2019 17:21:56 -0700
+Message-ID: <CAEf4BzZ23_m-L6vob6BKn24yphRQUBMceAHqkSU+8C8EovmVFA@mail.gmail.com>
+Subject: Re: [bpf-next v3 08/12] tools headers: Sync struct bpf_perf_event_data
 Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
 To: Krzesimir Nowak <krzesimir@kinvolk.io>
 Cc: open list <linux-kernel@vger.kernel.org>, Alban Crequy <alban@kinvolk.io>, =?UTF-8?Q?Iago_L=C3=B3pez_Galeiras?= <iago@kinvolk.io>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Martin KaFai Lau <kafai@fb.com>, Song Liu <songliubraving@fb.com>, Yonghong Song <yhs@fb.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Stanislav Fomichev <sdf@google.com>, Networking <netdev@vger.kernel.org>, bpf <bpf@vger.kernel.org>, xdp-newbies@vger.kernel.org
 
-On Thu, Jul 11, 2019 at 4:36 AM Krzesimir Nowak <krzesimir@kinvolk.io> wrote:
+On Mon, Jul 8, 2019 at 3:42 PM Krzesimir Nowak <krzesimir@kinvolk.io> wrote:
 >
-> On Thu, Jul 11, 2019 at 1:45 AM Andrii Nakryiko
-> <andrii.nakryiko@gmail.com> wrote:
-> >
-> > On Mon, Jul 8, 2019 at 3:42 PM Krzesimir Nowak <krzesimir@kinvolk.io> wrote:
-> > >
-> > > This prints a message when the error is about program type being not
-> > > supported by the test runner or because of permissions problem. This
-> > > is to see if the program we expected to run was actually executed.
-> > >
-> > > The messages are open-coded because strerror(ENOTSUPP) returns
-> > > "Unknown error 524".
-> > >
-> > > Changes since v2:
-> > > - Also print "FAIL" on an unexpected bpf_prog_test_run error, so there
-> > >   is a corresponding "FAIL" message for each failed test.
-> > >
-> > > Signed-off-by: Krzesimir Nowak <krzesimir@kinvolk.io>
-> > > ---
-> > >  tools/testing/selftests/bpf/test_verifier.c | 17 +++++++++++++----
-> > >  1 file changed, 13 insertions(+), 4 deletions(-)
-> > >
-> > > diff --git a/tools/testing/selftests/bpf/test_verifier.c b/tools/testing/selftests/bpf/test_verifier.c
-> > > index c5514daf8865..b8d065623ead 100644
-> > > --- a/tools/testing/selftests/bpf/test_verifier.c
-> > > +++ b/tools/testing/selftests/bpf/test_verifier.c
-> > > @@ -831,11 +831,20 @@ static int do_prog_test_run(int fd_prog, bool unpriv, uint32_t expected_val,
-> > >                                 tmp, &size_tmp, &retval, NULL);
-> > >         if (unpriv)
-> > >                 set_admin(false);
-> > > -       if (err && errno != 524/*ENOTSUPP*/ && errno != EPERM) {
-> > > -               printf("Unexpected bpf_prog_test_run error ");
-> > > -               return err;
-> > > +       if (err) {
-> > > +               switch (errno) {
-> > > +               case 524/*ENOTSUPP*/:
-> > > +                       printf("Did not run the program (not supported) ");
-> > > +                       return 0;
-> > > +               case EPERM:
-> > > +                       printf("Did not run the program (no permission) ");
-> >
-> > Let's add "SKIP: " prefix to these?
+> struct bpf_perf_event_data in kernel headers has the addr field, which
+> is missing in the tools version of the struct. This will be important
+> for the bpf prog test run implementation for perf events as it will
+> expect data to be an instance of struct bpf_perf_event_data, so the
+> size of the data needs to match sizeof(bpf_perf_event_data).
 >
-> Not sure about it. The important part of the test (the program being
-> verified by the kernel's verifier) was still executed, so the test is
-> not really skipped.
-
-
-Ah, I see. So the program was loaded/verifierd, but wasn't test-run.
+> Signed-off-by: Krzesimir Nowak <krzesimir@kinvolk.io>
+> ---
 
 Acked-by: Andrii Nakryiko <andriin@fb.com>
 
+>  tools/include/uapi/linux/bpf_perf_event.h | 1 +
+>  1 file changed, 1 insertion(+)
 >
+> diff --git a/tools/include/uapi/linux/bpf_perf_event.h b/tools/include/uapi/linux/bpf_perf_event.h
+> index 8f95303f9d80..eb1b9d21250c 100644
+> --- a/tools/include/uapi/linux/bpf_perf_event.h
+> +++ b/tools/include/uapi/linux/bpf_perf_event.h
+> @@ -13,6 +13,7 @@
+>  struct bpf_perf_event_data {
+>         bpf_user_pt_regs_t regs;
+>         __u64 sample_period;
+> +       __u64 addr;
+>  };
 >
-> >
-> > > +                       return 0;
-> > > +               default:
-> > > +                       printf("FAIL: Unexpected bpf_prog_test_run error (%s) ", strerror(saved_errno));
-> > > +                       return err;
-> > > +               }
-> > >         }
-> > > -       if (!err && retval != expected_val &&
-> > > +       if (retval != expected_val &&
-> > >             expected_val != POINTER_VALUE) {
-> > >                 printf("FAIL retval %d != %d ", retval, expected_val);
-> > >                 return 1;
-> > > --
-> > > 2.20.1
-> > >
->
->
->
+>  #endif /* _UAPI__LINUX_BPF_PERF_EVENT_H__ */
 > --
-> Kinvolk GmbH | Adalbertstr.6a, 10999 Berlin | tel: +491755589364
-> Geschäftsführer/Directors: Alban Crequy, Chris Kühl, Iago López Galeiras
-> Registergericht/Court of registration: Amtsgericht Charlottenburg
-> Registernummer/Registration number: HRB 171414 B
-> Ust-ID-Nummer/VAT ID number: DE302207000
+> 2.20.1
+>
