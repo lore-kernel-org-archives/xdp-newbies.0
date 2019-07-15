@@ -1,66 +1,65 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:59768 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391030AbfGOOZF (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 15 Jul 2019 10:25:05 -0400
-From: Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.19 114/158] xsk: Properly terminate assignment in xskq_produce_flush_desc
-Date: Mon, 15 Jul 2019 10:17:25 -0400
-Message-Id: <20190715141809.8445-114-sashal@kernel.org>
-In-Reply-To: <20190715141809.8445-1-sashal@kernel.org>
-References: <20190715141809.8445-1-sashal@kernel.org>
+Received: from hqemgate14.nvidia.com ([216.228.121.143]:18288 "EHLO
+        hqemgate14.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729135AbfGOSKX (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 15 Jul 2019 14:10:23 -0400
+Subject: Re: [PATCH] mm/gup: Use put_user_page*() instead of put_page*()
+References: <1563131456-11488-1-git-send-email-linux.bhar@gmail.com>
+ <deea584f-2da2-8e1f-5a07-e97bf32c63bb@nvidia.com>
+ <20190715065654.GA3716@bharath12345-Inspiron-5559>
+From: John Hubbard <jhubbard@nvidia.com>
+Message-ID: <1aeb21d9-6dc6-c7d2-58b6-279b1dfc523b@nvidia.com>
+Date: Mon, 15 Jul 2019 11:10:20 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20190715065654.GA3716@bharath12345-Inspiron-5559>
+Content-Type: text/plain; charset="utf-8"
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Nathan Chancellor <natechancellor@gmail.com>, Nick Desaulniers <ndesaulniers@google.com>, Jonathan Lemon <jonathan.lemon@gmail.com>, =?UTF-8?q?Bj=C3=B6rn=20T=C3=B6pel?= <bjorn.topel@intel.com>, Song Liu <songliubraving@fb.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, clang-built-linux@googlegroups.com
+To: Bharath Vedartham <linux.bhar@gmail.com>
+Cc: akpm@linux-foundation.org, ira.weiny@intel.com, Mauro Carvalho Chehab <mchehab@kernel.org>, Dimitri Sivanich <sivanich@sgi.com>, Arnd Bergmann <arnd@arndb.de>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Alex Williamson <alex.williamson@redhat.com>, Cornelia Huck <cohuck@redhat.com>, Jens Axboe <axboe@kernel.dk>, Alexander Viro <viro@zeniv.linux.org.uk>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Enrico Weigelt <info@metux.net>, Thomas Gleixner <tglx@linutronix.de>, Alexios Zavras <alexios.zavras@intel.com>, Dan Carpenter <dan.carpenter@oracle.com>, Max Filippov <jcmvbkbc@gmail.com>, Matt Sickler <Matt.Sickler@daktronics.com>, "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>, Keith Busch <keith.busch@intel.com>, YueHaibing <yuehaibing@huawei.com>, linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, devel@driverdev.osuosl.org, kvm@vger.kernel.org, linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, Jason Gunthorpe <jgg@ziepe.ca>
 
-From: Nathan Chancellor <natechancellor@gmail.com>
+On 7/14/19 11:56 PM, Bharath Vedartham wrote:
+> On Sun, Jul 14, 2019 at 04:33:42PM -0700, John Hubbard wrote:
+>> On 7/14/19 12:08 PM, Bharath Vedartham wrote:
+[...]
+>> 1. Pull down https://github.com/johnhubbard/linux/commits/gup_dma_core
+>> and find missing conversions: look for any additional missing 
+>> get_user_pages/put_page conversions. You've already found a couple missing 
+>> ones. I haven't re-run a search in a long time, so there's probably even more.
+>> 	a) And find more, after I rebase to 5.3-rc1: people probably are adding
+>> 	get_user_pages() calls as we speak. :)
+> Shouldn't this be documented then? I don't see any docs for using
+> put_user_page*() in v5.2.1 in the memory management API section?
 
-[ Upstream commit f7019b7b0ad14bde732b8953161994edfc384953 ]
+Yes, it needs documentation. My first try (which is still in the above git
+repo) was reviewed and found badly wanting, so I'm going to rewrite it. Meanwhile,
+I agree that an interim note would be helpful, let me put something together.
 
-Clang warns:
+[...]
+>>     https://github.com/johnhubbard/linux/commits/gup_dma_core
+>>
+>>     a) gets rebased often, and
+>>
+>>     b) has a bunch of commits (iov_iter and related) that conflict
+>>        with the latest linux.git,
+>>
+>>     c) has some bugs in the bio area, that I'm fixing, so I don't trust
+>>        that's it's safely runnable, for a few more days.
+> I assume your repo contains only work related to fixing gup issues and
+> not the main repo for gup development? i.e where gup changes are merged?
 
-In file included from net/xdp/xsk_queue.c:10:
-net/xdp/xsk_queue.h:292:2: warning: expression result unused
-[-Wunused-value]
-        WRITE_ONCE(q->ring->producer, q->prod_tail);
-        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-include/linux/compiler.h:284:6: note: expanded from macro 'WRITE_ONCE'
-        __u.__val;                                      \
-        ~~~ ^~~~~
-1 warning generated.
+Correct, this is just a private tree, not a maintainer tree. But I'll try to
+keep the gup_dma_core branch something that is usable by others, during the
+transition over to put_user_page(), because the page-tracking patches are the
+main way to test any put_user_page() conversions.
 
-The q->prod_tail assignment has a comma at the end, not a semi-colon.
-Fix that so clang no longer warns and everything works as expected.
+As Ira said, we're using linux-mm as the real (maintainer) tree.
 
-Fixes: c497176cb2e4 ("xsk: add Rx receive functions and poll support")
-Link: https://github.com/ClangBuiltLinux/linux/issues/544
-Signed-off-by: Nathan Chancellor <natechancellor@gmail.com>
-Acked-by: Nick Desaulniers <ndesaulniers@google.com>
-Acked-by: Jonathan Lemon <jonathan.lemon@gmail.com>
-Acked-by: Björn Töpel <bjorn.topel@intel.com>
-Acked-by: Song Liu <songliubraving@fb.com>
-Signed-off-by: Daniel Borkmann <daniel@iogearbox.net>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- net/xdp/xsk_queue.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/xdp/xsk_queue.h b/net/xdp/xsk_queue.h
-index 8a64b150be54..fe96c0d039f2 100644
---- a/net/xdp/xsk_queue.h
-+++ b/net/xdp/xsk_queue.h
-@@ -239,7 +239,7 @@ static inline void xskq_produce_flush_desc(struct xsk_queue *q)
- 	/* Order producer and data */
- 	smp_wmb();
- 
--	q->prod_tail = q->prod_head,
-+	q->prod_tail = q->prod_head;
- 	WRITE_ONCE(q->ring->producer, q->prod_tail);
- }
- 
+thanks,
 -- 
-2.20.1
+John Hubbard
+NVIDIA
