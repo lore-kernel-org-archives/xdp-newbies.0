@@ -1,51 +1,100 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg1-f196.google.com ([209.85.215.196]:36672 "EHLO
-        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726748AbfGOG7i (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 15 Jul 2019 02:59:38 -0400
-Date: Mon, 15 Jul 2019 12:29:17 +0530
-From: Bharath Vedartham <linux.bhar@gmail.com>
-Subject: Re: [PATCH] mm/gup: Use put_user_page*() instead of put_page*()
-Message-ID: <20190715065917.GB3716@bharath12345-Inspiron-5559>
-References: <1563131456-11488-1-git-send-email-linux.bhar@gmail.com>
- <018ee3d1-e2f0-ca12-9f63-945056c09985@kernel.dk>
+Received: from mail.kernel.org ([198.145.29.99]:37372 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1733106AbfGON6O (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 15 Jul 2019 09:58:14 -0400
+From: Sasha Levin <sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.2 189/249] net/mlx5e: Attach/detach XDP program safely
+Date: Mon, 15 Jul 2019 09:45:54 -0400
+Message-Id: <20190715134655.4076-189-sashal@kernel.org>
+In-Reply-To: <20190715134655.4076-1-sashal@kernel.org>
+References: <20190715134655.4076-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <018ee3d1-e2f0-ca12-9f63-945056c09985@kernel.dk>
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: akpm@linux-foundation.org, ira.weiny@intel.com, jhubbard@nvidia.com, Mauro Carvalho Chehab <mchehab@kernel.org>, Dimitri Sivanich <sivanich@sgi.com>, Arnd Bergmann <arnd@arndb.de>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Alex Williamson <alex.williamson@redhat.com>, Cornelia Huck <cohuck@redhat.com>, Alexander Viro <viro@zeniv.linux.org.uk>, =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Enrico Weigelt <info@metux.net>, Thomas Gleixner <tglx@linutronix.de>, Alexios Zavras <alexios.zavras@intel.com>, Dan Carpenter <dan.carpenter@oracle.com>, Max Filippov <jcmvbkbc@gmail.com>, Matt Sickler <Matt.Sickler@daktronics.com>, "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>, Keith Busch <keith.busch@intel.com>, YueHaibing <yuehaibing@huawei.com>, linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, devel@driverdev.osuosl.org, kvm@vger.kernel.org, linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc: Maxim Mikityanskiy <maximmi@mellanox.com>, Tariq Toukan <tariqt@mellanox.com>, Saeed Mahameed <saeedm@mellanox.com>, Daniel Borkmann <daniel@iogearbox.net>, Sasha Levin <sashal@kernel.org>, netdev@vger.kernel.org, linux-rdma@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
 
-On Sun, Jul 14, 2019 at 08:33:57PM -0600, Jens Axboe wrote:
-> On 7/14/19 1:08 PM, Bharath Vedartham wrote:
-> > diff --git a/fs/io_uring.c b/fs/io_uring.c
-> > index 4ef62a4..b4a4549 100644
-> > --- a/fs/io_uring.c
-> > +++ b/fs/io_uring.c
-> > @@ -2694,10 +2694,9 @@ static int io_sqe_buffer_register(struct io_ring_ctx *ctx, void __user *arg,
-> >   			 * if we did partial map, or found file backed vmas,
-> >   			 * release any pages we did get
-> >   			 */
-> > -			if (pret > 0) {
-> > -				for (j = 0; j < pret; j++)
-> > -					put_page(pages[j]);
-> > -			}
-> > +			if (pret > 0)
-> > +				put_user_pages(pages, pret);
-> > +
-> >   			if (ctx->account_mem)
-> >   				io_unaccount_mem(ctx->user, nr_pages);
-> >   			kvfree(imu->bvec);
-> 
-> You handled just the failure case of the buffer registration, but not
-> the actual free in io_sqe_buffer_unregister().
-> 
-> -- 
-> Jens Axboe
-Yup got it! Thanks! I won't be sending a patch again as fs/io_uring.c
-may have larger local changes for put_user_pages.
+From: Maxim Mikityanskiy <maximmi@mellanox.com>
 
-Thanks
+[ Upstream commit e18953240de8b46360a67090c87ee1ef8160b35d ]
+
+When an XDP program is set, a full reopen of all channels happens in two
+cases:
+
+1. When there was no program set, and a new one is being set.
+
+2. When there was a program set, but it's being unset.
+
+The full reopen is necessary, because the channel parameters may change
+if XDP is enabled or disabled. However, it's performed in an unsafe way:
+if the new channels fail to open, the old ones are already closed, and
+the interface goes down. Use the safe way to switch channels instead.
+The same way is already used for other configuration changes.
+
+Signed-off-by: Maxim Mikityanskiy <maximmi@mellanox.com>
+Signed-off-by: Tariq Toukan <tariqt@mellanox.com>
+Signed-off-by: Saeed Mahameed <saeedm@mellanox.com>
+Signed-off-by: Daniel Borkmann <daniel@iogearbox.net>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ .../net/ethernet/mellanox/mlx5/core/en_main.c | 31 ++++++++++++-------
+ 1 file changed, 20 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en_main.c b/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
+index a8e8350b38aa..8db9fdbc03ea 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/en_main.c
+@@ -4192,8 +4192,6 @@ static int mlx5e_xdp_set(struct net_device *netdev, struct bpf_prog *prog)
+ 	/* no need for full reset when exchanging programs */
+ 	reset = (!priv->channels.params.xdp_prog || !prog);
+ 
+-	if (was_opened && reset)
+-		mlx5e_close_locked(netdev);
+ 	if (was_opened && !reset) {
+ 		/* num_channels is invariant here, so we can take the
+ 		 * batched reference right upfront.
+@@ -4205,20 +4203,31 @@ static int mlx5e_xdp_set(struct net_device *netdev, struct bpf_prog *prog)
+ 		}
+ 	}
+ 
+-	/* exchange programs, extra prog reference we got from caller
+-	 * as long as we don't fail from this point onwards.
+-	 */
+-	old_prog = xchg(&priv->channels.params.xdp_prog, prog);
++	if (was_opened && reset) {
++		struct mlx5e_channels new_channels = {};
++
++		new_channels.params = priv->channels.params;
++		new_channels.params.xdp_prog = prog;
++		mlx5e_set_rq_type(priv->mdev, &new_channels.params);
++		old_prog = priv->channels.params.xdp_prog;
++
++		err = mlx5e_safe_switch_channels(priv, &new_channels, NULL);
++		if (err)
++			goto unlock;
++	} else {
++		/* exchange programs, extra prog reference we got from caller
++		 * as long as we don't fail from this point onwards.
++		 */
++		old_prog = xchg(&priv->channels.params.xdp_prog, prog);
++	}
++
+ 	if (old_prog)
+ 		bpf_prog_put(old_prog);
+ 
+-	if (reset) /* change RQ type according to priv->xdp_prog */
++	if (!was_opened && reset) /* change RQ type according to priv->xdp_prog */
+ 		mlx5e_set_rq_type(priv->mdev, &priv->channels.params);
+ 
+-	if (was_opened && reset)
+-		err = mlx5e_open_locked(netdev);
+-
+-	if (!test_bit(MLX5E_STATE_OPENED, &priv->state) || reset)
++	if (!was_opened || reset)
+ 		goto unlock;
+ 
+ 	/* exchanging programs w/o reset, we update ref counts on behalf
+-- 
+2.20.1
