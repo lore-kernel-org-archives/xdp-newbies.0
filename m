@@ -1,66 +1,83 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:39260 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730997AbfGOTg7 (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 15 Jul 2019 15:36:59 -0400
-Date: Tue, 16 Jul 2019 01:06:38 +0530
-From: Bharath Vedartham <linux.bhar@gmail.com>
-Subject: Re: [PATCH] mm/gup: Use put_user_page*() instead of put_page*()
-Message-ID: <20190715193638.GC21161@bharath12345-Inspiron-5559>
-References: <1563131456-11488-1-git-send-email-linux.bhar@gmail.com>
- <deea584f-2da2-8e1f-5a07-e97bf32c63bb@nvidia.com>
- <20190715065654.GA3716@bharath12345-Inspiron-5559>
- <1aeb21d9-6dc6-c7d2-58b6-279b1dfc523b@nvidia.com>
+Received: from mx1.redhat.com ([209.132.183.28]:17475 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727730AbfGRNEl (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 18 Jul 2019 09:04:41 -0400
+Date: Thu, 18 Jul 2019 09:04:34 -0400
+From: "Michael S. Tsirkin" <mst@redhat.com>
+Subject: Re: [PATCH] virtio-net: parameterize min ring num_free for virtio
+ receive
+Message-ID: <20190718085836-mutt-send-email-mst@kernel.org>
+References: <BYAPR14MB32056583C4963342F5D817C4A6C80@BYAPR14MB3205.namprd14.prod.outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1aeb21d9-6dc6-c7d2-58b6-279b1dfc523b@nvidia.com>
+In-Reply-To: <BYAPR14MB32056583C4963342F5D817C4A6C80@BYAPR14MB3205.namprd14.prod.outlook.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: John Hubbard <jhubbard@nvidia.com>
-Cc: akpm@linux-foundation.org, ira.weiny@intel.com, Mauro Carvalho Chehab <mchehab@kernel.org>, Dimitri Sivanich <sivanich@sgi.com>, Arnd Bergmann <arnd@arndb.de>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Alex Williamson <alex.williamson@redhat.com>, Cornelia Huck <cohuck@redhat.com>, Jens Axboe <axboe@kernel.dk>, Alexander Viro <viro@zeniv.linux.org.uk>, =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@intel.com>, Magnus Karlsson <magnus.karlsson@intel.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Enrico Weigelt <info@metux.net>, Thomas Gleixner <tglx@linutronix.de>, Alexios Zavras <alexios.zavras@intel.com>, Dan Carpenter <dan.carpenter@oracle.com>, Max Filippov <jcmvbkbc@gmail.com>, Matt Sickler <Matt.Sickler@daktronics.com>, "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>, Keith Busch <keith.busch@intel.com>, YueHaibing <yuehaibing@huawei.com>, linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, devel@driverdev.osuosl.org, kvm@vger.kernel.org, linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, Jason Gunthorpe <jgg@ziepe.ca>
+To: ? jiang <jiangkidd@hotmail.com>
+Cc: "jasowang@redhat.com" <jasowang@redhat.com>, "davem@davemloft.net" <davem@davemloft.net>, "ast@kernel.org" <ast@kernel.org>, "daniel@iogearbox.net" <daniel@iogearbox.net>, "jakub.kicinski@netronome.com" <jakub.kicinski@netronome.com>, "hawk@kernel.org" <hawk@kernel.org>, "john.fastabend@gmail.com" <john.fastabend@gmail.com>, "kafai@fb.com" <kafai@fb.com>, "songliubraving@fb.com" <songliubraving@fb.com>, "yhs@fb.com" <yhs@fb.com>, "virtualization@lists.linux-foundation.org" <virtualization@lists.linux-foundation.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>, "jiangran.jr@alibaba-inc.com" <jiangran.jr@alibaba-inc.com>
 
-On Mon, Jul 15, 2019 at 11:10:20AM -0700, John Hubbard wrote:
-> On 7/14/19 11:56 PM, Bharath Vedartham wrote:
-> > On Sun, Jul 14, 2019 at 04:33:42PM -0700, John Hubbard wrote:
-> >> On 7/14/19 12:08 PM, Bharath Vedartham wrote:
-> [...]
-> >> 1. Pull down https://github.com/johnhubbard/linux/commits/gup_dma_core
-> >> and find missing conversions: look for any additional missing 
-> >> get_user_pages/put_page conversions. You've already found a couple missing 
-> >> ones. I haven't re-run a search in a long time, so there's probably even more.
-> >> 	a) And find more, after I rebase to 5.3-rc1: people probably are adding
-> >> 	get_user_pages() calls as we speak. :)
-> > Shouldn't this be documented then? I don't see any docs for using
-> > put_user_page*() in v5.2.1 in the memory management API section?
+On Thu, Jul 18, 2019 at 12:55:50PM +0000, ? jiang wrote:
+> This change makes ring buffer reclaim threshold num_free configurable
+> for better performance, while it's hard coded as 1/2 * queue now.
+> According to our test with qemu + dpdk, packet dropping happens when
+> the guest is not able to provide free buffer in avail ring timely.
+> Smaller value of num_free does decrease the number of packet dropping
+> during our test as it makes virtio_net reclaim buffer earlier.
 > 
-> Yes, it needs documentation. My first try (which is still in the above git
-> repo) was reviewed and found badly wanting, so I'm going to rewrite it. Meanwhile,
-> I agree that an interim note would be helpful, let me put something together.
+> At least, we should leave the value changeable to user while the
+> default value as 1/2 * queue is kept.
 > 
-> [...]
-> >>     https://github.com/johnhubbard/linux/commits/gup_dma_core
-> >>
-> >>     a) gets rebased often, and
-> >>
-> >>     b) has a bunch of commits (iov_iter and related) that conflict
-> >>        with the latest linux.git,
-> >>
-> >>     c) has some bugs in the bio area, that I'm fixing, so I don't trust
-> >>        that's it's safely runnable, for a few more days.
-> > I assume your repo contains only work related to fixing gup issues and
-> > not the main repo for gup development? i.e where gup changes are merged?
+> Signed-off-by: jiangkidd <jiangkidd@hotmail.com>
+
+That would be one reason, but I suspect it's not the
+true one. If you need more buffer due to jitter
+then just increase the queue size. Would be cleaner.
+
+
+However are you sure this is the reason for
+packet drops? Do you see them dropped by dpdk
+due to lack of space in the ring? As opposed to
+by guest?
+
+
+> ---
+>  drivers/net/virtio_net.c | 8 +++++++-
+>  1 file changed, 7 insertions(+), 1 deletion(-)
 > 
-> Correct, this is just a private tree, not a maintainer tree. But I'll try to
-> keep the gup_dma_core branch something that is usable by others, during the
-> transition over to put_user_page(), because the page-tracking patches are the
-> main way to test any put_user_page() conversions.
-> 
-> As Ira said, we're using linux-mm as the real (maintainer) tree.
-Thanks for the info! 
-> 
-> thanks,
+> diff --git a/drivers/net/virtio_net.c b/drivers/net/virtio_net.c
+> index 0d4115c9e20b..bc190dec6084 100644
+> --- a/drivers/net/virtio_net.c
+> +++ b/drivers/net/virtio_net.c
+> @@ -26,6 +26,9 @@
+>  static int napi_weight = NAPI_POLL_WEIGHT;
+>  module_param(napi_weight, int, 0444);
+>  
+> +static int min_numfree;
+> +module_param(min_numfree, int, 0444);
+> +
+>  static bool csum = true, gso = true, napi_tx;
+>  module_param(csum, bool, 0444);
+>  module_param(gso, bool, 0444);
+> @@ -1315,6 +1318,9 @@ static int virtnet_receive(struct receive_queue *rq, int budget,
+>  	void *buf;
+>  	int i;
+>  
+> +	if (!min_numfree)
+> +		min_numfree = virtqueue_get_vring_size(rq->vq) / 2;
+> +
+>  	if (!vi->big_packets || vi->mergeable_rx_bufs) {
+>  		void *ctx;
+>  
+> @@ -1331,7 +1337,7 @@ static int virtnet_receive(struct receive_queue *rq, int budget,
+>  		}
+>  	}
+>  
+> -	if (rq->vq->num_free > virtqueue_get_vring_size(rq->vq) / 2) {
+> +	if (rq->vq->num_free > min_numfree) {
+>  		if (!try_fill_recv(vi, rq, GFP_ATOMIC))
+>  			schedule_delayed_work(&vi->refill, 0);
+>  	}
 > -- 
-> John Hubbard
-> NVIDIA
+> 2.11.0
