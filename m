@@ -1,69 +1,49 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45286 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725830AbfGUGnC (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Sun, 21 Jul 2019 02:43:02 -0400
-Date: Sun, 21 Jul 2019 08:42:54 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: AF_XDP and packet timestamp
-Message-ID: <20190721084254.0fca2aaa@carbon>
-In-Reply-To: <87d0jca2z1.fsf@toke.dk>
-References: <86f135475a7820adadb05e7ac9a05c71846bebd6.camel@regit.org>
-        <87d0jca2z1.fsf@toke.dk>
+Received: from mail-eopbgr140058.outbound.protection.outlook.com ([40.107.14.58]:60899
+        "EHLO EUR01-VE1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726709AbfGWLVu (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 23 Jul 2019 07:21:50 -0400
+From: Maxim Mikityanskiy <maximmi@mellanox.com>
+Subject: Re: [PATCH] [net-next] net/mlx5e: xsk: dynamically allocate
+ mlx5e_channel_param
+Date: Tue, 23 Jul 2019 11:21:45 +0000
+Message-ID: <535ebf16-c523-0799-3ffe-6cfbeee3ac57@mellanox.com>
+References: <20190708125554.3863901-1-arnd@arndb.de>
+ <543fa599-8ea1-dbc8-d94a-f90af2069edd@mellanox.com>
+In-Reply-To: <543fa599-8ea1-dbc8-d94a-f90af2069edd@mellanox.com>
+Content-Language: en-US
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <B63C6DA5B42A7848A8663B1C887CCD32@eurprd05.prod.outlook.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>
-Cc: Eric Leblond <eric@regit.org>, xdp-newbies@vger.kernel.org, brouer@redhat.com
+Content-Transfer-Encoding: 8bit
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Saeed Mahameed <saeedm@mellanox.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Tariq Toukan <tariqt@mellanox.com>, Leon Romanovsky <leon@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>
 
-On Mon, 17 Jun 2019 13:03:14 +0200
-Toke Høiland-Jørgensen <toke@redhat.com> wrote:
-
-> Eric Leblond <eric@regit.org> writes:
+On 2019-07-08 18:16, Maxim Mikityanskiy wrote:
+> On 2019-07-08 15:55, Arnd Bergmann wrote:
+>> -	mlx5e_build_xsk_cparam(priv, params, xsk, &cparam);
+>> +	cparam = kzalloc(sizeof(*cparam), GFP_KERNEL);
 > 
-> > Hello,
-> >
-> > I did start to work on AF_XDP support for Suricata. API was really easy
-> > to use via libbpf.
-> >
-> > From Suricata point of view, the current system with default
-> > configuration is lacking an important information. I don't have access
-> > to the timestamp of the packet. I'm in particular interested by the
-> > hardware timestamp as it would allow to do reordering in some capture
-> > cases.
-> >
-> > Is there a way to get the information via AF_XDP. I've seen the
-> > discussion on hardware hints but there was no code example I was able
-> > to find.  
+> Similar code in mlx5e_open_channels (en_main.c) uses kvzalloc. Although
+> the struct is currently smaller than a page anyway, and there should be
+> no difference in behavior now, I suggest using the same alloc function
+> to keep code uniform.
 > 
-> Making more information from the hardware available to XDP is currently
-> on our list of things we plan to enable in the future:
-> https://github.com/xdp-project/xdp-project/blob/master/xdp-project.org#metadata-available-to-programs
+>>    	/* Create a dedicated SQ for posting NOPs whenever we need an IRQ to be
+>>    	 * triggered and NAPI to be called on the correct CPU.
+>>    	 */
+>> -	err = mlx5e_open_icosq(c, params, &cparam.icosq, &c->xskicosq);
+>> +	err = mlx5e_open_icosq(c, params, &cparam->icosq, &c->xskicosq);
+>>    	if (unlikely(err))
+>>    		goto err_close_icocq;
+>>    
 > 
-> I just added timestamps as a field we want in there (so we don't
-> forget).
-> 
-> I.e., no, there is no way to get this information from XDP (and thus not
-> from AF_XDP either) yet...
+> Here is kfree missing. It's a memory leak in the good path.
 
-We/XDP don't have access to hardware info, yet... BUT I plan to add
-this, e.g. see my slides[1].  (Where to place this HW info, and how to
-make it avail to both XDP and netstack, didn't reach a conclusion at
-NetConf2019, so the "roadmap" is fuzzy).
+Arnd, I'm going to take over your patch and respin it, addressing my own 
+comments, because it's been quite a while, and we want to have this fix.
 
-To get a software timestamp into AF_XDP, simply use helper
-bpf_ktime_get_ns() to get the time, and store info into metadata area
-(placed in front of packet) via helper bpf_xdp_adjust_meta() example
-see[2].  Then AF_XDP userspace can read this metadata area, which is
-placed just in front of packet headers.
-
-
-[1] http://vger.kernel.org/netconf2019_files/xdp-metadata-discussion.pdf
-[2] https://github.com/torvalds/linux/blob/master/samples/bpf/xdp2skb_meta_kern.c
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+Thanks for spotting it.
