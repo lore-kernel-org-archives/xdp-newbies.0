@@ -1,49 +1,87 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-eopbgr140058.outbound.protection.outlook.com ([40.107.14.58]:60899
-        "EHLO EUR01-VE1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726709AbfGWLVu (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 23 Jul 2019 07:21:50 -0400
-From: Maxim Mikityanskiy <maximmi@mellanox.com>
-Subject: Re: [PATCH] [net-next] net/mlx5e: xsk: dynamically allocate
- mlx5e_channel_param
-Date: Tue, 23 Jul 2019 11:21:45 +0000
-Message-ID: <535ebf16-c523-0799-3ffe-6cfbeee3ac57@mellanox.com>
-References: <20190708125554.3863901-1-arnd@arndb.de>
- <543fa599-8ea1-dbc8-d94a-f90af2069edd@mellanox.com>
-In-Reply-To: <543fa599-8ea1-dbc8-d94a-f90af2069edd@mellanox.com>
-Content-Language: en-US
+Received: from mailout2.w1.samsung.com ([210.118.77.12]:53454 "EHLO
+        mailout2.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727789AbfGWMIT (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 23 Jul 2019 08:08:19 -0400
+Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
+        by mailout2.w1.samsung.com (KnoxPortal) with ESMTP id 20190723120817euoutp026b737431e5c446326b8c2afa3a47b01e~0B_-4OkpB2589225892euoutp02D
+        for <xdp-newbies@vger.kernel.org>; Tue, 23 Jul 2019 12:08:17 +0000 (GMT)
+From: Ilya Maximets <i.maximets@samsung.com>
+Subject: [PATCH bpf] libbpf: fix using uninitialized ioctl results
+Date: Tue, 23 Jul 2019 15:08:10 +0300
+Message-Id: <20190723120810.28801-1-i.maximets@samsung.com>
 Content-Type: text/plain; charset="utf-8"
-Content-ID: <B63C6DA5B42A7848A8663B1C887CCD32@eurprd05.prod.outlook.com>
-MIME-Version: 1.0
+References: <CGME20190723120815eucas1p21027b1ab47daba7ebb3a885bf869be8a@eucas1p2.samsung.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: Saeed Mahameed <saeedm@mellanox.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Tariq Toukan <tariqt@mellanox.com>, Leon Romanovsky <leon@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Magnus Karlsson <magnus.karlsson@intel.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Ilya Maximets <i.maximets@samsung.com>
 
-On 2019-07-08 18:16, Maxim Mikityanskiy wrote:
-> On 2019-07-08 15:55, Arnd Bergmann wrote:
->> -	mlx5e_build_xsk_cparam(priv, params, xsk, &cparam);
->> +	cparam = kzalloc(sizeof(*cparam), GFP_KERNEL);
-> 
-> Similar code in mlx5e_open_channels (en_main.c) uses kvzalloc. Although
-> the struct is currently smaller than a page anyway, and there should be
-> no difference in behavior now, I suggest using the same alloc function
-> to keep code uniform.
-> 
->>    	/* Create a dedicated SQ for posting NOPs whenever we need an IRQ to be
->>    	 * triggered and NAPI to be called on the correct CPU.
->>    	 */
->> -	err = mlx5e_open_icosq(c, params, &cparam.icosq, &c->xskicosq);
->> +	err = mlx5e_open_icosq(c, params, &cparam->icosq, &c->xskicosq);
->>    	if (unlikely(err))
->>    		goto err_close_icocq;
->>    
-> 
-> Here is kfree missing. It's a memory leak in the good path.
+'channels.max_combined' initialized only on ioctl success and
+errno is only valid on ioctl failure.
 
-Arnd, I'm going to take over your patch and respin it, addressing my own 
-comments, because it's been quite a while, and we want to have this fix.
+The code doesn't produce any runtime issues, but makes memory
+sanitizers angry:
 
-Thanks for spotting it.
+ Conditional jump or move depends on uninitialised value(s)
+    at 0x55C056F: xsk_get_max_queues (xsk.c:336)
+    by 0x55C05B2: xsk_create_bpf_maps (xsk.c:354)
+    by 0x55C089F: xsk_setup_xdp_prog (xsk.c:447)
+    by 0x55C0E57: xsk_socket__create (xsk.c:601)
+  Uninitialised value was created by a stack allocation
+    at 0x55C04CD: xsk_get_max_queues (xsk.c:318)
+
+Additionally fixed warning on uninitialized bytes in ioctl arguments:
+
+ Syscall param ioctl(SIOCETHTOOL) points to uninitialised byte(s)
+    at 0x648D45B: ioctl (in /usr/lib64/libc-2.28.so)
+    by 0x55C0546: xsk_get_max_queues (xsk.c:330)
+    by 0x55C05B2: xsk_create_bpf_maps (xsk.c:354)
+    by 0x55C089F: xsk_setup_xdp_prog (xsk.c:447)
+    by 0x55C0E57: xsk_socket__create (xsk.c:601)
+  Address 0x1ffefff378 is on thread 1's stack
+  in frame #1, created by xsk_get_max_queues (xsk.c:318)
+  Uninitialised value was created by a stack allocation
+    at 0x55C04CD: xsk_get_max_queues (xsk.c:318)
+
+CC: Magnus Karlsson <magnus.karlsson@intel.com>
+Fixes: 1cad07884239 ("libbpf: add support for using AF_XDP sockets")
+Signed-off-by: Ilya Maximets <i.maximets@samsung.com>
+---
+ tools/lib/bpf/xsk.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/tools/lib/bpf/xsk.c b/tools/lib/bpf/xsk.c
+index 5007b5d4fd2c..c4f912dc30f9 100644
+--- a/tools/lib/bpf/xsk.c
++++ b/tools/lib/bpf/xsk.c
+@@ -317,7 +317,7 @@ static int xsk_load_xdp_prog(struct xsk_socket *xsk)
+ 
+ static int xsk_get_max_queues(struct xsk_socket *xsk)
+ {
+-	struct ethtool_channels channels;
++	struct ethtool_channels channels = { .cmd = ETHTOOL_GCHANNELS };
+ 	struct ifreq ifr;
+ 	int fd, err, ret;
+ 
+@@ -325,7 +325,7 @@ static int xsk_get_max_queues(struct xsk_socket *xsk)
+ 	if (fd < 0)
+ 		return -errno;
+ 
+-	channels.cmd = ETHTOOL_GCHANNELS;
++	memset(&ifr, 0, sizeof(ifr));
+ 	ifr.ifr_data = (void *)&channels;
+ 	strncpy(ifr.ifr_name, xsk->ifname, IFNAMSIZ - 1);
+ 	ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+@@ -335,7 +335,7 @@ static int xsk_get_max_queues(struct xsk_socket *xsk)
+ 		goto out;
+ 	}
+ 
+-	if (channels.max_combined == 0 || errno == EOPNOTSUPP)
++	if (err || channels.max_combined == 0)
+ 		/* If the device says it has no channels, then all traffic
+ 		 * is sent to a single stream, so max queues = 1.
+ 		 */
+-- 
+2.17.1
