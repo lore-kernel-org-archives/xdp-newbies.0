@@ -1,51 +1,77 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f195.google.com ([209.85.160.195]:42065 "EHLO
-        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728671AbfGWL3k (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 23 Jul 2019 07:29:40 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:36558 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726631AbfG2MJW (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 29 Jul 2019 08:09:22 -0400
+Date: Mon, 29 Jul 2019 14:09:16 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
+Subject: Re: Should we remove xdp-newbies from kernel patch CC-list?
+Message-ID: <20190729140916.77ede7a7@carbon>
+In-Reply-To: <20190705204852.42be642f@carbon>
+References: <20190704161900.43cec3a7@carbon>
+        <20190705152428.14b9830c@carbon>
+        <20190705180812.ahmkhaslgukhxxaq@khany>
+        <20190705204852.42be642f@carbon>
 MIME-Version: 1.0
-References: <20190708125554.3863901-1-arnd@arndb.de> <543fa599-8ea1-dbc8-d94a-f90af2069edd@mellanox.com>
- <535ebf16-c523-0799-3ffe-6cfbeee3ac57@mellanox.com>
-In-Reply-To: <535ebf16-c523-0799-3ffe-6cfbeee3ac57@mellanox.com>
-From: Arnd Bergmann <arnd@arndb.de>
-Date: Tue, 23 Jul 2019 13:29:23 +0200
-Message-ID: <CAK8P3a2z=h02_1ybRzL1DpW26-Qn-v22=Fdf_Z_C02fYg9OFgQ@mail.gmail.com>
-Subject: Re: [PATCH] [net-next] net/mlx5e: xsk: dynamically allocate mlx5e_channel_param
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Maxim Mikityanskiy <maximmi@mellanox.com>
-Cc: Saeed Mahameed <saeedm@mellanox.com>, "David S. Miller" <davem@davemloft.net>, Alexei Starovoitov <ast@kernel.org>, Tariq Toukan <tariqt@mellanox.com>, Leon Romanovsky <leon@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>
+To: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+Cc: Arthur Gautier <baloo@gandi.net>, brouer@redhat.com
 
-On Tue, Jul 23, 2019 at 1:21 PM Maxim Mikityanskiy <maximmi@mellanox.com> wrote:
-> On 2019-07-08 18:16, Maxim Mikityanskiy wrote:
-> > On 2019-07-08 15:55, Arnd Bergmann wrote:
-> >> -    mlx5e_build_xsk_cparam(priv, params, xsk, &cparam);
-> >> +    cparam = kzalloc(sizeof(*cparam), GFP_KERNEL);
-> >
-> > Similar code in mlx5e_open_channels (en_main.c) uses kvzalloc. Although
-> > the struct is currently smaller than a page anyway, and there should be
-> > no difference in behavior now, I suggest using the same alloc function
-> > to keep code uniform.
-> >
-> >>      /* Create a dedicated SQ for posting NOPs whenever we need an IRQ to be
-> >>       * triggered and NAPI to be called on the correct CPU.
-> >>       */
-> >> -    err = mlx5e_open_icosq(c, params, &cparam.icosq, &c->xskicosq);
-> >> +    err = mlx5e_open_icosq(c, params, &cparam->icosq, &c->xskicosq);
-> >>      if (unlikely(err))
-> >>              goto err_close_icocq;
-> >>
-> >
-> > Here is kfree missing. It's a memory leak in the good path.
->
-> Arnd, I'm going to take over your patch and respin it, addressing my own
-> comments, because it's been quite a while, and we want to have this fix.
->
-> Thanks for spotting it.
+On Fri, 5 Jul 2019 20:48:52 +0200
+Jesper Dangaard Brouer <brouer@redhat.com> wrote:
 
-Thanks for taking care of it now. I was planning to do a respin, but
-the reply got lost in the depth of my inbox so I forgot about it.
+> On Fri, 5 Jul 2019 18:08:12 +0000
+> Arthur Gautier <baloo@gandi.net> wrote:
+> 
+> > On Fri, Jul 05, 2019 at 03:24:28PM +0200, Jesper Dangaard Brouer wrote:  
+> > > On Thu, 4 Jul 2019 16:19:00 +0200
+> > > Jesper Dangaard Brouer <brouer@redhat.com> wrote:
+> > >     
+> > > > Question to people subscribed to xdp-newbies@vger.kernel.org mailing
+> > > > list.  As you likely have noticed, patches and kbuild-bot is sending
+> > > > XDP related kernel stuff to this mailing list.  This is caused by being
+> > > > listed in the kernel MAINTAINERS file[1].
+> > > > 
+> > > > I've tried to create a survey to collect answers easier:
+> > > >  https://www.surveymonkey.com/r/MTSL5T3    
+> > > 
+> > > I did choose an US holiday for this survey, so I guess US participants
+> > > are not well represented, but the preliminary results are fairly clear
+> > > with 69% for "Remove from MAINTAINERS file".
+> > > 
+> > > I'll give it until tomorrow, to get the US results, before sending a
+> > > patch that removes this list.    
+> > 
+> > Hello Jesper,
+> > 
+> > To be fair, a ton of people in the US takes a holiday on July 5th to
+> > make a 4 days weekend. You might want to let it run until Monday 8th.  
+>  
+> Fair point, it is bad timing.  Unfortunately I travel on holidays
+> Sunday 7th, thus that will delay the patch until after my holidays, and
+> likely after the merge window (as Linus will make rc8 or release this
+> Sunday).  I guess, we are not in a hurry... so let's just wait, until
+> after the merge window.
 
-      Arnd
+(Back from vacation...)
+I've just closed the survey. The final results are very clear.
+
+Results:
+ - Remove from MAINTAINERS file = 72.73%
+ - Keep in MAINTAINERS file     = 36.36%
+
+I'm going to send a kernel patch shortly...
+
+Thanks you all for participating in voting.  It is important to me that
+we keep this XDP user community healthy and interactive.  I will try to
+focus my info/mails to be more focused on how to getting started coding
+with XDP/eBPF.
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
