@@ -1,14 +1,14 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37914 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59116 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731844AbfHASAS (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 1 Aug 2019 14:00:18 -0400
-Subject: [net v1 PATCH 0/4] net: fix regressions for generic-XDP
+        id S1731616AbfHASAW (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 1 Aug 2019 14:00:22 -0400
+Subject: [net v1 PATCH 1/4] bpf: fix XDP vlan selftests test_xdp_vlan.sh
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Date: Thu, 01 Aug 2019 20:00:11 +0200
-Message-ID: <156468229108.27559.2443904494495785131.stgit@firesoul>
-In-Reply-To: <20190731211211.GA87084@multapplied.net>
-References: <20190731211211.GA87084@multapplied.net>
+Date: Thu, 01 Aug 2019 20:00:16 +0200
+Message-ID: <156468241661.27559.5610881573190983692.stgit@firesoul>
+In-Reply-To: <156468229108.27559.2443904494495785131.stgit@firesoul>
+References: <156468229108.27559.2443904494495785131.stgit@firesoul>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
@@ -17,42 +17,121 @@ List-ID: <xdp-newbies.vger.kernel.org>
 To: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
 Cc: xdp-newbies@vger.kernel.org, Daniel Borkmann <borkmann@iogearbox.net>, brandon.cazander@multapplied.net, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Jesper Dangaard Brouer <brouer@redhat.com>
 
-Thanks to Brandon Cazander, who wrote a very detailed bug report that
-even used perf probe's on xdp-newbies mailing list, we discovered that
-generic-XDP contains some regressions when using bpf_xdp_adjust_head().
+Change BPF selftest test_xdp_vlan.sh to (default) use generic XDP.
 
-First issue were that my selftests script, that use bpf_xdp_adjust_head(),
-by mistake didn't use generic-XDP any-longer. That selftest should have
-caught the real regression introduced in commit 458bf2f224f0 ("net: core:
-support XDP generic on stacked devices.").
+This selftest was created together with a fix for generic XDP, in commit
+297249569932 ("net: fix generic XDP to handle if eth header was
+mangled"). And was suppose to catch if generic XDP was broken again.
 
-To verify this patchset fix the regressions, you can invoked manually via:
+The tests are using veth and assumed that veth driver didn't support
+native driver XDP, thus it used the (ip link set) 'xdp' attach that fell
+back to generic-XDP. But veth gained native-XDP support in 948d4f214fde
+("veth: Add driver XDP"), which caused this test script to use
+native-XDP.
 
-  cd tools/testing/selftests/bpf/
-  sudo ./test_xdp_vlan_mode_generic.sh
-  sudo ./test_xdp_vlan_mode_native.sh
-
-Link: https://www.spinics.net/lists/xdp-newbies/msg01231.html
-Fixes: 458bf2f224f0 ("net: core: support XDP generic on stacked devices.")
-Reported by: Brandon Cazander <brandon.cazander@multapplied.net>
+Fixes: 948d4f214fde ("veth: Add driver XDP")
+Fixes: 97396ff0bc2d ("selftests/bpf: add XDP selftests for modifying and popping VLAN headers")
 Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
-
 ---
+ tools/testing/selftests/bpf/test_xdp_vlan.sh |   42 ++++++++++++++++++++++----
+ 1 file changed, 36 insertions(+), 6 deletions(-)
 
-Jesper Dangaard Brouer (4):
-      bpf: fix XDP vlan selftests test_xdp_vlan.sh
-      selftests/bpf: add wrapper scripts for test_xdp_vlan.sh
-      selftests/bpf: reduce time to execute test_xdp_vlan.sh
-      net: fix bpf_xdp_adjust_head regression for generic-XDP
-
-
- net/core/dev.c                                     |   15 ++++-
- tools/testing/selftests/bpf/Makefile               |    3 +
- tools/testing/selftests/bpf/test_xdp_vlan.sh       |   57 ++++++++++++++++----
- .../selftests/bpf/test_xdp_vlan_mode_generic.sh    |    9 +++
- .../selftests/bpf/test_xdp_vlan_mode_native.sh     |    9 +++
- 5 files changed, 75 insertions(+), 18 deletions(-)
- create mode 100755 tools/testing/selftests/bpf/test_xdp_vlan_mode_generic.sh
- create mode 100755 tools/testing/selftests/bpf/test_xdp_vlan_mode_native.sh
-
---
+diff --git a/tools/testing/selftests/bpf/test_xdp_vlan.sh b/tools/testing/selftests/bpf/test_xdp_vlan.sh
+index 51a3a31d1aac..c8aed63b0ffe 100755
+--- a/tools/testing/selftests/bpf/test_xdp_vlan.sh
++++ b/tools/testing/selftests/bpf/test_xdp_vlan.sh
+@@ -1,7 +1,12 @@
+ #!/bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Author: Jesper Dangaard Brouer <hawk@kernel.org>
+ 
+ TESTNAME=xdp_vlan
+ 
++# Default XDP mode
++XDP_MODE=xdpgeneric
++
+ usage() {
+   echo "Testing XDP + TC eBPF VLAN manipulations: $TESTNAME"
+   echo ""
+@@ -9,9 +14,23 @@ usage() {
+   echo "  -v | --verbose : Verbose"
+   echo "  --flush        : Flush before starting (e.g. after --interactive)"
+   echo "  --interactive  : Keep netns setup running after test-run"
++  echo "  --mode=XXX     : Choose XDP mode (xdp | xdpgeneric | xdpdrv)"
+   echo ""
+ }
+ 
++valid_xdp_mode()
++{
++	local mode=$1
++
++	case "$mode" in
++		xdpgeneric | xdpdrv | xdp)
++			return 0
++			;;
++		*)
++			return 1
++	esac
++}
++
+ cleanup()
+ {
+ 	local status=$?
+@@ -37,7 +56,7 @@ cleanup()
+ 
+ # Using external program "getopt" to get --long-options
+ OPTIONS=$(getopt -o hvfi: \
+-    --long verbose,flush,help,interactive,debug -- "$@")
++    --long verbose,flush,help,interactive,debug,mode: -- "$@")
+ if (( $? != 0 )); then
+     usage
+     echo "selftests: $TESTNAME [FAILED] Error calling getopt, unknown option?"
+@@ -60,6 +79,11 @@ while true; do
+ 		cleanup
+ 		shift
+ 		;;
++	    --mode )
++		shift
++		XDP_MODE=$1
++		shift
++		;;
+ 	    -- )
+ 		shift
+ 		break
+@@ -81,8 +105,14 @@ if [ "$EUID" -ne 0 ]; then
+ 	exit 1
+ fi
+ 
+-ip link set dev lo xdp off 2>/dev/null > /dev/null
+-if [ $? -ne 0 ];then
++valid_xdp_mode $XDP_MODE
++if [ $? -ne 0 ]; then
++	echo "selftests: $TESTNAME [FAILED] unknown XDP mode ($XDP_MODE)"
++	exit 1
++fi
++
++ip link set dev lo xdpgeneric off 2>/dev/null > /dev/null
++if [ $? -ne 0 ]; then
+ 	echo "selftests: $TESTNAME [SKIP] need ip xdp support"
+ 	exit 0
+ fi
+@@ -166,7 +196,7 @@ export FILE=test_xdp_vlan.o
+ 
+ # First test: Remove VLAN by setting VLAN ID 0, using "xdp_vlan_change"
+ export XDP_PROG=xdp_vlan_change
+-ip netns exec ns1 ip link set $DEVNS1 xdp object $FILE section $XDP_PROG
++ip netns exec ns1 ip link set $DEVNS1 $XDP_MODE object $FILE section $XDP_PROG
+ 
+ # In ns1: egress use TC to add back VLAN tag 4011
+ #  (del cmd)
+@@ -187,8 +217,8 @@ ip netns exec ns1 ping -W 2 -c 3 $IPADDR2
+ # ETH_P_8021Q indication, and this cause overwriting of our changes.
+ #
+ export XDP_PROG=xdp_vlan_remove_outer2
+-ip netns exec ns1 ip link set $DEVNS1 xdp off
+-ip netns exec ns1 ip link set $DEVNS1 xdp object $FILE section $XDP_PROG
++ip netns exec ns1 ip link set $DEVNS1 $XDP_MODE off
++ip netns exec ns1 ip link set $DEVNS1 $XDP_MODE object $FILE section $XDP_PROG
+ 
+ # Now the namespaces should still be able reach each-other, test with ping:
+ ip netns exec ns2 ping -W 2 -c 3 $IPADDR1
