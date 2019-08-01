@@ -1,95 +1,46 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60176 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726818AbfHASQ7 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 1 Aug 2019 14:16:59 -0400
-Date: Thu, 1 Aug 2019 20:16:16 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+Received: from mail-eopbgr670047.outbound.protection.outlook.com ([40.107.67.47]:39808
+        "EHLO CAN01-TO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1731751AbfHASx7 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 1 Aug 2019 14:53:59 -0400
+From: Brandon Cazander <brandon.cazander@multapplied.net>
 Subject: Re: xdpgeneric, XDP_PASS, and bpf_xdp_adjust_head decapsulation
  dropping packets
-Message-ID: <20190801201612.3aef7783@carbon>
-In-Reply-To: <20190801173324.GA660183@multapplied.net>
+Date: Thu, 1 Aug 2019 18:53:56 +0000
+Message-ID: <20190801185345.GA746463@multapplied.net>
 References: <20190731211211.GA87084@multapplied.net>
-        <20190801101746.702431fc@carbon>
-        <20190801173324.GA660183@multapplied.net>
+ <20190801101746.702431fc@carbon> <20190801173324.GA660183@multapplied.net>
+ <20190801201612.3aef7783@carbon>
+In-Reply-To: <20190801201612.3aef7783@carbon>
+Content-Language: en-US
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <1D04C43178A4DC48A309C9D94E37DB91@CANPRD01.PROD.OUTLOOK.COM>
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Brandon Cazander <brandon.cazander@multapplied.net>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Stephen Hemminger <stephen@networkplumber.org>, David Miller <davem@davemloft.net>, brouer@redhat.com
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Stephen Hemminger <stephen@networkplumber.org>, David Miller <davem@davemloft.net>
 
-On Thu, 1 Aug 2019 17:33:36 +0000
-Brandon Cazander <brandon.cazander@multapplied.net> wrote:
+[...]
 
-> Thank you very much for your prompt and detailed review of my report!
-> Some of these answers may be moot now that you have found the specific
-> commit that caused the issue.
+> Thanks for also confirming. I've just send a patchset with fixes:
+>  https://patchwork.ozlabs.org/project/netdev/list/?series=3D122796&state=
+=3D%2a
 
-True.
- 
-> On Thu, Aug 01, 2019 at 10:18:49AM +0200, Jesper Dangaard Brouer wrote:
-> 
-> > Are you sure you are using "xdpgeneric" mode?
-> > As virtio_net do have "native" XDP mode.  
-> 
-> The program is loaded with XDP_FLAGS_SKB_MODE in this case. I'm having a
-> separate issue with "native" XDP on virtio_net that I'm working on but
-> it is more likely an issue with my code.
-> 
-> > Encapsulated packet starts at a funny offset, making it harder to follow.  
-> 
-> Sorry about that. I should have made it easier.
+Thank you for this; I tested this against my environment and it works as
+expected again.
 
-No problem.
+> I can recommend that you look at the selftest script test_xdp_vlan.sh:
+>  https://github.com/torvalds/linux/blob/master/tools/testing/selftests/bp=
+f/test_xdp_vlan.sh
+>=20
+> Which uses veth and network namespaces for testing.  If you get the
+> hint, then you can actually create these small scripts, that can
+> function as unit and regression tests for XDP code snippets.
+>=20
+> Our XDP-tutorial also uses veth as a development environment:
+>  https://github.com/xdp-project/xdp-tutorial/tree/master/testenv
 
-> > Looking at the code, I think the packet will be dropped earlier than
-> > the pskb_trim_rcsum() call, in the check if (skb->len < len).  
-> 
-> I had the same suspicion but a probe in the corresponding drop showed no
-> results, and furthermore, the InTruncatedPkts SNMP counter was not
-> increasing.
-
-Strange.
-
-> > You only support IPv4 encapsulated packets?
-> > 
-> > Do you handle ARP requests separately?  
-> 
-> Sorry, I wanted a minimal example so this is stripped down.
-
-I figured, that you already handled that.
- 
-> > Can you test an earlier kernel, specifically before: commit
-> > 458bf2f224f0 ("net: core: support XDP generic on stacked devices.")
-> > (Author: Stephen Hemminger)
-> > 
-> > $ git describe --contains  458bf2f224f04
-> > v5.2-rc3~26^2~11^2
-> > 
-> > I fear that this commit, which moved generic-XDP to a later call point,
-> > might cause this.  Because it could be that the SKB network_header
-> > update, is now done before calling XDP program (... still looking at
-> > code details).  
-> 
-> You have already confirmed this but I can also confirm that a kernel
-> before commit 458bf2f224f0 works with no changes to my program.
-
-Thanks for also confirming. I've just send a patchset with fixes:
- https://patchwork.ozlabs.org/project/netdev/list/?series=122796&state=%2a
-
-I can recommend that you look at the selftest script test_xdp_vlan.sh:
- https://github.com/torvalds/linux/blob/master/tools/testing/selftests/bpf/test_xdp_vlan.sh
-
-Which uses veth and network namespaces for testing.  If you get the
-hint, then you can actually create these small scripts, that can
-function as unit and regression tests for XDP code snippets.
-
-Our XDP-tutorial also uses veth as a development environment:
- https://github.com/xdp-project/xdp-tutorial/tree/master/testenv
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+Great hint, I will definitely use these going forward!
