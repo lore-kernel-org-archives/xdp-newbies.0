@@ -1,64 +1,61 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54022 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51317 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387598AbfHGMg3 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 7 Aug 2019 08:36:29 -0400
-Subject: [bpf-next PATCH 3/3] samples/bpf: xdp_fwd explain bpf_fib_lookup
- return codes
+        id S2387799AbfHGNAQ (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 7 Aug 2019 09:00:16 -0400
+Date: Wed, 7 Aug 2019 15:00:10 +0200
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Date: Wed, 07 Aug 2019 14:36:28 +0200
-Message-ID: <156518138817.5636.3626699603179533211.stgit@firesoul>
+Subject: Re: [bpf-next PATCH 0/3] bpf: improvements to xdp_fwd sample
+Message-ID: <20190807150010.1a58a1d2@carbon>
 In-Reply-To: <156518133219.5636.728822418668658886.stgit@firesoul>
 References: <156518133219.5636.728822418668658886.stgit@firesoul>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: netdev@vger.kernel.org, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Cc: xdp-newbies@vger.kernel.org, a.s.protopopov@gmail.com, dsahern@gmail.com, Jesper Dangaard Brouer <brouer@redhat.com>
+To: xdp-newbies@vger.kernel.org
+Cc: Anton Protopopov <a.s.protopopov@gmail.com>, dsahern@gmail.com, Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>
 
-Make it clear that this XDP program depend on the network
-stack to do the ARP resolution.  This is connected with the
-BPF_FIB_LKUP_RET_NO_NEIGH return code from bpf_fib_lookup().
+Hi XDP-newbies,
 
-Another common mistake (seen via XDP-tutorial) is that users
-don't realize that sysctl net.ipv{4,6}.conf.all.forwarding
-setting is honored by bpf_fib_lookup.
+I cross-posted this patchset to remind XDP-users that the kernel
+since[2] v4.18 have a BPF helper (bpf_fib_lookup) to do forwarding
+lookups in kernel FIB route table directly from XDP.
 
-Reported-by: Anton Protopopov <a.s.protopopov@gmail.com>
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
----
- samples/bpf/xdp_fwd_kern.c |   19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
+The XDP-tutorial now have an assignment[3] 'packet03-redirecting' that
+also uses this FIB helper (special thanks to Anton Protopopov for
+adding this).
 
-diff --git a/samples/bpf/xdp_fwd_kern.c b/samples/bpf/xdp_fwd_kern.c
-index 4a5ad381ed2a..df11163454e7 100644
---- a/samples/bpf/xdp_fwd_kern.c
-+++ b/samples/bpf/xdp_fwd_kern.c
-@@ -103,8 +103,23 @@ static __always_inline int xdp_fwd_flags(struct xdp_md *ctx, u32 flags)
- 	fib_params.ifindex = ctx->ingress_ifindex;
- 
- 	rc = bpf_fib_lookup(ctx, &fib_params, sizeof(fib_params), flags);
--
--	if (rc == 0) {
-+	/*
-+	 * Some rc (return codes) from bpf_fib_lookup() are important,
-+	 * to understand how this XDP-prog interacts with network stack.
-+	 *
-+	 * BPF_FIB_LKUP_RET_NO_NEIGH:
-+	 *  Even if route lookup was a success, then the MAC-addresses are also
-+	 *  needed.  This is obtained from arp/neighbour table, but if table is
-+	 *  (still) empty then BPF_FIB_LKUP_RET_NO_NEIGH is returned.  To avoid
-+	 *  doing ARP lookup directly from XDP, then send packet to normal
-+	 *  network stack via XDP_PASS and expect it will do ARP resolution.
-+	 *
-+	 * BPF_FIB_LKUP_RET_FWD_DISABLED:
-+	 *  The bpf_fib_lookup respect sysctl net.ipv{4,6}.conf.all.forwarding
-+	 *  setting, and will return BPF_FIB_LKUP_RET_FWD_DISABLED if not
-+	 *  enabled this on ingress device.
-+	 */
-+	if (rc == BPF_FIB_LKUP_RET_SUCCESS) {
- 		int *val;
- 
- 		/* Verify egress index has been configured as TX-port.
+Toke's devmap lookup improvement is first avail in kernel v5.3.
+Thus, not part of XDP-tutorial yet.
+
+
+[2] 87f5fc7e48dd ("bpf: Provide helper to do forwarding lookups in kernel FIB table")
+ https://git.kernel.org/torvalds/c/87f5fc7e48dd
+
+[3] https://github.com/xdp-project/xdp-tutorial/blob/master/packet03-redirecting/
+
+
+On Wed, 07 Aug 2019 14:36:12 +0200
+Jesper Dangaard Brouer <brouer@redhat.com> wrote:
+
+> This patchset is focused on improvements for XDP forwarding sample
+> named xdp_fwd, which leverage the existing FIB routing tables as
+> described in LPC2018[1] talk by David Ahern.
+> 
+> The primary motivation is to illustrate how Toke's recent work
+> improves usability of XDP_REDIRECT via lookups in devmap. The other
+> patches are to help users understand the sample.
+> 
+> I have more improvements to xdp_fwd, but those might requires changes
+> to libbpf.  Thus, sending these patches first as they are isolated.
+> 
+> [1] http://vger.kernel.org/lpc-networking2018.html#session-1
+
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
