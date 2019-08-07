@@ -1,33 +1,31 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ot1-f65.google.com ([209.85.210.65]:36623 "EHLO
-        mail-ot1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388207AbfHGSGK (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 7 Aug 2019 14:06:10 -0400
+Received: from mail-wm1-f51.google.com ([209.85.128.51]:51316 "EHLO
+        mail-wm1-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727213AbfHGUsy (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 7 Aug 2019 16:48:54 -0400
+Received: by mail-wm1-f51.google.com with SMTP id 207so216320wma.1
+        for <xdp-newbies@vger.kernel.org>; Wed, 07 Aug 2019 13:48:53 -0700 (PDT)
 MIME-Version: 1.0
-References: <156518133219.5636.728822418668658886.stgit@firesoul> <156518138817.5636.3626699603179533211.stgit@firesoul>
-In-Reply-To: <156518138817.5636.3626699603179533211.stgit@firesoul>
-From: Y Song <ys114321@gmail.com>
-Date: Wed, 7 Aug 2019 11:05:33 -0700
-Message-ID: <CAH3MdRV+LUuKpbUJFzqFrodEDbfm5aif+qmzWsUJYSFGQyCMow@mail.gmail.com>
-Subject: Re: [bpf-next PATCH 3/3] samples/bpf: xdp_fwd explain bpf_fib_lookup
- return codes
+From: Kal Cutter Conley <kal.conley@dectris.com>
+Date: Wed, 7 Aug 2019 22:48:40 +0200
+Message-ID: <CAHApi-mbMMx5bhdyfoLuiw7V3qML3L8f+N-+ReQ9XmAKH_2q8A@mail.gmail.com>
+Subject: i40e: Kernel freezes with XDP_ZEROCOPY
 Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: netdev <netdev@vger.kernel.org>, Daniel Borkmann <borkmann@iogearbox.net>, Alexei Starovoitov <alexei.starovoitov@gmail.com>, Xdp <xdp-newbies@vger.kernel.org>, a.s.protopopov@gmail.com, David Ahern <dsahern@gmail.com>
+To: xdp-newbies@vger.kernel.org
 
-On Wed, Aug 7, 2019 at 5:38 AM Jesper Dangaard Brouer <brouer@redhat.com> wrote:
->
-> Make it clear that this XDP program depend on the network
-> stack to do the ARP resolution.  This is connected with the
-> BPF_FIB_LKUP_RET_NO_NEIGH return code from bpf_fib_lookup().
->
-> Another common mistake (seen via XDP-tutorial) is that users
-> don't realize that sysctl net.ipv{4,6}.conf.all.forwarding
-> setting is honored by bpf_fib_lookup.
->
-> Reported-by: Anton Protopopov <a.s.protopopov@gmail.com>
-> Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Hello,
+I am trying to get AF_XDP working with the i40e driver (Ethernet
+Controller X710 for 10GbE SFP+). After bind() with XDP_ZEROCOPY the
+kernel (machine) freezes hard. I have reproduced this on varying
+kernel versions between 5.1 and 5.3-rc3 with 5.3 kernels freezing
+also, but at a later stage. I tried replacing my XDP program with a
+trivial one that simply returns XDP_PASS but it didn't help. On the
+same system, the xdpsock sample does appear to work with the -z flag,
+however. Are there any current known issues that could be causing
+this? I will try to extract a minimal example that exercises the
+freeze.
 
-Acked-by: Yonghong Song <yhs@fb.com>
+Thanks,
+Kal
