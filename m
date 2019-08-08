@@ -1,30 +1,64 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ed1-f68.google.com ([209.85.208.68]:41140 "EHLO
-        mail-ed1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727213AbfHGWJW (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 7 Aug 2019 18:09:22 -0400
-Received: by mail-ed1-f68.google.com with SMTP id p15so87973769eds.8
-        for <xdp-newbies@vger.kernel.org>; Wed, 07 Aug 2019 15:09:21 -0700 (PDT)
-MIME-Version: 1.0
-References: <156518133219.5636.728822418668658886.stgit@firesoul> <20190807150010.1a58a1d2@carbon>
-In-Reply-To: <20190807150010.1a58a1d2@carbon>
-From: Zvi Effron <zeffron@riotgames.com>
-Date: Wed, 7 Aug 2019 15:09:09 -0700
-Message-ID: <CAC1LvL29KS9CKcXYwR4EHeNo7++i4hYQuXfY5OLtbPFDVUO2mw@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:32702 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731038AbfHHJaA (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 8 Aug 2019 05:30:00 -0400
+Date: Thu, 8 Aug 2019 11:29:55 +0200
+From: Jesper Dangaard Brouer <brouer@redhat.com>
 Subject: Re: [bpf-next PATCH 0/3] bpf: improvements to xdp_fwd sample
-Content-Type: text/plain; charset="UTF-8"
+Message-ID: <20190808112955.5a29c9e1@carbon>
+In-Reply-To: <CAC1LvL29KS9CKcXYwR4EHeNo7++i4hYQuXfY5OLtbPFDVUO2mw@mail.gmail.com>
+References: <156518133219.5636.728822418668658886.stgit@firesoul>
+        <20190807150010.1a58a1d2@carbon>
+        <CAC1LvL29KS9CKcXYwR4EHeNo7++i4hYQuXfY5OLtbPFDVUO2mw@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>, Anton Protopopov <a.s.protopopov@gmail.com>, dsahern@gmail.com, =?UTF-8?B?VG9rZSBIw7hpbGFuZC1Kw7hyZ2Vuc2Vu?= <toke@redhat.com>
+To: Zvi Effron <zeffron@riotgames.com>
+Cc: Xdp <xdp-newbies@vger.kernel.org>, Anton Protopopov <a.s.protopopov@gmail.com>, dsahern@gmail.com, Toke =?UTF-8?B?SMO4aWxh?= =?UTF-8?B?bmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>, brouer@redhat.com, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-On Wed, Aug 7, 2019 at 6:00 AM Jesper Dangaard Brouer <brouer@redhat.com> wrote:
->
-> Toke's devmap lookup improvement is first avail in kernel v5.3.
-> Thus, not part of XDP-tutorial yet.
->
-I probably missed this in an earlier email, but what are Toke's devmap
-improvements? Performance? Capability?
+On Wed, 7 Aug 2019 15:09:09 -0700
+Zvi Effron <zeffron@riotgames.com> wrote:
 
-Thanks!
---Zvi
+> On Wed, Aug 7, 2019 at 6:00 AM Jesper Dangaard Brouer <brouer@redhat.com> wrote:
+> >
+> > Toke's devmap lookup improvement is first avail in kernel v5.3.
+> > Thus, not part of XDP-tutorial yet.
+> >  
+> I probably missed this in an earlier email, but what are Toke's devmap
+> improvements? Performance? Capability?
+
+Toke's devmap and redirect improvements are primarily about usability.
+
+Currently, from BPF-context (kernel-side) you cannot read the contents
+of devmap (or cpumap or xskmap(AF_XDP)).  Because for devmap you get
+the real pointer to the net_device ifindex, and we cannot allow you to
+write/change that from BPF (kernel would likely crash or be inconsistent).
+
+The work-around, is to keep a shadow map, that contains the "config" of
+the devmap, which you check/validate against instead.  It is just a pain
+to maintain this shadow map.  Toke's change allow you to read devmap
+from BPF-context.  Thus, you can avoid this shadow map.
+
+Another improvement from Toke, is that the bpf_redirect_map() helper,
+now also check if the redirect index is valid in the map.  If not, then
+it returns another value than XDP_REDIRECT.  You can choose the
+alternative return value yourself, via "flags" e.g. XDP_PASS.  Thus,
+you don't even need to check/validate devmap in your BPF-code, as it is
+part of the bpf_redirect_map() call now.
+
+ action = bpf_redirect_map(&map, &index, flags_as_xdp_value) 
+
+The default flags used in most programs today is 0, which maps to
+XDP_ABORTED.  This is sort of a small UAPI change, but for the better.
+As today, the packet is dropped later, only diagnose/seen via
+tracepoint xdp:xdp_redirect_map_err.
+
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
+ 
