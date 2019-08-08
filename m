@@ -1,64 +1,80 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32702 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731038AbfHHJaA (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 8 Aug 2019 05:30:00 -0400
-Date: Thu, 8 Aug 2019 11:29:55 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: [bpf-next PATCH 0/3] bpf: improvements to xdp_fwd sample
-Message-ID: <20190808112955.5a29c9e1@carbon>
-In-Reply-To: <CAC1LvL29KS9CKcXYwR4EHeNo7++i4hYQuXfY5OLtbPFDVUO2mw@mail.gmail.com>
-References: <156518133219.5636.728822418668658886.stgit@firesoul>
-        <20190807150010.1a58a1d2@carbon>
-        <CAC1LvL29KS9CKcXYwR4EHeNo7++i4hYQuXfY5OLtbPFDVUO2mw@mail.gmail.com>
+Received: from mail-lf1-f65.google.com ([209.85.167.65]:40064 "EHLO
+        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732310AbfHHJiJ (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 8 Aug 2019 05:38:09 -0400
+Received: by mail-lf1-f65.google.com with SMTP id b17so66333116lff.7
+        for <xdp-newbies@vger.kernel.org>; Thu, 08 Aug 2019 02:38:08 -0700 (PDT)
+From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Subject: [PATCH v2 bpf-next] xdp: xdp_umem: fix umem pages mapping for 32bits systems
+Date: Thu,  8 Aug 2019 12:38:03 +0300
+Message-Id: <20190808093803.4918-1-ivan.khoronzhuk@linaro.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Zvi Effron <zeffron@riotgames.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>, Anton Protopopov <a.s.protopopov@gmail.com>, dsahern@gmail.com, Toke =?UTF-8?B?SMO4aWxh?= =?UTF-8?B?bmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>, brouer@redhat.com, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: bjorn.topel@intel.com, magnus.karlsson@intel.com
+Cc: davem@davemloft.net, ast@kernel.org, daniel@iogearbox.net, john.fastabend@gmail.com, hawk@kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-kernel@vger.kernel.org, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-On Wed, 7 Aug 2019 15:09:09 -0700
-Zvi Effron <zeffron@riotgames.com> wrote:
+Use kmap instead of page_address as it's not always in low memory.
 
-> On Wed, Aug 7, 2019 at 6:00 AM Jesper Dangaard Brouer <brouer@redhat.com> wrote:
-> >
-> > Toke's devmap lookup improvement is first avail in kernel v5.3.
-> > Thus, not part of XDP-tutorial yet.
-> >  
-> I probably missed this in an earlier email, but what are Toke's devmap
-> improvements? Performance? Capability?
+Acked-by: Björn Töpel <bjorn.topel@intel.com>
+Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+---
 
-Toke's devmap and redirect improvements are primarily about usability.
+Based on bpf-next/master
+v2..v1:
+	included highmem.h
 
-Currently, from BPF-context (kernel-side) you cannot read the contents
-of devmap (or cpumap or xskmap(AF_XDP)).  Because for devmap you get
-the real pointer to the net_device ifindex, and we cannot allow you to
-write/change that from BPF (kernel would likely crash or be inconsistent).
+v1: https://lkml.org/lkml/2019/6/26/693
 
-The work-around, is to keep a shadow map, that contains the "config" of
-the devmap, which you check/validate against instead.  It is just a pain
-to maintain this shadow map.  Toke's change allow you to read devmap
-from BPF-context.  Thus, you can avoid this shadow map.
+ net/xdp/xdp_umem.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
-Another improvement from Toke, is that the bpf_redirect_map() helper,
-now also check if the redirect index is valid in the map.  If not, then
-it returns another value than XDP_REDIRECT.  You can choose the
-alternative return value yourself, via "flags" e.g. XDP_PASS.  Thus,
-you don't even need to check/validate devmap in your BPF-code, as it is
-part of the bpf_redirect_map() call now.
-
- action = bpf_redirect_map(&map, &index, flags_as_xdp_value) 
-
-The default flags used in most programs today is 0, which maps to
-XDP_ABORTED.  This is sort of a small UAPI change, but for the better.
-As today, the packet is dropped later, only diagnose/seen via
-tracepoint xdp:xdp_redirect_map_err.
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
+index 83de74ca729a..a0607969f8c0 100644
+--- a/net/xdp/xdp_umem.c
++++ b/net/xdp/xdp_umem.c
+@@ -14,6 +14,7 @@
+ #include <linux/netdevice.h>
+ #include <linux/rtnetlink.h>
+ #include <linux/idr.h>
++#include <linux/highmem.h>
  
+ #include "xdp_umem.h"
+ #include "xsk_queue.h"
+@@ -164,6 +165,14 @@ void xdp_umem_clear_dev(struct xdp_umem *umem)
+ 	umem->zc = false;
+ }
+ 
++static void xdp_umem_unmap_pages(struct xdp_umem *umem)
++{
++	unsigned int i;
++
++	for (i = 0; i < umem->npgs; i++)
++		kunmap(umem->pgs[i]);
++}
++
+ static void xdp_umem_unpin_pages(struct xdp_umem *umem)
+ {
+ 	unsigned int i;
+@@ -207,6 +216,7 @@ static void xdp_umem_release(struct xdp_umem *umem)
+ 
+ 	xsk_reuseq_destroy(umem);
+ 
++	xdp_umem_unmap_pages(umem);
+ 	xdp_umem_unpin_pages(umem);
+ 
+ 	kfree(umem->pages);
+@@ -369,7 +379,7 @@ static int xdp_umem_reg(struct xdp_umem *umem, struct xdp_umem_reg *mr)
+ 	}
+ 
+ 	for (i = 0; i < umem->npgs; i++)
+-		umem->pages[i].addr = page_address(umem->pgs[i]);
++		umem->pages[i].addr = kmap(umem->pgs[i]);
+ 
+ 	return 0;
+ 
+-- 
+2.17.1
