@@ -1,76 +1,43 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:40012 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725901AbfHLQLq (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 12 Aug 2019 12:11:46 -0400
-Date: Mon, 12 Aug 2019 13:11:37 -0300
-From: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
-Subject: Re: [PATCH v2 2/2] Documentation: sphinx: Don't parse socket() as
- identifier reference
-Message-ID: <20190812131137.74a4ddf3@coco.lan>
-In-Reply-To: <20190812160708.32172-2-j.neuschaefer@gmx.net>
-References: <20190812160708.32172-1-j.neuschaefer@gmx.net>
-        <20190812160708.32172-2-j.neuschaefer@gmx.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.kernel.org ([198.145.29.99]:58732 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726530AbfHLVT0 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 12 Aug 2019 17:19:26 -0400
+Date: Mon, 12 Aug 2019 14:19:24 -0700
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH v2 bpf-next] mm: mmap: increase sockets maximum memory
+ size pgoff for 32bits
+Message-Id: <20190812141924.32136e040904d0c5a819dcb1@linux-foundation.org>
+In-Reply-To: <20190812124326.32146-1-ivan.khoronzhuk@linaro.org>
+References: <20190812113429.2488-1-ivan.khoronzhuk@linaro.org>
+        <20190812124326.32146-1-ivan.khoronzhuk@linaro.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
-To: Jonathan =?UTF-8?B?TmV1c2Now6RmZXI=?= <j.neuschaefer@gmx.net>
-Cc: linux-doc@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jesper Dangaard Brouer <hawk@kernel.org>, John Fastabend <john.fastabend@gmail.com>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, xdp-newbies@vger.kernel.org, bpf@vger.kernel.org
+To: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Cc: bjorn.topel@intel.com, linux-mm@kvack.org, xdp-newbies@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, linux-kernel@vger.kernel.org, ast@kernel.org, magnus.karlsson@intel.com
 
-Em Mon, 12 Aug 2019 18:07:05 +0200
-Jonathan Neuschäfer <j.neuschaefer@gmx.net> escreveu:
+On Mon, 12 Aug 2019 15:43:26 +0300 Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org> wrote:
 
-> With the introduction of Documentation/sphinx/automarkup.py, socket() is
-> parsed as a reference to the in-kernel definition of socket. Sphinx then
-> decides that struct socket is a good match, which is usually not
-> intended, when the syscall is meant instead. This was observed in
-> Documentation/networking/af_xdp.rst.
+> The AF_XDP sockets umem mapping interface uses XDP_UMEM_PGOFF_FILL_RING
+> and XDP_UMEM_PGOFF_COMPLETION_RING offsets. The offsets seems like are
+> established already and are part of configuration interface.
 > 
-> Prevent socket() from being misinterpreted by adding it to the Skipfuncs
-> list in automarkup.py.
-> 
-> Signed-off-by: Jonathan Neuschäfer <j.neuschaefer@gmx.net>
-> ---
-> 
-> v2:
-> - block socket() in Documentation/sphinx/automarkup.py, as suggested by
->   Jonathan Corbet
-> 
-> v1:
-> - https://lore.kernel.org/lkml/20190810121738.19587-1-j.neuschaefer@gmx.net/
-> ---
->  Documentation/sphinx/automarkup.py | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/Documentation/sphinx/automarkup.py b/Documentation/sphinx/automarkup.py
-> index a8798369e8f7..5b6119ff69f4 100644
-> --- a/Documentation/sphinx/automarkup.py
-> +++ b/Documentation/sphinx/automarkup.py
-> @@ -26,7 +26,8 @@ RE_function = re.compile(r'([\w_][\w\d_]+\(\))')
->  # just don't even try with these names.
->  #
->  Skipfuncs = [ 'open', 'close', 'read', 'write', 'fcntl', 'mmap',
-> -              'select', 'poll', 'fork', 'execve', 'clone', 'ioctl']
-> +              'select', 'poll', 'fork', 'execve', 'clone', 'ioctl',
-> +              'socket' ]
-
-Both patches sound OK on my eyes. Yet, I would just fold them into
-a single one.
-
-In any case:
-
-Reviewed-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
-> 
->  #
->  # Find all occurrences of function() and try to replace them with
-> --
-> 2.20.1
-> 
+> But for 32-bit systems, while AF_XDP socket configuration, the values
+> are to large to pass maximum allowed file size verification.
+> The offsets can be tuned ofc, but instead of changing existent
+> interface - extend max allowed file size for sockets.
 
 
+What are the implications of this?  That all code in the kernel which
+handles mapped sockets needs to be audited (and tested) for correctly
+handling mappings larger than 4G on 32-bit machines?  Has that been
+done?  Are we confident that we aren't introducing user-visible buggy
+behaviour into unsuspecting legacy code?
 
-Thanks,
-Mauro
+Also...  what are the user-visible runtime effects of this change? 
+Please send along a paragraph which explains this, for the changelog. 
+Does this patch fix some user-visible problem?  If so, should be code
+be backported into -stable kernels?
