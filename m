@@ -1,55 +1,53 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lj1-f195.google.com ([209.85.208.195]:41343 "EHLO
-        mail-lj1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726619AbfHLMok (ORCPT
+Received: from mail-lj1-f193.google.com ([209.85.208.193]:41909 "EHLO
+        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726200AbfHLSNX (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 12 Aug 2019 08:44:40 -0400
-Received: by mail-lj1-f195.google.com with SMTP id d24so98125563ljg.8
-        for <xdp-newbies@vger.kernel.org>; Mon, 12 Aug 2019 05:44:39 -0700 (PDT)
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH v2 bpf-next] mm: mmap: increase sockets maximum memory size pgoff for 32bits
-Date: Mon, 12 Aug 2019 15:43:26 +0300
-Message-Id: <20190812124326.32146-1-ivan.khoronzhuk@linaro.org>
-In-Reply-To: <20190812113429.2488-1-ivan.khoronzhuk@linaro.org>
-References: <20190812113429.2488-1-ivan.khoronzhuk@linaro.org>
+        Mon, 12 Aug 2019 14:13:23 -0400
+Received: by mail-lj1-f193.google.com with SMTP id d24so99139517ljg.8
+        for <xdp-newbies@vger.kernel.org>; Mon, 12 Aug 2019 11:13:21 -0700 (PDT)
+MIME-Version: 1.0
+From: Rafael Vargas <vargas@khomp.com>
+Date: Mon, 12 Aug 2019 15:13:09 -0300
+Message-ID: <CAEaYocZ3awg1aW=7Z7Ut_G64Ov9ZdyOAeYWNMdTBTf7scJM6EQ@mail.gmail.com>
+Subject: libbpf expected backward compatibility
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: bjorn.topel@intel.com, linux-mm@kvack.org
-Cc: xdp-newbies@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, linux-kernel@vger.kernel.org, akpm@linux-foundation.org, ast@kernel.org, magnus.karlsson@intel.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+To: xdp-newbies@vger.kernel.org
 
-The AF_XDP sockets umem mapping interface uses XDP_UMEM_PGOFF_FILL_RING
-and XDP_UMEM_PGOFF_COMPLETION_RING offsets. The offsets seems like are
-established already and are part of configuration interface.
+Hi,
+Reading the tools/lib/bpf/README.rst file, I could find what should be
+the expected backward compatibility of the library with older kernels.
 
-But for 32-bit systems, while AF_XDP socket configuration, the values
-are to large to pass maximum allowed file size verification.
-The offsets can be tuned ofc, but instead of changing existent
-interface - extend max allowed file size for sockets.
+Should I be able to use a libbpf compiled from a kernel newer than the
+one I will be running or vice-versa?
 
-Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
----
+I've noticed that the following diff (part of
+421ecf02c8e73e1d95e16e5e12aa19146561edba) makes the xsk_socket__create
+function return errno 95 'Operation not supported' on older kernels
+(5.1.0 in this particular case).
 
-Based on bpf-next/master
 
-v2..v1:
-	removed not necessarily #ifdev as ULL and UL for 64 has same size
+diff --git a/src/xsk.c b/src/xsk.c
+index 7ef6293..bf15a80 100644
+@@ -597,6 +599,16 @@ int xsk_socket__create(struct xsk_socket
+**xsk_ptr, const char *ifname,
+        }
 
- mm/mmap.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/mm/mmap.c b/mm/mmap.c
-index 7e8c3e8ae75f..578f52812361 100644
---- a/mm/mmap.c
-+++ b/mm/mmap.c
-@@ -1358,6 +1358,9 @@ static inline u64 file_mmap_size_max(struct file *file, struct inode *inode)
- 	if (S_ISBLK(inode->i_mode))
- 		return MAX_LFS_FILESIZE;
- 
-+	if (S_ISSOCK(inode->i_mode))
-+		return MAX_LFS_FILESIZE;
+        xsk->prog_fd = -1;
 +
- 	/* Special "we do even unsigned file positions" case */
- 	if (file->f_mode & FMODE_UNSIGNED_OFFSET)
- 		return 0;
++       optlen = sizeof(opts);
++       err = getsockopt(xsk->fd, SOL_XDP, XDP_OPTIONS, &opts, &optlen);
++       if (err) {
++               err = -errno;
++               goto out_mmap_tx;
++       }
++
++       xsk->zc = opts.flags & XDP_OPTIONS_ZEROCOPY;
+
+Should this really return Operation not supported or should it handle
+this particular error and set the zc flag as false?
+
 -- 
-2.17.1
+Rafael Vargas
