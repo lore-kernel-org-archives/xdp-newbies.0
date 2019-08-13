@@ -1,39 +1,77 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f66.google.com ([209.85.167.66]:34705 "EHLO
-        mail-lf1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728676AbfHMKXs (ORCPT
+Received: from mail-lf1-f65.google.com ([209.85.167.65]:33637 "EHLO
+        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728905AbfHMKXv (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 13 Aug 2019 06:23:48 -0400
-Received: by mail-lf1-f66.google.com with SMTP id b29so69140040lfq.1
-        for <xdp-newbies@vger.kernel.org>; Tue, 13 Aug 2019 03:23:46 -0700 (PDT)
+        Tue, 13 Aug 2019 06:23:51 -0400
+Received: by mail-lf1-f65.google.com with SMTP id x3so76488901lfc.0
+        for <xdp-newbies@vger.kernel.org>; Tue, 13 Aug 2019 03:23:49 -0700 (PDT)
 From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: [PATCH bpf-next 0/3] xdpsock: allow mmap2 usage for 32bits
-Date: Tue, 13 Aug 2019 13:23:15 +0300
-Message-Id: <20190813102318.5521-1-ivan.khoronzhuk@linaro.org>
+Subject: [PATCH bpf-next 2/3] xdp: xdp_umem: replace kmap on vmap for umem map
+Date: Tue, 13 Aug 2019 13:23:17 +0300
+Message-Id: <20190813102318.5521-3-ivan.khoronzhuk@linaro.org>
+In-Reply-To: <20190813102318.5521-1-ivan.khoronzhuk@linaro.org>
+References: <20190813102318.5521-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 To: magnus.karlsson@intel.com, bjorn.topel@intel.com
 Cc: davem@davemloft.net, hawk@kernel.org, john.fastabend@gmail.com, jakub.kicinski@netronome.com, daniel@iogearbox.net, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-kernel@vger.kernel.org, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-This patchset contains several improvements for af_xdp socket umem
-mappings for 32bit systems. Also, there is one more patch outside of
-othis series that can be applied to another tree and related to mmap2
-af_xdp umem offsets:
-"mm: mmap: increase sockets maximum memory size pgoff for 32bits"
-https://lkml.org/lkml/2019/8/12/549
+For 64-bit there is no reason to use vmap/vunmap, so use page_address
+as it was initially. For 32 bits, in some apps, like in samples
+xdpsock_user.c when number of pgs in use is quite big, the kmap
+memory can be not enough, despite on this, kmap looks like is
+deprecated in such cases as it can block and should be used rather
+for dynamic mm.
 
-Based on bpf-next/master
+Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+---
+ net/xdp/xdp_umem.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-Ivan Khoronzhuk (3):
-  libbpf: add asm/unistd.h to xsk to get __NR_mmap2
-  xdp: xdp_umem: replace kmap on vmap for umem map
-  samples: bpf: syscal_nrs: use mmap2 if defined
-
- net/xdp/xdp_umem.c         | 16 ++++++++++++----
- samples/bpf/syscall_nrs.c  |  5 +++++
- samples/bpf/tracex5_kern.c | 11 +++++++++++
- tools/lib/bpf/xsk.c        |  1 +
- 4 files changed, 29 insertions(+), 4 deletions(-)
-
+diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
+index a0607969f8c0..907c9019fe21 100644
+--- a/net/xdp/xdp_umem.c
++++ b/net/xdp/xdp_umem.c
+@@ -14,7 +14,7 @@
+ #include <linux/netdevice.h>
+ #include <linux/rtnetlink.h>
+ #include <linux/idr.h>
+-#include <linux/highmem.h>
++#include <linux/vmalloc.h>
+ 
+ #include "xdp_umem.h"
+ #include "xsk_queue.h"
+@@ -167,10 +167,12 @@ void xdp_umem_clear_dev(struct xdp_umem *umem)
+ 
+ static void xdp_umem_unmap_pages(struct xdp_umem *umem)
+ {
++#if BITS_PER_LONG == 32
+ 	unsigned int i;
+ 
+ 	for (i = 0; i < umem->npgs; i++)
+-		kunmap(umem->pgs[i]);
++		vunmap(umem->pages[i].addr);
++#endif
+ }
+ 
+ static void xdp_umem_unpin_pages(struct xdp_umem *umem)
+@@ -378,8 +380,14 @@ static int xdp_umem_reg(struct xdp_umem *umem, struct xdp_umem_reg *mr)
+ 		goto out_account;
+ 	}
+ 
+-	for (i = 0; i < umem->npgs; i++)
+-		umem->pages[i].addr = kmap(umem->pgs[i]);
++	for (i = 0; i < umem->npgs; i++) {
++#if BITS_PER_LONG == 32
++		umem->pages[i].addr = vmap(&umem->pgs[i], 1, VM_MAP,
++					   PAGE_KERNEL);
++#else
++		umem->pages[i].addr = page_address(umem->pgs[i]);
++#endif
++	}
+ 
+ 	return 0;
+ 
 -- 
 2.17.1
