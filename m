@@ -1,112 +1,72 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lj1-f196.google.com ([209.85.208.196]:37500 "EHLO
-        mail-lj1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726116AbfHMS7F (ORCPT
+Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:38290 "EHLO
+        mx0b-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726047AbfHNPv6 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 13 Aug 2019 14:59:05 -0400
-Received: by mail-lj1-f196.google.com with SMTP id t14so279343lji.4
-        for <xdp-newbies@vger.kernel.org>; Tue, 13 Aug 2019 11:59:04 -0700 (PDT)
-Date: Tue, 13 Aug 2019 21:59:00 +0300
-From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: Re: [PATCH bpf-next 3/3] samples: bpf: syscal_nrs: use mmap2 if
- defined
-Message-ID: <20190813185859.GB2856@khorivan>
+        Wed, 14 Aug 2019 11:51:58 -0400
+From: Yonghong Song <yhs@fb.com>
+Subject: Re: [PATCH bpf-next 1/3] libbpf: add asm/unistd.h to xsk to get
+ __NR_mmap2
+Date: Wed, 14 Aug 2019 15:51:28 +0000
+Message-ID: <f7be2fe9-cc06-ba99-dc78-f9296bcb4f20@fb.com>
 References: <20190813102318.5521-1-ivan.khoronzhuk@linaro.org>
- <20190813102318.5521-4-ivan.khoronzhuk@linaro.org>
- <036BCF4A-53D6-4000-BBDE-07C04B8B23FA@flugsvamp.com>
+ <20190813102318.5521-2-ivan.khoronzhuk@linaro.org>
+ <CAEf4BzZ2y_DmTXkVqFh6Hdcquo6UvntvCygw5h5WwrWYXRRg_g@mail.gmail.com>
+ <20190814092403.GA4142@khorivan>
+In-Reply-To: <20190814092403.GA4142@khorivan>
+Content-Language: en-US
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <DB1DF4AD137DE34B9D5F98B17E637118@namprd15.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Disposition: inline
-In-Reply-To: <036BCF4A-53D6-4000-BBDE-07C04B8B23FA@flugsvamp.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jonathan Lemon <jlemon@flugsvamp.com>
-Cc: magnus.karlsson@intel.com, bjorn.topel@intel.com, davem@davemloft.net, hawk@kernel.org, john.fastabend@gmail.com, jakub.kicinski@netronome.com, daniel@iogearbox.net, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrii Nakryiko <andrii.nakryiko@gmail.com>, Magnus Karlsson <magnus.karlsson@intel.com>, =?utf-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, "David S. Miller" <davem@davemloft.net>, Jesper Dangaard Brouer <hawk@kernel.org>, john fastabend <john.fastabend@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Daniel Borkmann <daniel@iogearbox.net>, Networking <netdev@vger.kernel.org>, bpf <bpf@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>
 
-On Tue, Aug 13, 2019 at 10:41:54AM -0700, Jonathan Lemon wrote:
->
->
->On 13 Aug 2019, at 3:23, Ivan Khoronzhuk wrote:
->
->> For arm32 xdp sockets mmap2 is preferred, so use it if it's defined.
->>
->> Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
->
->Doesn't this change the application API?
->-- 
->Jonathan
-
-From what I know there is no reason to use both, so if __NR_mmap2 is defined
-but not __NR_mmap. Despite the fact that it can be defined internally, say
-#define __NR_mmap (__NR_SYSCALL_BASE + 90)
-and be used anyway, at least arm use 2 definition one is for old abi and one is
-for new and names as their numbers are different:
-
-#define __NR_mmap (__NR_SYSCALL_BASE + 90)
-#define __NR_mmap2 (__NR_SYSCALL_BASE + 192)
-
-, so they are not interchangeable and if eabi is used then only __NR_mmap2 is
-defined if oeabi then __NR_mmap only... But mmap() use only one and can hide
-this from user.
-
-In this patch, seems like here is direct access, so I have no declaration for
-__NR_mmap and it breaks build. So here several solutions, I can block __NR_mmap
-at all or replace it on __NR_mmap2...or define it by hand (for what then?).
-I decided to replace on real one.
-
->
->
->> ---
->>  samples/bpf/syscall_nrs.c  |  5 +++++
->>  samples/bpf/tracex5_kern.c | 11 +++++++++++
->>  2 files changed, 16 insertions(+)
->>
->> diff --git a/samples/bpf/syscall_nrs.c b/samples/bpf/syscall_nrs.c
->> index 516e255cbe8f..2dec94238350 100644
->> --- a/samples/bpf/syscall_nrs.c
->> +++ b/samples/bpf/syscall_nrs.c
->> @@ -9,5 +9,10 @@ void syscall_defines(void)
->>  	COMMENT("Linux system call numbers.");
->>  	SYSNR(__NR_write);
->>  	SYSNR(__NR_read);
->> +#ifdef __NR_mmap2
->> +	SYSNR(__NR_mmap2);
->> +#else
->>  	SYSNR(__NR_mmap);
->> +#endif
->> +
->>  }
->> diff --git a/samples/bpf/tracex5_kern.c b/samples/bpf/tracex5_kern.c
->> index f57f4e1ea1ec..300350ad299a 100644
->> --- a/samples/bpf/tracex5_kern.c
->> +++ b/samples/bpf/tracex5_kern.c
->> @@ -68,12 +68,23 @@ PROG(SYS__NR_read)(struct pt_regs *ctx)
->>  	return 0;
->>  }
->>
->> +#ifdef __NR_mmap2
->> +PROG(SYS__NR_mmap2)(struct pt_regs *ctx)
->> +{
->> +	char fmt[] = "mmap2\n";
->> +
->> +	bpf_trace_printk(fmt, sizeof(fmt));
->> +	return 0;
->> +}
->> +#else
->>  PROG(SYS__NR_mmap)(struct pt_regs *ctx)
->>  {
->>  	char fmt[] = "mmap\n";
->> +
->>  	bpf_trace_printk(fmt, sizeof(fmt));
->>  	return 0;
->>  }
->> +#endif
->>
->>  char _license[] SEC("license") = "GPL";
->>  u32 _version SEC("version") = LINUX_VERSION_CODE;
->> --
->> 2.17.1
-
--- 
-Regards,
-Ivan Khoronzhuk
+DQoNCk9uIDgvMTQvMTkgMjoyNCBBTSwgSXZhbiBLaG9yb256aHVrIHdyb3RlOg0KPiBPbiBUdWUs
+IEF1ZyAxMywgMjAxOSBhdCAwNDozODoxM1BNIC0wNzAwLCBBbmRyaWkgTmFrcnlpa28gd3JvdGU6
+DQo+IA0KPiBIaSwgQW5kcmlpDQo+IA0KPj4gT24gVHVlLCBBdWcgMTMsIDIwMTkgYXQgMzoyNCBB
+TSBJdmFuIEtob3JvbnpodWsNCj4+IDxpdmFuLmtob3JvbnpodWtAbGluYXJvLm9yZz4gd3JvdGU6
+DQo+Pj4NCj4+PiBUaGF0J3MgbmVlZGVkIHRvIGdldCBfX05SX21tYXAyIHdoZW4gbW1hcDIgc3lz
+Y2FsbCBpcyB1c2VkLg0KPj4+DQo+Pj4gU2lnbmVkLW9mZi1ieTogSXZhbiBLaG9yb256aHVrIDxp
+dmFuLmtob3JvbnpodWtAbGluYXJvLm9yZz4NCj4+PiAtLS0NCj4+PiDCoHRvb2xzL2xpYi9icGYv
+eHNrLmMgfCAxICsNCj4+PiDCoDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKQ0KPj4+DQo+
+Pj4gZGlmZiAtLWdpdCBhL3Rvb2xzL2xpYi9icGYveHNrLmMgYi90b29scy9saWIvYnBmL3hzay5j
+DQo+Pj4gaW5kZXggNTAwN2I1ZDRmZDJjLi5mMmZjNDBmOTgwNGMgMTAwNjQ0DQo+Pj4gLS0tIGEv
+dG9vbHMvbGliL2JwZi94c2suYw0KPj4+ICsrKyBiL3Rvb2xzL2xpYi9icGYveHNrLmMNCj4+PiBA
+QCAtMTIsNiArMTIsNyBAQA0KPj4+IMKgI2luY2x1ZGUgPHN0ZGxpYi5oPg0KPj4+IMKgI2luY2x1
+ZGUgPHN0cmluZy5oPg0KPj4+IMKgI2luY2x1ZGUgPHVuaXN0ZC5oPg0KPj4+ICsjaW5jbHVkZSA8
+YXNtL3VuaXN0ZC5oPg0KPj4NCj4+IGFzbS91bmlzdGQuaCBpcyBub3QgcHJlc2VudCBpbiBHaXRo
+dWIgbGliYnBmIHByb2plY3Rpb24uIElzIHRoZXJlIGFueQ0KPiANCj4gTG9vayBvbiBpbmNsdWRl
+cyBmcm9tDQo+IHRvb2xzL2xpYi9icGYvbGlicGYuYw0KPiB0b29scy9saWIvYnBmL2JwZi5jDQo+
+IA0KPiBUaGF0J3MgaG93IGl0J3MgZG9uZS4uLiBDb3BwaW5nIGhlYWRlcnMgdG8gYXJjaC9hcm0g
+d2lsbCBub3QNCj4gc29sdmUgdGhpcywgaXQgaW5jbHVkZXMgYm90aCBvZiB0aGVtIGFueXdheSwg
+YW5kIGFueXdheSBpdCBuZWVkcw0KPiBhc20vdW5pc3RkLmggaW5jbHVzaW9uIGhlcmUsIG9ubHkg
+YmVjYXVzZSB4c2suYyBuZWVkcyBfX05SXyoNCj4gDQo+IA0KPj4gd2F5IHRvIGF2b2lkIGluY2x1
+ZGluZyB0aGlzIGhlYWRlcj8gR2VuZXJhbGx5LCBsaWJicGYgY2FuJ3QgZWFzaWx5IHVzZQ0KPj4g
+YWxsIG9mIGtlcm5lbCBoZWFkZXJzLCB3ZSBuZWVkIHRvIHJlLWltcGxlbWVudGVkIGFsbCB0aGUg
+ZXh0cmEgdXNlZA0KPj4gc3R1ZmYgZm9yIEdpdGh1YiB2ZXJzaW9uIG9mIGxpYmJwZiwgc28gd2Ug
+dHJ5IHRvIG1pbmltaXplIHVzYWdlIG9mIG5ldw0KPj4gaGVhZGVycyB0aGF0IGFyZSBub3QganVz
+dCBwbGFpbiB1YXBpIGhlYWRlcnMgZnJvbSBpbmNsdWRlL3VhcGkuDQo+IA0KPiBZZXMgSSBrbm93
+LCBpdCdzIGZhciBhd2F5IGZyb20gcmVhbCBudW1iZXIgb2YgY2hhbmdlcyBuZWVkZWQuDQo+IEkg
+ZmFjZWQgZW5vdWdoIGFib3V0IHRoaXMgYWxyZWFkeSBhbmQga2VybmVsIGhlYWRlcnMsIGVzcGVj
+aWFsbHkNCj4gZm9yIGFybTMyIGl0J3MgYSBiaXQgZGVjZW5jeSBwcm9ibGVtLiBCdXQgdGhpcyBw
+YXRjaCBpdCdzIHBhcnQgb2YNCj4gbm9ybWFsIG9uZS4gSSBoYXZlIGNvdXBsZSBpc3N1ZXMgZGVz
+cGl0ZSB0aGlzIG5vcm1hbGx5IGZpeGVkIG1tYXAyDQo+IHRoYXQgaXMgdGhlIHNhbWUgZXZlbiBp
+ZiB1YXBpIGluY2x1ZGVzIGFyZSBjb3BwaWVkIHRvIHRvb2xzL2FyY2gvYXJtLg0KPiANCj4gSW4g
+Y29udGludWF0aW9uIG9mIGtlcm5lbCBoZWFkZXJzIGluY2x1c2lvbiBhbmQgYXJtIGJ1aWxkOg0K
+PiANCj4gRm9yIGluc3RhbmNlLCB3aGF0IGFib3V0IHRoaXMgcm91Z2ggImtlcm5lbCBoZWFkZXJz
+IiBoYWNrOg0KPiBodHRwczovL2dpdGh1Yi5jb20vaWtob3JuL2FmX3hkcF9zdHVmZi9jb21taXQv
+YWE2NDVjY2NhNGQ4NDRmNDA0ZWMzYzJiMjc0MDJkNGQ3ODQ4ZDFiNSANCg0KVGhlICIuc3ludGF4
+IHVuaWZpZWQiIGlzIG1lbnRpb25lZCBhIGNvdXBsZSBvZiB0aW1lcw0KaW4gYmNjIG1haWxpbmcg
+bGlzdCBhcyB3ZWxsLiBsbHZtIGJwZiBiYWNrZW5kIG1pZ2h0DQpiZSBhYmxlIHRvIHNvbHZlIGl0
+LiBJIGhhdmUgbm90IGxvb2tlZCBhdCB0aGUgZGV0YWlscyB0aG91Z2guDQoNCj4gDQo+IG9yIHRo
+aXMgb25lIHJlbGF0ZWQgZm9yIGFybTMyIG9ubHk6DQo+IGh0dHBzOi8vZ2l0aHViLmNvbS9pa2hv
+cm4vYWZfeGRwX3N0dWZmL2NvbW1pdC8yYzZjNmQ1Mzg2MDVhYWMzOTYwMGRjYjNjOWI2NmRlMTFj
+NzBiOTYzIA0KDQpUaGlzIG1heSBub3Qgd29yayBpZiBicGYgcHJvZ3JhbSB0cmllcyB0byBoYW5k
+bGUga2VybmVsIGhlYWRlcnMuDQpicGYgcHJvZ3JhbSBtYXkgZ2V0IHdyb25nIGxheW91dC4NCg0K
+QW55d2F5LCB0aGUgYWJvdmUgdHdvIGNvbW1lbnRzIGFyZSBpcnJlbGV2YW50IHRvIHRoaXMgcGF0
+Y2ggc2V0DQphbmQgaWYgbmVlZGVkIHNob3VsZCBiZSBkaXNjdXNzZWQgc2VwYXJhdGVseS4NCg0K
+PiANCj4gDQo+IEkgaGF2ZSBtb3JlLi4uDQo+IA0KPj4NCj4+PiDCoCNpbmNsdWRlIDxhcnBhL2lu
+ZXQuaD4NCj4+PiDCoCNpbmNsdWRlIDxhc20vYmFycmllci5oPg0KPj4+IMKgI2luY2x1ZGUgPGxp
+bnV4L2NvbXBpbGVyLmg+DQo+Pj4gLS0gDQo+Pj4gMi4xNy4xDQo+Pj4NCj4gDQo=
