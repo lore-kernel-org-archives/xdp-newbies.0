@@ -1,8 +1,8 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60966 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60402 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730204AbfHOJW3 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 15 Aug 2019 05:22:29 -0400
+        id S1730939AbfHOJZ6 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 15 Aug 2019 05:25:58 -0400
 Subject: Re: [PATCH] virtio-net: lower min ring num_free for efficiency
 References: <BYAPR14MB3205E4E194942B0A1A91A222A6AD0@BYAPR14MB3205.namprd14.prod.outlook.com>
  <f61d9621-cc33-44a2-f297-43f8af8d759b@redhat.com>
@@ -10,8 +10,8 @@ References: <BYAPR14MB3205E4E194942B0A1A91A222A6AD0@BYAPR14MB3205.namprd14.prod.
  <38df7fdd-bd6a-cc82-534d-d7cbf3f1933c@redhat.com>
  <BYAPR14MB320512CCA27487548DDAA57FA6AC0@BYAPR14MB3205.namprd14.prod.outlook.com>
 From: Jason Wang <jasowang@redhat.com>
-Message-ID: <e1ae87d7-546a-d8fb-8d76-97d44bfa3a13@redhat.com>
-Date: Thu, 15 Aug 2019 17:22:13 +0800
+Message-ID: <92f7955b-1b5a-84cb-895b-8d47044d7f03@redhat.com>
+Date: Thu, 15 Aug 2019 17:25:42 +0800
 MIME-Version: 1.0
 In-Reply-To: <BYAPR14MB320512CCA27487548DDAA57FA6AC0@BYAPR14MB3205.namprd14.prod.outlook.com>
 Content-Type: text/plain; charset=utf-8; format=flowed
@@ -233,6 +233,13 @@ On 2019/8/15 下午4:36, 冉 jiang wrote:
 >
 >
 > Test setup: iperf3 to generate packets to guest (total 30mins, pps 400k)
+
+
+Please also note that type of packets e.g TCP or UDP.
+
+Thanks
+
+
 >
 > avg packets drop before: 2842
 >
@@ -242,10 +249,4 @@ On 2019/8/15 下午4:36, 冉 jiang wrote:
 > Just let me know if it looks good enough. Thx.
 >
 > Jiang
-
-
-Looks good, please post a V2 and include the above result in the commit log.
-
-Thanks
-
 >
