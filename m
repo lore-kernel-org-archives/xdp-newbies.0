@@ -1,167 +1,48 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f66.google.com ([209.85.167.66]:43018 "EHLO
-        mail-lf1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729056AbfHNTya (ORCPT
+Received: from mail-lf1-f65.google.com ([209.85.167.65]:38102 "EHLO
+        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731679AbfHOMO2 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 14 Aug 2019 15:54:30 -0400
-Received: by mail-lf1-f66.google.com with SMTP id c19so117167lfm.10
-        for <xdp-newbies@vger.kernel.org>; Wed, 14 Aug 2019 12:54:28 -0700 (PDT)
-Date: Wed, 14 Aug 2019 22:54:25 +0300
+        Thu, 15 Aug 2019 08:14:28 -0400
+Received: by mail-lf1-f65.google.com with SMTP id h28so1499457lfj.5
+        for <xdp-newbies@vger.kernel.org>; Thu, 15 Aug 2019 05:14:27 -0700 (PDT)
 From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Subject: Re: [PATCH bpf-next 1/3] libbpf: add asm/unistd.h to xsk to get
- __NR_mmap2
-Message-ID: <20190814195423.GE4142@khorivan>
-References: <20190813102318.5521-1-ivan.khoronzhuk@linaro.org>
- <20190813102318.5521-2-ivan.khoronzhuk@linaro.org>
- <CAEf4BzZ2y_DmTXkVqFh6Hdcquo6UvntvCygw5h5WwrWYXRRg_g@mail.gmail.com>
- <20190814092403.GA4142@khorivan>
- <20190814115659.GC4142@khorivan>
- <CAJ+HfNiqu7WEoBFnfK3znU4tVyAmpPVabTjTSKH1ZVo2W1rrXg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAJ+HfNiqu7WEoBFnfK3znU4tVyAmpPVabTjTSKH1ZVo2W1rrXg@mail.gmail.com>
+Subject: [PATCH bpf-next v2 0/3] xdpsock: allow mmap2 usage for 32bits
+Date: Thu, 15 Aug 2019 15:13:53 +0300
+Message-Id: <20190815121356.8848-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@gmail.com>
-Cc: Andrii Nakryiko <andrii.nakryiko@gmail.com>, Magnus Karlsson <magnus.karlsson@intel.com>, =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@intel.com>, "David S. Miller" <davem@davemloft.net>, Jesper Dangaard Brouer <hawk@kernel.org>, john fastabend <john.fastabend@gmail.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Daniel Borkmann <daniel@iogearbox.net>, Networking <netdev@vger.kernel.org>, bpf <bpf@vger.kernel.org>, Xdp <xdp-newbies@vger.kernel.org>, open list <linux-kernel@vger.kernel.org>
+To: magnus.karlsson@intel.com, bjorn.topel@intel.com
+Cc: davem@davemloft.net, hawk@kernel.org, john.fastabend@gmail.com, jakub.kicinski@netronome.com, daniel@iogearbox.net, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-kernel@vger.kernel.org, jlemon@flugsvamp.com, yhs@fb.com, andrii.nakryiko@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
-On Wed, Aug 14, 2019 at 03:32:24PM +0200, Björn Töpel wrote:
->On Wed, 14 Aug 2019 at 13:57, Ivan Khoronzhuk
-><ivan.khoronzhuk@linaro.org> wrote:
->>
->> On Wed, Aug 14, 2019 at 12:24:05PM +0300, Ivan Khoronzhuk wrote:
->> >On Tue, Aug 13, 2019 at 04:38:13PM -0700, Andrii Nakryiko wrote:
->> >
->> >Hi, Andrii
->> >
->> >>On Tue, Aug 13, 2019 at 3:24 AM Ivan Khoronzhuk
->> >><ivan.khoronzhuk@linaro.org> wrote:
->> >>>
->> >>>That's needed to get __NR_mmap2 when mmap2 syscall is used.
->> >>>
->> >>>Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
->> >>>---
->> >>> tools/lib/bpf/xsk.c | 1 +
->> >>> 1 file changed, 1 insertion(+)
->> >>>
->> >>>diff --git a/tools/lib/bpf/xsk.c b/tools/lib/bpf/xsk.c
->> >>>index 5007b5d4fd2c..f2fc40f9804c 100644
->> >>>--- a/tools/lib/bpf/xsk.c
->> >>>+++ b/tools/lib/bpf/xsk.c
->> >>>@@ -12,6 +12,7 @@
->> >>> #include <stdlib.h>
->> >>> #include <string.h>
->> >>> #include <unistd.h>
->> >>>+#include <asm/unistd.h>
->> >>
->> >>asm/unistd.h is not present in Github libbpf projection. Is there any
->> >
->> >Look on includes from
->> >tools/lib/bpf/libpf.c
->> >tools/lib/bpf/bpf.c
->> >
->> >That's how it's done... Copping headers to arch/arm will not
->> >solve this, it includes both of them anyway, and anyway it needs
->> >asm/unistd.h inclusion here, only because xsk.c needs __NR_*
->> >
->> >
->>
->> There is one more radical solution for this I can send, but I'm not sure how it
->> can impact on other syscals/arches...
->>
->> Looks like:
->>
->>
->> diff --git a/tools/lib/bpf/Makefile b/tools/lib/bpf/Makefile
->> index 9312066a1ae3..8b2f8ff7ce44 100644
->> --- a/tools/lib/bpf/Makefile
->> +++ b/tools/lib/bpf/Makefile
->> @@ -113,6 +113,7 @@ override CFLAGS += -Werror -Wall
->>  override CFLAGS += -fPIC
->>  override CFLAGS += $(INCLUDES)
->>  override CFLAGS += -fvisibility=hidden
->> +override CFLAGS += -D_FILE_OFFSET_BITS=64
->>
->
->Hmm, isn't this glibc-ism? Does is it work for, say, musl or bionic?
->
->If this is portable, and works on 32-, and 64-bit archs, I'm happy
->with the patch. :-)
+This patchset contains several improvements for af_xdp socket umem
+mappings for 32bit systems. Also, there is one more patch outside of
+this series that on linux-next tree and related to mmap2 af_xdp umem
+offsets: "mm: mmap: increase sockets maximum memory size pgoff for 32bits"
+https://lkml.org/lkml/2019/8/12/549
 
-https://users.suse.com/~aj/linux_lfs.html
+Based on bpf-next/master
 
-BIONIС
-======
-https://android.googlesource.com/platform/bionic
-So, LFS is in bionic since Fri Feb 6 22:28:49 2015
-68dc20d41193831a94df04b994ff2f601dd38d10
-Author: Elliott Hughes <enh@google.com>
-Implement _FILE_OFFSET_BITS (mostly)
+Prev: https://lkml.org/lkml/2019/8/13/437
 
+v2..v1:
+	- replaced "libbpf: add asm/unistd.h to xsk to get __NR_mmap2" on
+	 "libbpf: use LFS (_FILE_OFFSET_BITS) instead of direct mmap2
+	 syscall"
+	- use vmap along with page_address to avoid overkill
+	- define mmap syscall trace5 for mmap if defined
 
-MUSL
-====
-I took here: git@github.com:kraj/musl.git
-With musl situation is a little different, seems like, it provides
-64bit off_t by default
+Ivan Khoronzhuk (3):
+  libbpf: use LFS (_FILE_OFFSET_BITS) instead of direct mmap2 syscall
+  xdp: xdp_umem: replace kmap on vmap for umem map
+  samples: bpf: syscal_nrs: use mmap2 if defined
 
-
-#if defined(_LARGEFILE64_SOURCE) || defined(_GNU_SOURCE)
-#define lseek64 lseek
-#define pread64 pread
-#define pwrite64 pwrite
-#define truncate64 truncate
-#define ftruncate64 ftruncate
-#define lockf64 lockf
-#define off64_t off_t
-#endif
-
-and
-
-/* If _GNU_SOURCE was defined by the user, turn on all the other features.  */
-#ifdef _GNU_SOURCE
-# undef  _ISOC95_SOURCE
-# define _ISOC95_SOURCE	1
-# undef  _ISOC99_SOURCE
-# define _ISOC99_SOURCE	1
-# undef  _ISOC11_SOURCE
-# define _ISOC11_SOURCE	1
-# undef  _POSIX_SOURCE
-# define _POSIX_SOURCE	1
-# undef  _POSIX_C_SOURCE
-# define _POSIX_C_SOURCE	200809L
-# undef  _XOPEN_SOURCE
-# define _XOPEN_SOURCE	700
-# undef  _XOPEN_SOURCE_EXTENDED
-# define _XOPEN_SOURCE_EXTENDED	1
-# undef	 _LARGEFILE64_SOURCE
-# define _LARGEFILE64_SOURCE	1
-# undef  _DEFAULT_SOURCE
-# define _DEFAULT_SOURCE	1
-# undef  _ATFILE_SOURCE
-# define _ATFILE_SOURCE	1
-#endif
-
-So shouldn't be issuse.
-
-64 ARCHES
-=========
-Should also work, if grep on _FILE_OFFSET_BITS tool:
-
-./lib/api/Makefile:CFLAGS += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
-./lib/subcmd/Makefile:CFLAGS += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE
-
-So, it's used already and no problems.
-But here one moment, _LARGEFILE64_SOURCE is also defined, probably for MUSL 
-(despite it's defined anyway) just to be sure.
-
-So, in Makefile, for sure, will be:
-
-override CFLAGS += -D_FILE_OFFSET_BITS=64
-verride CFLAGS += -D_LARGEFILE64_SOURCE
+ net/xdp/xdp_umem.c         | 36 +++++++++++++++++++++++-----
+ samples/bpf/syscall_nrs.c  |  6 +++++
+ samples/bpf/tracex5_kern.c | 13 ++++++++++
+ tools/lib/bpf/Makefile     |  1 +
+ tools/lib/bpf/xsk.c        | 49 +++++++++++---------------------------
+ 5 files changed, 64 insertions(+), 41 deletions(-)
 
 -- 
-Regards,
-Ivan Khoronzhuk
+2.17.1
