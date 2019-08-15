@@ -1,53 +1,76 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44180 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726098AbfHOJz3 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 15 Aug 2019 05:55:29 -0400
-Subject: Re: [PATCH v2] virtio-net: lower min ring num_free for efficiency
-References: <BYAPR14MB32058F4B2AD162F5421BB9B4A6AC0@BYAPR14MB3205.namprd14.prod.outlook.com>
-From: Jason Wang <jasowang@redhat.com>
-Message-ID: <f26c808a-180a-6c85-637c-17629f2906e4@redhat.com>
-Date: Thu, 15 Aug 2019 17:55:17 +0800
-MIME-Version: 1.0
-In-Reply-To: <BYAPR14MB32058F4B2AD162F5421BB9B4A6AC0@BYAPR14MB3205.namprd14.prod.outlook.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8bit
-Content-Language: en-US
+Received: from mail-lf1-f68.google.com ([209.85.167.68]:38972 "EHLO
+        mail-lf1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731778AbfHOMOc (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 15 Aug 2019 08:14:32 -0400
+Received: by mail-lf1-f68.google.com with SMTP id x3so1501858lfn.6
+        for <xdp-newbies@vger.kernel.org>; Thu, 15 Aug 2019 05:14:30 -0700 (PDT)
+From: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+Subject: [PATCH bpf-next v2 3/3] samples: bpf: syscal_nrs: use mmap2 if defined
+Date: Thu, 15 Aug 2019 15:13:56 +0300
+Message-Id: <20190815121356.8848-4-ivan.khoronzhuk@linaro.org>
+In-Reply-To: <20190815121356.8848-1-ivan.khoronzhuk@linaro.org>
+References: <20190815121356.8848-1-ivan.khoronzhuk@linaro.org>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: ? jiang <jiangkidd@hotmail.com>, "mst@redhat.com" <mst@redhat.com>
-Cc: "davem@davemloft.net" <davem@davemloft.net>, "ast@kernel.org" <ast@kernel.org>, "daniel@iogearbox.net" <daniel@iogearbox.net>, "jakub.kicinski@netronome.com" <jakub.kicinski@netronome.com>, "hawk@kernel.org" <hawk@kernel.org>, "john.fastabend@gmail.com" <john.fastabend@gmail.com>, "kafai@fb.com" <kafai@fb.com>, "songliubraving@fb.com" <songliubraving@fb.com>, "yhs@fb.com" <yhs@fb.com>, "virtualization@lists.linux-foundation.org" <virtualization@lists.linux-foundation.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>, "jiangran.jr@alibaba-inc.com" <jiangran.jr@alibaba-inc.com>
+To: magnus.karlsson@intel.com, bjorn.topel@intel.com
+Cc: davem@davemloft.net, hawk@kernel.org, john.fastabend@gmail.com, jakub.kicinski@netronome.com, daniel@iogearbox.net, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-kernel@vger.kernel.org, jlemon@flugsvamp.com, yhs@fb.com, andrii.nakryiko@gmail.com, Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
 
+For arm32 xdp sockets mmap2 is preferred, so use it if it's defined.
+Declaration of __NR_mmap can be skipped and it breaks build.
 
-On 2019/8/15 下午5:42, ? jiang wrote:
-> This change lowers ring buffer reclaim threshold from 1/2*queue to budget
-> for better performance. According to our test with qemu + dpdk, packet
-> dropping happens when the guest is not able to provide free buffer in
-> avail ring timely with default 1/2*queue. The value in the patch has been
-> tested and does show better performance.
->
-> Test setup: iperf3 to generate packets to guest (total 30mins, pps 400k, UDP)
-> avg packets drop before: 2842
-> avg packets drop after: 360(-87.3%)
->
-> Signed-off-by: jiangkidd <jiangkidd@hotmail.com>
-> ---
->   drivers/net/virtio_net.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/drivers/net/virtio_net.c b/drivers/net/virtio_net.c
-> index 0d4115c9e20b..bc08be7925eb 100644
-> --- a/drivers/net/virtio_net.c
-> +++ b/drivers/net/virtio_net.c
-> @@ -1331,7 +1331,7 @@ static int virtnet_receive(struct receive_queue *rq, int budget,
->   		}
->   	}
->   
-> -	if (rq->vq->num_free > virtqueue_get_vring_size(rq->vq) / 2) {
-> +	if (rq->vq->num_free > min((unsigned int)budget, virtqueue_get_vring_size(rq->vq)) / 2) {
->   		if (!try_fill_recv(vi, rq, GFP_ATOMIC))
->   			schedule_delayed_work(&vi->refill, 0);
->   	}
+Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
+---
+ samples/bpf/syscall_nrs.c  |  6 ++++++
+ samples/bpf/tracex5_kern.c | 13 +++++++++++++
+ 2 files changed, 19 insertions(+)
 
-
-Acked-by: Jason Wang <jasowang@redhat.com>
+diff --git a/samples/bpf/syscall_nrs.c b/samples/bpf/syscall_nrs.c
+index 516e255cbe8f..88f940052450 100644
+--- a/samples/bpf/syscall_nrs.c
++++ b/samples/bpf/syscall_nrs.c
+@@ -9,5 +9,11 @@ void syscall_defines(void)
+ 	COMMENT("Linux system call numbers.");
+ 	SYSNR(__NR_write);
+ 	SYSNR(__NR_read);
++#ifdef __NR_mmap2
++	SYSNR(__NR_mmap2);
++#endif
++#ifdef __NR_mmap
+ 	SYSNR(__NR_mmap);
++#endif
++
+ }
+diff --git a/samples/bpf/tracex5_kern.c b/samples/bpf/tracex5_kern.c
+index f57f4e1ea1ec..35cb0eed3be5 100644
+--- a/samples/bpf/tracex5_kern.c
++++ b/samples/bpf/tracex5_kern.c
+@@ -68,12 +68,25 @@ PROG(SYS__NR_read)(struct pt_regs *ctx)
+ 	return 0;
+ }
+ 
++#ifdef __NR_mmap2
++PROG(SYS__NR_mmap2)(struct pt_regs *ctx)
++{
++	char fmt[] = "mmap2\n";
++
++	bpf_trace_printk(fmt, sizeof(fmt));
++	return 0;
++}
++#endif
++
++#ifdef __NR_mmap
+ PROG(SYS__NR_mmap)(struct pt_regs *ctx)
+ {
+ 	char fmt[] = "mmap\n";
++
+ 	bpf_trace_printk(fmt, sizeof(fmt));
+ 	return 0;
+ }
++#endif
+ 
+ char _license[] SEC("license") = "GPL";
+ u32 _version SEC("version") = LINUX_VERSION_CODE;
+-- 
+2.17.1
