@@ -1,120 +1,65 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:46868 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728762AbfHOTdA (ORCPT
+Received: from mail-pl1-f195.google.com ([209.85.214.195]:44053 "EHLO
+        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726132AbfHPBmP (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 15 Aug 2019 15:33:00 -0400
-From: "Jonathan Lemon" <jonathan.lemon@gmail.com>
-Subject: Re: [PATCH bpf-next v2 2/3] xdp: xdp_umem: replace kmap on vmap for
- umem map
-Date: Thu, 15 Aug 2019 12:32:57 -0700
-Message-ID: <0BD97FA1-8251-436D-A1F8-00BEF0791B95@gmail.com>
-In-Reply-To: <20190815191456.GA11699@khorivan>
-References: <20190815121356.8848-1-ivan.khoronzhuk@linaro.org>
- <20190815121356.8848-3-ivan.khoronzhuk@linaro.org>
- <5B58D364-609F-498E-B7DF-4457D454A14D@gmail.com>
- <20190815191456.GA11699@khorivan>
+        Thu, 15 Aug 2019 21:42:15 -0400
+Subject: Re: WARNING in is_bpf_text_address
+References: <00000000000000ac4f058bd50039@google.com>
+ <000000000000e56cb0058fcc6c28@google.com>
+ <20190815075142.vuza32plqtiuhixx@willie-the-truck>
+From: Bart Van Assche <bvanassche@acm.org>
+Message-ID: <456d0da6-3e16-d3fc-ecf6-7abb410bf689@acm.org>
+Date: Thu, 15 Aug 2019 18:39:56 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+In-Reply-To: <20190815075142.vuza32plqtiuhixx@willie-the-truck>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
-Cc: magnus.karlsson@intel.com, bjorn.topel@intel.com, davem@davemloft.net, hawk@kernel.org, john.fastabend@gmail.com, jakub.kicinski@netronome.com, daniel@iogearbox.net, netdev@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, linux-kernel@vger.kernel.org, yhs@fb.com, andrii.nakryiko@gmail.com
+To: Will Deacon <will@kernel.org>, syzbot <syzbot+bd3bba6ff3fcea7a6ec6@syzkaller.appspotmail.com>
+Cc: akpm@linux-foundation.org, ast@kernel.org, bpf@vger.kernel.org, daniel@iogearbox.net, davem@davemloft.net, dvyukov@google.com, hawk@kernel.org, hdanton@sina.com, jakub.kicinski@netronome.com, johannes.berg@intel.com, johannes@sipsolutions.net, john.fastabend@gmail.com, kafai@fb.com, linux-kernel@vger.kernel.org, longman@redhat.com, mingo@kernel.org, netdev@vger.kernel.org, paulmck@linux.vnet.ibm.com, peterz@infradead.org, songliubraving@fb.com, syzkaller-bugs@googlegroups.com, tglx@linutronix.de, tj@kernel.org, torvalds@linux-foundation.org, will.deacon@arm.com, xdp-newbies@vger.kernel.org, yhs@fb.com
 
-
-
-On 15 Aug 2019, at 12:19, Ivan Khoronzhuk wrote:
-
-> On Thu, Aug 15, 2019 at 11:23:16AM -0700, Jonathan Lemon wrote:
->> On 15 Aug 2019, at 5:13, Ivan Khoronzhuk wrote:
+On 8/15/19 12:51 AM, Will Deacon wrote:
+> Hi Bart,
+> 
+> On Sat, Aug 10, 2019 at 05:24:06PM -0700, syzbot wrote:
+>> syzbot has found a reproducer for the following crash on:
 >>
->>> For 64-bit there is no reason to use vmap/vunmap, so use 
->>> page_address
->>> as it was initially. For 32 bits, in some apps, like in samples
->>> xdpsock_user.c when number of pgs in use is quite big, the kmap
->>> memory can be not enough, despite on this, kmap looks like is
->>> deprecated in such cases as it can block and should be used rather
->>> for dynamic mm.
->>>
->>> Signed-off-by: Ivan Khoronzhuk <ivan.khoronzhuk@linaro.org>
->>> ---
->>> net/xdp/xdp_umem.c | 36 ++++++++++++++++++++++++++++++------
->>> 1 file changed, 30 insertions(+), 6 deletions(-)
->>>
->>> diff --git a/net/xdp/xdp_umem.c b/net/xdp/xdp_umem.c
->>> index a0607969f8c0..d740c4f8810c 100644
->>> --- a/net/xdp/xdp_umem.c
->>> +++ b/net/xdp/xdp_umem.c
->>> @@ -14,7 +14,7 @@
->>> #include <linux/netdevice.h>
->>> #include <linux/rtnetlink.h>
->>> #include <linux/idr.h>
->>> -#include <linux/highmem.h>
->>> +#include <linux/vmalloc.h>
->>>
->>> #include "xdp_umem.h"
->>> #include "xsk_queue.h"
->>> @@ -170,7 +170,30 @@ static void xdp_umem_unmap_pages(struct 
->>> xdp_umem *umem)
->>> 	unsigned int i;
->>>
->>> 	for (i = 0; i < umem->npgs; i++)
->>> -		kunmap(umem->pgs[i]);
->>> +		if (PageHighMem(umem->pgs[i]))
->>> +			vunmap(umem->pages[i].addr);
->>> +}
->>> +
->>> +static int xdp_umem_map_pages(struct xdp_umem *umem)
->>> +{
->>> +	unsigned int i;
->>> +	void *addr;
->>> +
->>> +	for (i = 0; i < umem->npgs; i++) {
->>> +		if (PageHighMem(umem->pgs[i]))
->>> +			addr = vmap(&umem->pgs[i], 1, VM_MAP, PAGE_KERNEL);
->>> +		else
->>> +			addr = page_address(umem->pgs[i]);
->>> +
->>> +		if (!addr) {
->>> +			xdp_umem_unmap_pages(umem);
->>> +			return -ENOMEM;
->>> +		}
->>> +
->>> +		umem->pages[i].addr = addr;
->>> +	}
->>> +
->>> +	return 0;
->>> }
+>> HEAD commit:    451577f3 Merge tag 'kbuild-fixes-v5.3-3' of git://git.kern..
+>> git tree:       upstream
+>> console output: https://syzkaller.appspot.com/x/log.txt?x=120850a6600000
+>> kernel config:  https://syzkaller.appspot.com/x/.config?x=2031e7d221391b8a
+>> dashboard link: https://syzkaller.appspot.com/bug?extid=bd3bba6ff3fcea7a6ec6
+>> compiler:       clang version 9.0.0 (/home/glider/llvm/clang
+>> 80fee25776c2fb61e74c1ecb1a523375c2500b69)
+>> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=130ffe4a600000
+>> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=17137d2c600000
 >>
->> You'll want a __xdp_umem_unmap_pages() helper here that takes an
->> count of the number of pages to unmap, so it can be called from
->> xdp_umem_unmap_pages() in the normal case, and xdp_umem_map_pages()
->> in the error case.  Otherwise the error case ends up calling
->> PageHighMem on a null page.
->> -- 
->> Jonathan
->
-> Do you mean null address?
-> If so, then vunmap do nothing if it's null, and addr is null if it's 
-> not
-> assigned... and it's not assigned w/o correct mapping...
->
-> If you mean null page, then it is not possible after all they are
-> pinned above, here: xdp_umem_pin_pages(), thus assigned.
->
-> Or I missed smth?
+>> The bug was bisected to:
+>>
+>> commit a0b0fd53e1e67639b303b15939b9c653dbe7a8c4
+>> Author: Bart Van Assche <bvanassche@acm.org>
+>> Date:   Thu Feb 14 23:00:46 2019 +0000
+>>
+>>      locking/lockdep: Free lock classes that are no longer in use
+>>
+>> bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=152f6a9da00000
+>> final crash:    https://syzkaller.appspot.com/x/report.txt?x=172f6a9da00000
+>> console output: https://syzkaller.appspot.com/x/log.txt?x=132f6a9da00000
+> 
+> I know you don't think much to these reports, but please could you have a
+> look (even if it's just to declare it a false positive)?
 
-No - I forgot about umem_pin_pages() - feel free to ignore my comments.
---
-Jonathan
+Hi Will,
 
->
-> Despite of this, seems like here should be one more patch, adding 
-> unpinning page
-> in error path, but this not related to this change. Will do this in 
-> follow up
-> fix patch, if no objection to my explanation, ofc.
->
-> -- 
-> Regards,
-> Ivan Khoronzhuk
+Had you already noticed the following message?
+
+https://lore.kernel.org/bpf/d76d7a63-7854-e92d-30cb-52546d333ffe@iogearbox.net/
+
+ From that message: "Hey Bart, don't think it's related in any way to 
+your commit. I'll allocate some time on working on this issue today, 
+thanks!"
+
+Bart.
