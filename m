@@ -1,96 +1,149 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f194.google.com ([209.85.160.194]:39659 "EHLO
-        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731856AbfHWMXo (ORCPT
+Received: from mail-qk1-f194.google.com ([209.85.222.194]:36674 "EHLO
+        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727894AbfHWNIE (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 23 Aug 2019 08:23:44 -0400
-Received: by mail-qt1-f194.google.com with SMTP id l9so10953395qtu.6
-        for <xdp-newbies@vger.kernel.org>; Fri, 23 Aug 2019 05:23:43 -0700 (PDT)
+        Fri, 23 Aug 2019 09:08:04 -0400
+Received: by mail-qk1-f194.google.com with SMTP id d23so8122963qko.3
+        for <xdp-newbies@vger.kernel.org>; Fri, 23 Aug 2019 06:08:03 -0700 (PDT)
 MIME-Version: 1.0
 References: <889477ed79c44e6a9395cf961f782209@pantheon.tech>
- <CA+_TK733RPSU=sEqSFpk-La6RNuJJM4m7xsDgOZ-EnaRAwKwKA@mail.gmail.com> <20190823102224.16141c87@carbon>
-In-Reply-To: <20190823102224.16141c87@carbon>
-From: Marek Zavodsky <marek.zavodsky@gmail.com>
-Date: Fri, 23 Aug 2019 14:23:32 +0200
-Message-ID: <CAG0p+L=6YzUkvDzHt8bfpk0u++bBYc7Nur_vZkZMK=ct8pKEHw@mail.gmail.com>
+ <CA+_TK733RPSU=sEqSFpk-La6RNuJJM4m7xsDgOZ-EnaRAwKwKA@mail.gmail.com>
+ <20190823102224.16141c87@carbon> <87d6d1ccab164292bb050c55f2cd81f8@pantheon.tech>
+In-Reply-To: <87d6d1ccab164292bb050c55f2cd81f8@pantheon.tech>
+From: William Tu <u9012063@gmail.com>
+Date: Fri, 23 Aug 2019 06:07:25 -0700
+Message-ID: <CALDO+SZRLUopFfiP7C2_Q3LRHDMLQ6_BBN=xw+BQ6FQWGFpVQw@mail.gmail.com>
 Subject: Re: AF_XDP integration with FDio VPP? (Was: Questions about XDP)
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: =?UTF-8?Q?J=C3=BAlius_Milan?= <Julius.Milan@pantheon.tech>, =?UTF-8?B?TWFyZWsgWsOhdm9kc2vDvQ==?= <marek.zavodsky@pantheon.tech>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Eelco Chaudron <echaudro@redhat.com>, Thomas F Herbert <therbert@redhat.com>, William Tu <u9012063@gmail.com>
+To: =?UTF-8?B?TWFyZWsgWsOhdm9kc2vDvQ==?= <marek.zavodsky@pantheon.tech>
+Cc: Jesper Dangaard Brouer <brouer@redhat.com>, =?UTF-8?Q?J=C3=BAlius_Milan?= <Julius.Milan@pantheon.tech>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Eelco Chaudron <echaudro@redhat.com>, Thomas F Herbert <therbert@redhat.com>
 
-Hi Jesper,
+Hi Marek,
 
-Thanks for your reply.
-I apologize, I'm new to kernel dev, so I may be missing some background.
+Answer some of your questions below, I leave the rest for others.
 
-Let's bring some more light into this. We are using kernel 5.0.0 and
-used samples/bpf/xdpsock as start point.
-I checked master, and example evolved (e.g. by adding cleanup
-mechanisms), but in terms what I need of it, it looks equal (and even
-more complicated, because now XDP attaching to interface is
-interleaved with XSK allocation).
-I built latest kernel, but it refused to boot, so I haven't had chance
-yet to tray the latest.
+On Fri, Aug 23, 2019 at 3:38 AM Marek Z=C3=A1vodsk=C3=BD
+<marek.zavodsky@pantheon.tech> wrote:
+>
+> Hi Jasper,
+>
+>
+> Thanks for your reply.
+>
+> I apologize, I'm new to kernel dev, so I may be missing some background.
+>
+>
+> Let's bring some more light into this. We are using kernel 5.0.0 and samp=
+les/bpf/xdpsock as an example.
 
-I took the _user part and split it into two:
-"loader" -  Executed once to setup environment and once to cleanup,
-loads _kern.o, attaches it to interface and pin maps under
-/sys/fs/bpf.
-and
-"worker" - Executed as many as required. Every instance loads maps
-from /sys/fs/bpf, create one AF_XDP sock, update xsks record and start
-listen/process packets from AF_XDP (in test scenario we are using
-l2fwd because of write-back). I had to add missing cleanups there(
-close(fd), munmap()). This should be vpp in final solution.
-So far so good.
-I'm unable to start more than one worker due to previously mentioned
-error. First instance works properly, every other fails on bind
-(lineno may not match due to local changes):
-xdpsock_user.c:xsk_configure:595: Assertion failed: bind(sfd, (struct
-sockaddr *)&sxdp, sizeof(sxdp)) =3D=3D 0: errno: 16/"Device or resource
-busy"
+Do you want to consider using AF_XDP API from libbpf?
 
-I modified it to allocate multiple sockets within one process, and I
-was successful with shared umem:
-num_socks =3D 0;
-xsks[num_socks++] =3D xsk_configure(NULL);
-for (; num_socks < opt_alloc; num_socks++)
-        xsks[num_socks] =3D xsk_configure(xsks[0]->umem);
+The samples/bpf/xdpsock_user.c in 5.0.0 still not uses libbpf
+https://elixir.bootlin.com/linux/v5.0/source/samples/bpf/xdpsock_user.c
 
+kernel 5.1 xdpsock uses libbpf
+https://elixir.bootlin.com/linux/v5.1/source/samples/bpf/xdpsock_user.c
 
-but got same behavior (first ok, second failed on bind) when tried non-shar=
-ed:
-num_socks =3D 0;
-for (; num_socks < opt_alloc; num_socks++)
-      xsks[num_socks] =3D xsk_configure(NULL);
+>
+> I checked master, and example evolved (e.g. by adding cleanup mechanisms)=
+, but in terms what I need of it, it looks equal (and even more complicated=
+, because now XDP attaching to interface is interleaved with XSK allocation=
+).
+>
+> I built latest kernel, but it refused to boot, so I haven't had chance ye=
+t to tray the latest.
 
+Recently there are some fixes, I would suggest using the latest one.
 
+>
+>
+> I took the _user part and split it into two:
+>
+> "loader" -  Executed once to setup environment and once to cleanup, loads=
+ _kern.o, attaches it to interface and pin maps under /sys/fs/bpf.
+>
+> and
+>
+> "worker" - Executed as many as required. Every instance loads maps from /=
+sys/fs/bpf, create one AF_XDP sock, update xsks record and start listen/pro=
+cess packets from AF_XDP (in test scenario we are using l2fwd because of wr=
+ite-back). I had to add missing cleanups there( close(fd), munmap()). This =
+should be vpp in final solution.
+>
+> So far so good.
+>
+> I'm unable to start more than one worker due to previously mentioned erro=
+r. First instance works properly, every other fails on bind (lineno may not=
+ match due to local changes):
+>
+> xdpsock_user.c:xsk_configure:595: Assertion failed: bind(sfd, (struct soc=
+kaddr *)&sxdp, sizeof(sxdp)) =3D=3D 0: errno: 16/"Device or resource busy"
+>
+>
+I don't think you can have multiple threads binding one XSK, see
+xsk_bind() in kernel source.
+For AF_XDP in OVS, we create multiple XSKs, non-shared umem and each
+has its thread.
 
-And the TX processing... as a workaround we moved VLAN pop/push to
-"worker" and XDP does only xsk-map redirects based on vlan-id, but it
-violates the purpose. It there any estimate when we could expect
-something on XDP TX front?
+> I modified it to allocate multiple sockets within one process, and I was =
+successful with shared umem:
+>
+> num_socks =3D 0;
+>
+> xsks[num_socks++] =3D xsk_configure(NULL);
+> for (; num_socks < opt_alloc; num_socks++)
+>         xsks[num_socks] =3D xsk_configure(xsks[0]->umem);
+>
+>
+> but got same behavior (first ok, second failed on bind) when tried non-sh=
+ared:
+>
+> num_socks =3D 0;
+>
+> for (; num_socks < opt_alloc; num_socks++)
+>
+>       xsks[num_socks] =3D xsk_configure(NULL);
+>
+I never try shared-umem, I would suggest start with non-shared case.
 
-I guess changing opt_ifindex to xsk->fd in
-bpf_set_link_xdp_fd(opt_ifindex, prog_fd, opt_xdp_flags); won't help,
-as they are 2 different things, right? :)
-
-One side question. I noticed that bpf_trace_printk creates sparse
-entries in /sys/kernel/debug/tracing/trace.
-When I run sample of 100 packets I may get 0 to many entries there.
-It's a bit annoying to run "load test" just to verify I hit the
-correct code path. Is it doing sampling? Can I tweak it somehow?
-Any trick how to use tail -f on /sys/kernel/debug/tracing/trace?
-
-Thanks,
-marek
-
-
-On Fri, Aug 23, 2019 at 12:43 PM Jesper Dangaard Brouer
-<brouer@redhat.com> wrote:
+Regards,
+William
+>
+> And the TX processing... as a workaround we moved VLAN pop/push to "worke=
+r" and XDP does only xsk-map redirects based on vlan-id, but it violates th=
+e design. It there any estimate when we could expect something on XDP TX fr=
+ont? I can try BPF TC TX meantime.
+>
+>
+> I guess changing opt_ifindex to xsk->fd in bpf_set_link_xdp_fd(opt_ifinde=
+x, prog_fd, opt_xdp_flags);
+>
+> won't help :)
+>
+>
+> One side question. I noticed that bpf_trace_printk creates sparse entries=
+ in /sys/kernel/debug/tracing/trace.
+>
+> When I run sample of 100 packets I may get 0 to many entries there. I't a=
+ bit annoying to run "load test" just to verify I hit the correct code path=
+. Is it doing sampling? Can I tweak it somehow?
+>
+>
+> Thanks,
+>
+> marek
+>
+> ________________________________
+> From: Jesper Dangaard Brouer <brouer@redhat.com>
+> Sent: Friday, August 23, 2019 10:22:24 AM
+> To: brouer@redhat.com; J=C3=BAlius Milan; Marek Z=C3=A1vodsk=C3=BD
+> Cc: xdp-newbies@vger.kernel.org; Karlsson, Magnus; Bj=C3=B6rn T=C3=B6pel;=
+ Eelco Chaudron; Thomas F Herbert; William Tu
+> Subject: AF_XDP integration with FDio VPP? (Was: Questions about XDP)
 >
 >
 > Bringing these questions to the xdp-newbies list, where they belong.
