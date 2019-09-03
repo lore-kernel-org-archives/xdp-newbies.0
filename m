@@ -1,85 +1,72 @@
-Return-Path: <brouer@redhat.com>
+Return-Path: <saeedm@mellanox.com>
 MIME-Version: 1.0
-Date: Mon, 2 Sep 2019 11:08:18 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+From: Saeed Mahameed <saeedm@mellanox.com>
 Subject: Re: net/mlx5e: bind() always returns EINVAL with XDP_ZEROCOPY
-Message-ID: <20190902110818.2f6a8894@carbon>
-In-Reply-To: <CAHApi-=YSo=sOTkRxmY=fct3TePFFdG9oPTRHWYd1AXjk0ACfw@mail.gmail.com>
+Date: Tue, 3 Sep 2019 20:19:28 +0000
+Message-ID: <fd3ee317865e9743305c0e88e31f27a2d51a0575.camel@mellanox.com>
 References: <CAHApi-mMi2jYAOCrGhpkRVybz0sDpOSkLFCZfVe-2wOcAO_MqQ@mail.gmail.com>
-	<CAHApi-=YSo=sOTkRxmY=fct3TePFFdG9oPTRHWYd1AXjk0ACfw@mail.gmail.com>
-Content-Type: text/plain; charset="US-ASCII"
-Content-Transfer-Encoding: 7bit
+	 <CAHApi-=YSo=sOTkRxmY=fct3TePFFdG9oPTRHWYd1AXjk0ACfw@mail.gmail.com>
+	 <20190902110818.2f6a8894@carbon>
+In-Reply-To: <20190902110818.2f6a8894@carbon>
+Content-Language: en-US
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <544A4E29CCB9D04BBDB044E42E2D8C3A@eurprd05.prod.outlook.com>
+Content-Transfer-Encoding: base64
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Kal Cutter Conley <kal.conley@dectris.com>
-Cc: brouer@redhat.com, "Karlsson, Magnus" <magnus.karlsson@intel.com>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Maxim Mikityanskiy <maximmi@mellanox.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNl?= =?UTF-8?B?bg==?= <toke.hoiland-jorgensen@kau.se>, Andy Gospodarek <gospo@broadcom.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Saeed Mahameed <saeedm@mellanox.com>, Tariq Toukan <tariqt@mellanox.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: "kal.conley@dectris.com" <kal.conley@dectris.com>, "brouer@redhat.com" <brouer@redhat.com>
+Cc: Maxim Mikityanskiy <maximmi@mellanox.com>, "magnus.karlsson@intel.com" <magnus.karlsson@intel.com>, "toke.hoiland-jorgensen@kau.se" <toke.hoiland-jorgensen@kau.se>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Tariq Toukan <tariqt@mellanox.com>, "gospo@broadcom.com" <gospo@broadcom.com>, "jakub.kicinski@netronome.com" <jakub.kicinski@netronome.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "bjorn.topel@intel.com" <bjorn.topel@intel.com>
 
-On Sun, 1 Sep 2019 18:47:15 +0200
-Kal Cutter Conley <kal.conley@dectris.com> wrote:
-
-> Hi,
-> I figured out the problem. Let me document the issue here for others
-> and hopefully start a discussion.
-> 
-> The mlx5 driver uses special queue ids for ZC. If N is the number of
-> configured queues, then for XDP_ZEROCOPY the queue ids start at N. So
-> queue ids [0..N) can only be used with XDP_COPY and queue ids [N..2N)
-> can only be used with XDP_ZEROCOPY.
-
-Thanks for the followup and explanation on how mlx5 AF_XDP queue
-implementation is different from other vendors.
-
-
-> sudo ethtool -L eth0 combined 16
-> sudo samples/bpf/xdpsock -r -i eth0 -c -q 0   # OK
-> sudo samples/bpf/xdpsock -r -i eth0 -z -q 0   # ERROR
-> sudo samples/bpf/xdpsock -r -i eth0 -c -q 16  # ERROR
-> sudo samples/bpf/xdpsock -r -i eth0 -z -q 16  # OK
-> 
-> Why was this done? To use zerocopy if available and fallback on copy
-> mode normally you would set sxdp_flags=0. However, here this is no
-> longer possible. To support this driver, you have to first try binding
-> with XDP_ZEROCOPY and the special queue id, then if that fails, you
-> have to try binding again with a normal queue id. Peculiarities like
-> this complicate the XDP user api. Maybe someone can explain the
-> benefits?
-
-Thanks for complaining, it is actually valuable. It really illustrate
-the kernel need to improve in this area, which is what our talk[1] at
-LPC2019 (Sep 10) is about.
-
-Title: "Making Networking Queues a First Class Citizen in the Kernel"
- [1] https://linuxplumbersconf.org/event/4/contributions/462/
-
-As you can see, several vendors are actually involved. Kudos to Magnus
-for taking initiative here!  It's unfortunately not solved "tomorrow",
-as first we have to agree this is needed (facility to register queues),
-then agree on API and get commitment from vendors, as this requires
-drivers changes.  There is a long road ahead, but I think it will be
-worthwhile in the end, as effective use of dedicated hardware queues
-(both RX and TX) is key to performance.
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
-
-
-
-> On Wed, Aug 7, 2019 at 2:49 PM Kal Cutter Conley <kal.conley@dectris.com> wrote:
-> >
-> > Hello,
-> > I am testing the mlx5e driver with AF_XDP. When I specify
-> > XDP_ZEROCOPY, bind() always returns EINVAL. I observe the same problem
-> > with the xdpsock sample:
-> >
-> > sudo samples/bpf/xdpsock -r -i dcb1-port1 -z
-> > samples/bpf/xdpsock_user.c:xsk_configure_socket:322: errno:
-> > 22/"Invalid argument"
-> >
-> > Without XDP_ZEROCOPY, everything works as expected. Is this a known
-> > issue/limitation? I expected this to be supported looking at the
-> > code/commit history.
-> >
-> > Thanks,
-> > Kal  
+T24gTW9uLCAyMDE5LTA5LTAyIGF0IDExOjA4ICswMjAwLCBKZXNwZXIgRGFuZ2FhcmQgQnJvdWVy
+IHdyb3RlOg0KPiBPbiBTdW4sIDEgU2VwIDIwMTkgMTg6NDc6MTUgKzAyMDANCj4gS2FsIEN1dHRl
+ciBDb25sZXkgPGthbC5jb25sZXlAZGVjdHJpcy5jb20+IHdyb3RlOg0KPiANCj4gPiBIaSwNCj4g
+PiBJIGZpZ3VyZWQgb3V0IHRoZSBwcm9ibGVtLiBMZXQgbWUgZG9jdW1lbnQgdGhlIGlzc3VlIGhl
+cmUgZm9yDQo+ID4gb3RoZXJzDQo+ID4gYW5kIGhvcGVmdWxseSBzdGFydCBhIGRpc2N1c3Npb24u
+DQo+ID4gDQo+ID4gVGhlIG1seDUgZHJpdmVyIHVzZXMgc3BlY2lhbCBxdWV1ZSBpZHMgZm9yIFpD
+LiBJZiBOIGlzIHRoZSBudW1iZXINCj4gPiBvZg0KPiA+IGNvbmZpZ3VyZWQgcXVldWVzLCB0aGVu
+IGZvciBYRFBfWkVST0NPUFkgdGhlIHF1ZXVlIGlkcyBzdGFydCBhdCBOLg0KPiA+IFNvDQo+ID4g
+cXVldWUgaWRzIFswLi5OKSBjYW4gb25seSBiZSB1c2VkIHdpdGggWERQX0NPUFkgYW5kIHF1ZXVl
+IGlkcw0KPiA+IFtOLi4yTikNCj4gPiBjYW4gb25seSBiZSB1c2VkIHdpdGggWERQX1pFUk9DT1BZ
+Lg0KPiANCj4gVGhhbmtzIGZvciB0aGUgZm9sbG93dXAgYW5kIGV4cGxhbmF0aW9uIG9uIGhvdyBt
+bHg1IEFGX1hEUCBxdWV1ZQ0KPiBpbXBsZW1lbnRhdGlvbiBpcyBkaWZmZXJlbnQgZnJvbSBvdGhl
+ciB2ZW5kb3JzLg0KPiANCj4gDQo+ID4gc3VkbyBldGh0b29sIC1MIGV0aDAgY29tYmluZWQgMTYN
+Cj4gPiBzdWRvIHNhbXBsZXMvYnBmL3hkcHNvY2sgLXIgLWkgZXRoMCAtYyAtcSAwICAgIyBPSw0K
+PiA+IHN1ZG8gc2FtcGxlcy9icGYveGRwc29jayAtciAtaSBldGgwIC16IC1xIDAgICAjIEVSUk9S
+DQo+ID4gc3VkbyBzYW1wbGVzL2JwZi94ZHBzb2NrIC1yIC1pIGV0aDAgLWMgLXEgMTYgICMgRVJS
+T1INCj4gPiBzdWRvIHNhbXBsZXMvYnBmL3hkcHNvY2sgLXIgLWkgZXRoMCAteiAtcSAxNiAgIyBP
+Sw0KPiA+IA0KPiA+IFdoeSB3YXMgdGhpcyBkb25lPyBUbyB1c2UgemVyb2NvcHkgaWYgYXZhaWxh
+YmxlIGFuZCBmYWxsYmFjayBvbg0KPiA+IGNvcHkNCj4gPiBtb2RlIG5vcm1hbGx5IHlvdSB3b3Vs
+ZCBzZXQgc3hkcF9mbGFncz0wLiBIb3dldmVyLCBoZXJlIHRoaXMgaXMgbm8NCj4gPiBsb25nZXIg
+cG9zc2libGUuIFRvIHN1cHBvcnQgdGhpcyBkcml2ZXIsIHlvdSBoYXZlIHRvIGZpcnN0IHRyeQ0K
+PiA+IGJpbmRpbmcNCj4gPiB3aXRoIFhEUF9aRVJPQ09QWSBhbmQgdGhlIHNwZWNpYWwgcXVldWUg
+aWQsIHRoZW4gaWYgdGhhdCBmYWlscywgeW91DQo+ID4gaGF2ZSB0byB0cnkgYmluZGluZyBhZ2Fp
+biB3aXRoIGEgbm9ybWFsIHF1ZXVlIGlkLiBQZWN1bGlhcml0aWVzDQo+ID4gbGlrZQ0KPiA+IHRo
+aXMgY29tcGxpY2F0ZSB0aGUgWERQIHVzZXIgYXBpLiBNYXliZSBzb21lb25lIGNhbiBleHBsYWlu
+IHRoZQ0KPiA+IGJlbmVmaXRzPw0KPiANCg0KaW4gbWx4NSB3ZSBsaWtlIHRvIGtlZXAgZnVsbCBm
+dW5jdGlvbmFsIHNlcGFyYXRpb24gYmV0d2VlbiBkaWZmZXJlbnQNCnF1ZXVlcy4gVW5saWtlIG90
+aGVyIGltcGxlbWVudGF0aW9ucyBpbiBtbHg1IGtlcm5lbCBzdGFuZGFyZCByeCByaW5ncw0KY2Fu
+IHN0aWxsIGZ1bmN0aW9uIHdoaWxlIHhzayBxdWV1ZXMgYXJlIG9wZW5lZC4gZnJvbSB1c2VyIHBl
+cnNwZWN0aXZlDQp0aGlzIHNob3VsZCBiZSB2ZXJ5IHNpbXBsZSBhbmQgdmVyeSB1c2VmdWxsOg0K
+DQpxdWV1ZXMgMC4uKE4tMSk6IGNhbid0IGJlIHVzZWQgZm9yIFhTSyBaQyBzaW5jZSB0aGV5IGFy
+ZSBzdGFuZGFyZCBSWA0KcXVldWVzIG1hbmFnZWQgYnkga2VybmVsICBhbmQgZHJpdmVyDQpxdWV1
+ZXMgTi4uKDJOLTEpOiBBcmUgWFNLIHVzZXIgYXBwIG1hbmFnZWQgcXVldWVzLCB0aGV5IGNhbid0
+IGJlIHVzZWQNCmZvciBhbnl0aGluZyBlbHNlLg0KDQpiZW5lZml0czoNCi0gUlNTIGlzIG5vdCBp
+bnRlcnJ1cHRlZCwgT25nb2luZyB0cmFmZmljIGFuZCBDdXJyZW50IFJYIHF1ZXVlcyBrZWVwcw0K
+Z29pbmcgbm9ybWFsbHkgd2hlbiBYU0sgYXBwcyBhcmUgYWN0aXZhdGVkL2RlYWN0aXZhdGVkIG9u
+IHRoZSBmbHkuDQotIFdlbGwtZGVmaW5lZCBmdWxsIGxvZ2ljYWwgc2VwYXJhdGlvbiBiZXR3ZWVu
+IGRpZmZlcmVudCB0eXBlcyBvZiBSWA0KcXVldWUuDQoNCmFzIEplc3BlciBleHBsYWluZWQgd2Ug
+dW5kZXJzdGFuZCB0aGUgY29uZnVzaW9uLCBhbmQgd2Ugd2lsbCBjb21lIHVwDQp3aXRoIGEgc29s
+dXRpb24gdGhlIGZpdHMgYWxsIHZlbmRvcnMuDQoNCj4gVGhhbmtzIGZvciBjb21wbGFpbmluZywg
+aXQgaXMgYWN0dWFsbHkgdmFsdWFibGUuIEl0IHJlYWxseSBpbGx1c3RyYXRlDQo+IHRoZSBrZXJu
+ZWwgbmVlZCB0byBpbXByb3ZlIGluIHRoaXMgYXJlYSwgd2hpY2ggaXMgd2hhdCBvdXIgdGFsa1sx
+XSBhdA0KPiBMUEMyMDE5IChTZXAgMTApIGlzIGFib3V0Lg0KPiANCj4gVGl0bGU6ICJNYWtpbmcg
+TmV0d29ya2luZyBRdWV1ZXMgYSBGaXJzdCBDbGFzcyBDaXRpemVuIGluIHRoZSBLZXJuZWwiDQo+
+ICBbMV0gaHR0cHM6Ly9saW51eHBsdW1iZXJzY29uZi5vcmcvZXZlbnQvNC9jb250cmlidXRpb25z
+LzQ2Mi8NCj4gDQo+IEFzIHlvdSBjYW4gc2VlLCBzZXZlcmFsIHZlbmRvcnMgYXJlIGFjdHVhbGx5
+IGludm9sdmVkLiBLdWRvcyB0bw0KPiBNYWdudXMNCj4gZm9yIHRha2luZyBpbml0aWF0aXZlIGhl
+cmUhICBJdCdzIHVuZm9ydHVuYXRlbHkgbm90IHNvbHZlZA0KPiAidG9tb3Jyb3ciLA0KPiBhcyBm
+aXJzdCB3ZSBoYXZlIHRvIGFncmVlIHRoaXMgaXMgbmVlZGVkIChmYWNpbGl0eSB0byByZWdpc3Rl
+cg0KPiBxdWV1ZXMpLA0KPiB0aGVuIGFncmVlIG9uIEFQSSBhbmQgZ2V0IGNvbW1pdG1lbnQgZnJv
+bSB2ZW5kb3JzLCBhcyB0aGlzIHJlcXVpcmVzDQo+IGRyaXZlcnMgY2hhbmdlcy4gIFRoZXJlIGlz
+IGEgbG9uZyByb2FkIGFoZWFkLCBidXQgSSB0aGluayBpdCB3aWxsIGJlDQo+IHdvcnRod2hpbGUg
+aW4gdGhlIGVuZCwgYXMgZWZmZWN0aXZlIHVzZSBvZiBkZWRpY2F0ZWQgaGFyZHdhcmUgcXVldWVz
+DQo+IChib3RoIFJYIGFuZCBUWCkgaXMga2V5IHRvIHBlcmZvcm1hbmNlLg0KPiANCg==
