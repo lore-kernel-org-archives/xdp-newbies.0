@@ -1,72 +1,50 @@
-Return-Path: <saeedm@mellanox.com>
+Return-Path: <xdp-newbies-owner@vger.kernel.org>
+Received: from mail-qt1-f170.google.com ([209.85.160.170]:42013 "EHLO
+        mail-qt1-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387946AbfIFWvo (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 6 Sep 2019 18:51:44 -0400
+Received: by mail-qt1-f170.google.com with SMTP id c9so9057125qth.9
+        for <xdp-newbies@vger.kernel.org>; Fri, 06 Sep 2019 15:51:44 -0700 (PDT)
 MIME-Version: 1.0
-From: Saeed Mahameed <saeedm@mellanox.com>
-Subject: Re: net/mlx5e: bind() always returns EINVAL with XDP_ZEROCOPY
-Date: Tue, 3 Sep 2019 20:19:28 +0000
-Message-ID: <fd3ee317865e9743305c0e88e31f27a2d51a0575.camel@mellanox.com>
-References: <CAHApi-mMi2jYAOCrGhpkRVybz0sDpOSkLFCZfVe-2wOcAO_MqQ@mail.gmail.com>
-	 <CAHApi-=YSo=sOTkRxmY=fct3TePFFdG9oPTRHWYd1AXjk0ACfw@mail.gmail.com>
-	 <20190902110818.2f6a8894@carbon>
-In-Reply-To: <20190902110818.2f6a8894@carbon>
-Content-Language: en-US
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <544A4E29CCB9D04BBDB044E42E2D8C3A@eurprd05.prod.outlook.com>
-Content-Transfer-Encoding: base64
+References: <889477ed79c44e6a9395cf961f782209@pantheon.tech>
+ <CA+_TK733RPSU=sEqSFpk-La6RNuJJM4m7xsDgOZ-EnaRAwKwKA@mail.gmail.com>
+ <20190823102224.16141c87@carbon> <87d6d1ccab164292bb050c55f2cd81f8@pantheon.tech>
+ <CALDO+SZRLUopFfiP7C2_Q3LRHDMLQ6_BBN=xw+BQ6FQWGFpVQw@mail.gmail.com>
+ <c58d5612-052c-cab1-ad9a-0e0e1a838f5b@intel.com> <a6d5b3562fd148619c09ffbed54d84ea@pantheon.tech>
+In-Reply-To: <a6d5b3562fd148619c09ffbed54d84ea@pantheon.tech>
+From: William Tu <u9012063@gmail.com>
+Date: Fri, 6 Sep 2019 15:51:07 -0700
+Message-ID: <CALDO+SZsbbHL8ndhQiwb3EAEY22ucTYy5yy0xo_Ng3EzGisj1w@mail.gmail.com>
+Subject: Re: AF_XDP integration with FDio VPP? (Was: Questions about XDP)
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: "kal.conley@dectris.com" <kal.conley@dectris.com>, "brouer@redhat.com" <brouer@redhat.com>
-Cc: Maxim Mikityanskiy <maximmi@mellanox.com>, "magnus.karlsson@intel.com" <magnus.karlsson@intel.com>, "toke.hoiland-jorgensen@kau.se" <toke.hoiland-jorgensen@kau.se>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Tariq Toukan <tariqt@mellanox.com>, "gospo@broadcom.com" <gospo@broadcom.com>, "jakub.kicinski@netronome.com" <jakub.kicinski@netronome.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "bjorn.topel@intel.com" <bjorn.topel@intel.com>
+To: =?UTF-8?Q?J=C3=BAlius_Milan?= <Julius.Milan@pantheon.tech>
+Cc: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, =?UTF-8?B?TWFyZWsgWsOhdm9kc2vDvQ==?= <marek.zavodsky@pantheon.tech>, Jesper Dangaard Brouer <brouer@redhat.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, Eelco Chaudron <echaudro@redhat.com>, Thomas F Herbert <therbert@redhat.com>
 
-T24gTW9uLCAyMDE5LTA5LTAyIGF0IDExOjA4ICswMjAwLCBKZXNwZXIgRGFuZ2FhcmQgQnJvdWVy
-IHdyb3RlOg0KPiBPbiBTdW4sIDEgU2VwIDIwMTkgMTg6NDc6MTUgKzAyMDANCj4gS2FsIEN1dHRl
-ciBDb25sZXkgPGthbC5jb25sZXlAZGVjdHJpcy5jb20+IHdyb3RlOg0KPiANCj4gPiBIaSwNCj4g
-PiBJIGZpZ3VyZWQgb3V0IHRoZSBwcm9ibGVtLiBMZXQgbWUgZG9jdW1lbnQgdGhlIGlzc3VlIGhl
-cmUgZm9yDQo+ID4gb3RoZXJzDQo+ID4gYW5kIGhvcGVmdWxseSBzdGFydCBhIGRpc2N1c3Npb24u
-DQo+ID4gDQo+ID4gVGhlIG1seDUgZHJpdmVyIHVzZXMgc3BlY2lhbCBxdWV1ZSBpZHMgZm9yIFpD
-LiBJZiBOIGlzIHRoZSBudW1iZXINCj4gPiBvZg0KPiA+IGNvbmZpZ3VyZWQgcXVldWVzLCB0aGVu
-IGZvciBYRFBfWkVST0NPUFkgdGhlIHF1ZXVlIGlkcyBzdGFydCBhdCBOLg0KPiA+IFNvDQo+ID4g
-cXVldWUgaWRzIFswLi5OKSBjYW4gb25seSBiZSB1c2VkIHdpdGggWERQX0NPUFkgYW5kIHF1ZXVl
-IGlkcw0KPiA+IFtOLi4yTikNCj4gPiBjYW4gb25seSBiZSB1c2VkIHdpdGggWERQX1pFUk9DT1BZ
-Lg0KPiANCj4gVGhhbmtzIGZvciB0aGUgZm9sbG93dXAgYW5kIGV4cGxhbmF0aW9uIG9uIGhvdyBt
-bHg1IEFGX1hEUCBxdWV1ZQ0KPiBpbXBsZW1lbnRhdGlvbiBpcyBkaWZmZXJlbnQgZnJvbSBvdGhl
-ciB2ZW5kb3JzLg0KPiANCj4gDQo+ID4gc3VkbyBldGh0b29sIC1MIGV0aDAgY29tYmluZWQgMTYN
-Cj4gPiBzdWRvIHNhbXBsZXMvYnBmL3hkcHNvY2sgLXIgLWkgZXRoMCAtYyAtcSAwICAgIyBPSw0K
-PiA+IHN1ZG8gc2FtcGxlcy9icGYveGRwc29jayAtciAtaSBldGgwIC16IC1xIDAgICAjIEVSUk9S
-DQo+ID4gc3VkbyBzYW1wbGVzL2JwZi94ZHBzb2NrIC1yIC1pIGV0aDAgLWMgLXEgMTYgICMgRVJS
-T1INCj4gPiBzdWRvIHNhbXBsZXMvYnBmL3hkcHNvY2sgLXIgLWkgZXRoMCAteiAtcSAxNiAgIyBP
-Sw0KPiA+IA0KPiA+IFdoeSB3YXMgdGhpcyBkb25lPyBUbyB1c2UgemVyb2NvcHkgaWYgYXZhaWxh
-YmxlIGFuZCBmYWxsYmFjayBvbg0KPiA+IGNvcHkNCj4gPiBtb2RlIG5vcm1hbGx5IHlvdSB3b3Vs
-ZCBzZXQgc3hkcF9mbGFncz0wLiBIb3dldmVyLCBoZXJlIHRoaXMgaXMgbm8NCj4gPiBsb25nZXIg
-cG9zc2libGUuIFRvIHN1cHBvcnQgdGhpcyBkcml2ZXIsIHlvdSBoYXZlIHRvIGZpcnN0IHRyeQ0K
-PiA+IGJpbmRpbmcNCj4gPiB3aXRoIFhEUF9aRVJPQ09QWSBhbmQgdGhlIHNwZWNpYWwgcXVldWUg
-aWQsIHRoZW4gaWYgdGhhdCBmYWlscywgeW91DQo+ID4gaGF2ZSB0byB0cnkgYmluZGluZyBhZ2Fp
-biB3aXRoIGEgbm9ybWFsIHF1ZXVlIGlkLiBQZWN1bGlhcml0aWVzDQo+ID4gbGlrZQ0KPiA+IHRo
-aXMgY29tcGxpY2F0ZSB0aGUgWERQIHVzZXIgYXBpLiBNYXliZSBzb21lb25lIGNhbiBleHBsYWlu
-IHRoZQ0KPiA+IGJlbmVmaXRzPw0KPiANCg0KaW4gbWx4NSB3ZSBsaWtlIHRvIGtlZXAgZnVsbCBm
-dW5jdGlvbmFsIHNlcGFyYXRpb24gYmV0d2VlbiBkaWZmZXJlbnQNCnF1ZXVlcy4gVW5saWtlIG90
-aGVyIGltcGxlbWVudGF0aW9ucyBpbiBtbHg1IGtlcm5lbCBzdGFuZGFyZCByeCByaW5ncw0KY2Fu
-IHN0aWxsIGZ1bmN0aW9uIHdoaWxlIHhzayBxdWV1ZXMgYXJlIG9wZW5lZC4gZnJvbSB1c2VyIHBl
-cnNwZWN0aXZlDQp0aGlzIHNob3VsZCBiZSB2ZXJ5IHNpbXBsZSBhbmQgdmVyeSB1c2VmdWxsOg0K
-DQpxdWV1ZXMgMC4uKE4tMSk6IGNhbid0IGJlIHVzZWQgZm9yIFhTSyBaQyBzaW5jZSB0aGV5IGFy
-ZSBzdGFuZGFyZCBSWA0KcXVldWVzIG1hbmFnZWQgYnkga2VybmVsICBhbmQgZHJpdmVyDQpxdWV1
-ZXMgTi4uKDJOLTEpOiBBcmUgWFNLIHVzZXIgYXBwIG1hbmFnZWQgcXVldWVzLCB0aGV5IGNhbid0
-IGJlIHVzZWQNCmZvciBhbnl0aGluZyBlbHNlLg0KDQpiZW5lZml0czoNCi0gUlNTIGlzIG5vdCBp
-bnRlcnJ1cHRlZCwgT25nb2luZyB0cmFmZmljIGFuZCBDdXJyZW50IFJYIHF1ZXVlcyBrZWVwcw0K
-Z29pbmcgbm9ybWFsbHkgd2hlbiBYU0sgYXBwcyBhcmUgYWN0aXZhdGVkL2RlYWN0aXZhdGVkIG9u
-IHRoZSBmbHkuDQotIFdlbGwtZGVmaW5lZCBmdWxsIGxvZ2ljYWwgc2VwYXJhdGlvbiBiZXR3ZWVu
-IGRpZmZlcmVudCB0eXBlcyBvZiBSWA0KcXVldWUuDQoNCmFzIEplc3BlciBleHBsYWluZWQgd2Ug
-dW5kZXJzdGFuZCB0aGUgY29uZnVzaW9uLCBhbmQgd2Ugd2lsbCBjb21lIHVwDQp3aXRoIGEgc29s
-dXRpb24gdGhlIGZpdHMgYWxsIHZlbmRvcnMuDQoNCj4gVGhhbmtzIGZvciBjb21wbGFpbmluZywg
-aXQgaXMgYWN0dWFsbHkgdmFsdWFibGUuIEl0IHJlYWxseSBpbGx1c3RyYXRlDQo+IHRoZSBrZXJu
-ZWwgbmVlZCB0byBpbXByb3ZlIGluIHRoaXMgYXJlYSwgd2hpY2ggaXMgd2hhdCBvdXIgdGFsa1sx
-XSBhdA0KPiBMUEMyMDE5IChTZXAgMTApIGlzIGFib3V0Lg0KPiANCj4gVGl0bGU6ICJNYWtpbmcg
-TmV0d29ya2luZyBRdWV1ZXMgYSBGaXJzdCBDbGFzcyBDaXRpemVuIGluIHRoZSBLZXJuZWwiDQo+
-ICBbMV0gaHR0cHM6Ly9saW51eHBsdW1iZXJzY29uZi5vcmcvZXZlbnQvNC9jb250cmlidXRpb25z
-LzQ2Mi8NCj4gDQo+IEFzIHlvdSBjYW4gc2VlLCBzZXZlcmFsIHZlbmRvcnMgYXJlIGFjdHVhbGx5
-IGludm9sdmVkLiBLdWRvcyB0bw0KPiBNYWdudXMNCj4gZm9yIHRha2luZyBpbml0aWF0aXZlIGhl
-cmUhICBJdCdzIHVuZm9ydHVuYXRlbHkgbm90IHNvbHZlZA0KPiAidG9tb3Jyb3ciLA0KPiBhcyBm
-aXJzdCB3ZSBoYXZlIHRvIGFncmVlIHRoaXMgaXMgbmVlZGVkIChmYWNpbGl0eSB0byByZWdpc3Rl
-cg0KPiBxdWV1ZXMpLA0KPiB0aGVuIGFncmVlIG9uIEFQSSBhbmQgZ2V0IGNvbW1pdG1lbnQgZnJv
-bSB2ZW5kb3JzLCBhcyB0aGlzIHJlcXVpcmVzDQo+IGRyaXZlcnMgY2hhbmdlcy4gIFRoZXJlIGlz
-IGEgbG9uZyByb2FkIGFoZWFkLCBidXQgSSB0aGluayBpdCB3aWxsIGJlDQo+IHdvcnRod2hpbGUg
-aW4gdGhlIGVuZCwgYXMgZWZmZWN0aXZlIHVzZSBvZiBkZWRpY2F0ZWQgaGFyZHdhcmUgcXVldWVz
-DQo+IChib3RoIFJYIGFuZCBUWCkgaXMga2V5IHRvIHBlcmZvcm1hbmNlLg0KPiANCg==
+On Fri, Aug 30, 2019 at 9:37 AM J=C3=BAlius Milan <Julius.Milan@pantheon.te=
+ch> wrote:
+>
+> Hi all
+>
+> Regarding 4K frame size constraint of AF_XDP, what does AF_XDP when recei=
+ves frame bigger than 4K? Drops it or cut it or split it between more frame=
+s?
+> Thinking about what to do with them on TX side.
+>
+> If you are interested in mentioned AF_XDP driver for vpp, here you can fi=
+nd it: https://gerrit.fd.io/r/c/vpp/+/21606
+
+Hi J=C3=BAlius,
+
+I took a look at the patch, I can passed compile but I haven't run it.
+In the src/plugins/af_xdp/device.c and src/plugins/af_xdp/xsk_defs.h,
+since you already link libbpf, you can remove a lot of existing code by
+using AF_XDP APIs in libbpf (see xsk_ring_*, xsk_umem_*)
+
+If you want to load your custom XDP program, you can enable
+XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD and load XDP program
+
+Regards,
+William
