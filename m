@@ -1,71 +1,80 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ua1-f65.google.com ([209.85.222.65]:44981 "EHLO
-        mail-ua1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725945AbfIZMla (ORCPT
+Received: from mail-qk1-f193.google.com ([209.85.222.193]:44950 "EHLO
+        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727444AbfIZQnv (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 26 Sep 2019 08:41:30 -0400
-Received: by mail-ua1-f65.google.com with SMTP id n2so699943ual.11
-        for <xdp-newbies@vger.kernel.org>; Thu, 26 Sep 2019 05:41:29 -0700 (PDT)
+        Thu, 26 Sep 2019 12:43:51 -0400
+Received: by mail-qk1-f193.google.com with SMTP id u22so2321785qkk.11
+        for <xdp-newbies@vger.kernel.org>; Thu, 26 Sep 2019 09:43:50 -0700 (PDT)
 MIME-Version: 1.0
-References: <0cbbc2e2-9eba-ad40-d819-d092b2015707@univ-lille.fr>
- <CAGn_ityTBjJ+erYRrvoFCCVYM9qwztg3tkmRuShs60xACQhvbQ@mail.gmail.com> <20190926123450.GA39817@C02YVCJELVCG>
-In-Reply-To: <20190926123450.GA39817@C02YVCJELVCG>
-From: Anton Protopopov <aspsk2@gmail.com>
-Date: Thu, 26 Sep 2019 08:41:18 -0400
-Message-ID: <CAGn_ityL9anR3BHKr_fZhV=Z-9KDtkrbH+TDAHKEtsM9w7Q48Q@mail.gmail.com>
-Subject: Re: [xdp-tutorial] : permission denied when I try to execute a program
+References: <7de437b13561433fa766aca690995c45@pantheon.tech>
+In-Reply-To: <7de437b13561433fa766aca690995c45@pantheon.tech>
+From: William Tu <u9012063@gmail.com>
+Date: Thu, 26 Sep 2019 09:43:12 -0700
+Message-ID: <CALDO+SZWdVNCBimVdBivJMYDw+9jCycU3jcVBL+zBJwpMvb8=Q@mail.gmail.com>
+Subject: Re: bug in AF_XDP socket cleanup?
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Andy Gospodarek <andy@greyhouse.net>
-Cc: =?UTF-8?Q?Th=C3=A9o_Mainguet?= <theo.mainguet.etu@univ-lille.fr>, xdp-newbies@vger.kernel.org
+To: =?UTF-8?Q?J=C3=BAlius_Milan?= <Julius.Milan@pantheon.tech>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Magnus Karlsson <magnus.karlsson@gmail.com>, Jesper Dangaard Brouer <brouer@redhat.com>
 
-=D1=87=D1=82, 26 =D1=81=D0=B5=D0=BD=D1=82. 2019 =D0=B3. =D0=B2 08:34, Andy =
-Gospodarek <andy@greyhouse.net>:
+On Wed, Sep 25, 2019 at 8:47 AM J=C3=BAlius Milan <Julius.Milan@pantheon.te=
+ch> wrote:
 >
-> On Thu, Sep 26, 2019 at 08:17:48AM -0400, Anton Protopopov wrote:
-> > =D1=87=D1=82, 26 =D1=81=D0=B5=D0=BD=D1=82. 2019 =D0=B3. =D0=B2 05:22, T=
-h=C3=A9o Mainguet <theo.mainguet.etu@univ-lille.fr>:
-> > >
-> > > Hi,
-> > >
-> > >
-> > > Thank you very much for your xdp tutorial. Currently, I try to write =
-a
-> > > simple xdp program to count the number of TCP and UDP packets I recei=
-ve.
-> > > For that, I created a BPF_MAP_TYPE_ARRAY map in my kern.c file. I can
-> > > read into this map with the bpf_map_lookup_elem function but when I t=
-ry
-> > > to update a value, I have an error message "libbpf: load bpf program
-> > > failed: Permission denied". To solve this issue, I've try to run it i=
-n
-> > > sudo, I've verify my kernel configuration (everything needed seems
-> > > enable) ....
-> >
-> > What's the error message when you are trying to load your program with =
-sudo?
+> Hi folks
 >
-> That information would be helpful as some distros will not run some of
-> the sample BPF programs without some ulimit changes.  For example the
-> command:
 >
-> # ulimit -l 1024
 >
-> or even
+> I am stuck with proper cleanup of AF_XDP socket. Not sure if I am doing s=
+omething wrong or is it a bug.
 >
-> # ulimit -l $VERY_LARGE_VALUE
+> I create xdp socket, then I remove it and then I am trying to create it a=
+gain and got EBUSY from bind syscall
 >
-> may be needed on Fedora or Ubuntu, but not on other distros.
+> of xsk_socket__create.
 >
+>
+>
+> My cleanup looks like this:
+>
+> xsk_socket__delete();
+>
+> xsk_umem__delete();
+>
+> bpf_set_link_xdp_fd(ifindex, -1, opt_xdp_flags);
+>
+>
+>
+> Attaching simple test case. It=E2=80=99s just reduced and modified xdpsoc=
+k_user.c form kernel samples.
+>
+> Tested on kernel v5.3 4d856f72c10ecb060868ed10ff1b1453943fc6c8 and relate=
+d libbpf.
 
-Or even
+There are a couple of fixes related to cleanup.
+Can you make sure your kernel has these patches
 
-# ulimit -l unlimited
+commit 0402acd683c678874df6bdbc23530ca07ea19353
+Author: Bj=C3=B6rn T=C3=B6pel <bjorn.topel@intel.com>
+Date:   Thu Aug 15 11:30:13 2019 +0200
 
-:-)
+    xsk: remove AF_XDP socket from map when the socket is released
 
-Also this can be done from the loader itself, as, e.g., here:
-https://github.com/xdp-project/xdp-tutorial/blob/master/advanced03-AF_XDP/a=
-f_xdp_user.c#L557
+And libbpf has
+commit 5750902a6e9bc6adb77da8257c0e34db2bfdebb2
+Author: Bj=C3=B6rn T=C3=B6pel <bjorn.topel@intel.com>
+Date:   Tue Apr 30 14:45:36 2019 +0200
+
+    libbpf: proper XSKMAP cleanup
+
+commit 0e6741f092979535d159d5a851f12c88bfb7cb9a
+Author: Bj=C3=B6rn T=C3=B6pel <bjorn.topel@intel.com>
+Date:   Tue Apr 30 14:45:35 2019 +0200
+
+    libbpf: fix invalid munmap call
+
+
+Thanks
+William
