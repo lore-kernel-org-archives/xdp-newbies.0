@@ -1,69 +1,174 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ot1-f53.google.com ([209.85.210.53]:44581 "EHLO
-        mail-ot1-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725808AbfI0GzN (ORCPT
+Received: from mail-oi1-f171.google.com ([209.85.167.171]:40856 "EHLO
+        mail-oi1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725804AbfI0HCN (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 27 Sep 2019 02:55:13 -0400
-Received: by mail-ot1-f53.google.com with SMTP id 21so1343188otj.11
-        for <xdp-newbies@vger.kernel.org>; Thu, 26 Sep 2019 23:55:13 -0700 (PDT)
+        Fri, 27 Sep 2019 03:02:13 -0400
+Received: by mail-oi1-f171.google.com with SMTP id k9so4330406oib.7
+        for <xdp-newbies@vger.kernel.org>; Fri, 27 Sep 2019 00:02:12 -0700 (PDT)
 MIME-Version: 1.0
-References: <7de437b13561433fa766aca690995c45@pantheon.tech>
-In-Reply-To: <7de437b13561433fa766aca690995c45@pantheon.tech>
+References: <889477ed79c44e6a9395cf961f782209@pantheon.tech>
+ <CA+_TK733RPSU=sEqSFpk-La6RNuJJM4m7xsDgOZ-EnaRAwKwKA@mail.gmail.com>
+ <20190823102224.16141c87@carbon> <87d6d1ccab164292bb050c55f2cd81f8@pantheon.tech>
+ <CALDO+SZRLUopFfiP7C2_Q3LRHDMLQ6_BBN=xw+BQ6FQWGFpVQw@mail.gmail.com>
+ <c58d5612-052c-cab1-ad9a-0e0e1a838f5b@intel.com> <a6d5b3562fd148619c09ffbed54d84ea@pantheon.tech>
+ <CALDO+SZsbbHL8ndhQiwb3EAEY22ucTYy5yy0xo_Ng3EzGisj1w@mail.gmail.com>
+ <6a4ee5d2cc88403bafc749f7b855b597@pantheon.tech> <CAJ8uoz23kBsAsmO4qGpx=0fK8_vqgXv4a-jJfy_qfSSnVsgauQ@mail.gmail.com>
+ <966e40dda4654444a420b935ad970d18@pantheon.tech> <9B039211-EEAA-4D1E-8DCE-7F210987A609@redhat.com>
+ <8edc60b1946c404c81ff43e5d0d4a63c@pantheon.tech> <565AE8A9-8A0D-4582-A3C5-D317F4DA0C9F@redhat.com>
+ <CALDO+SbC-64-78Fxv4u3p8RHG9n9jqcEHE3rRK5QjqF_KH+bmQ@mail.gmail.com>
+In-Reply-To: <CALDO+SbC-64-78Fxv4u3p8RHG9n9jqcEHE3rRK5QjqF_KH+bmQ@mail.gmail.com>
 From: Magnus Karlsson <magnus.karlsson@gmail.com>
-Date: Fri, 27 Sep 2019 08:55:02 +0200
-Message-ID: <CAJ8uoz1OL5_R12A4Np-aMmRM8a3qwQpXbuH3V+ZOiiRc6HYBwA@mail.gmail.com>
-Subject: Re: bug in AF_XDP socket cleanup?
+Date: Fri, 27 Sep 2019 09:02:00 +0200
+Message-ID: <CAJ8uoz1p4rL2TQ-4kXNDzd2dmJ3DCgvzPFUiJjPHRUYaBbUYZQ@mail.gmail.com>
+Subject: Re: AF_XDP integration with FDio VPP? (Was: Questions about XDP)
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: =?UTF-8?Q?J=C3=BAlius_Milan?= <Julius.Milan@pantheon.tech>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Jesper Dangaard Brouer <brouer@redhat.com>, William Tu <u9012063@gmail.com>
+To: William Tu <u9012063@gmail.com>
+Cc: Eelco Chaudron <echaudro@redhat.com>, =?UTF-8?Q?J=C3=BAlius_Milan?= <Julius.Milan@pantheon.tech>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, =?UTF-8?B?TWFyZWsgWsOhdm9kc2vDvQ==?= <marek.zavodsky@pantheon.tech>, Jesper Dangaard Brouer <brouer@redhat.com>, Xdp <xdp-newbies@vger.kernel.org>, Thomas F Herbert <therbert@redhat.com>, Kevin Laatz <kevin.laatz@intel.com>
 
-Hi J=C3=BAlius,
+On Thu, Sep 26, 2019 at 1:34 AM William Tu <u9012063@gmail.com> wrote:
+>
+> On Wed, Sep 25, 2019 at 12:48 AM Eelco Chaudron <echaudro@redhat.com> wro=
+te:
+> >
+> >
+> >
+> > On 25 Sep 2019, at 8:46, J=C3=BAlius Milan wrote:
+> >
+> > > Hi Eelco
+> > >
+> > >> Currently, OVS uses the mmaped memory directly, however on egress, i=
+t
+> > >> is copying the memory to the egress interface it=E2=80=99s mmaped me=
+mory.
+> > > Great, thanks for making this clear to me.
+> > >
+> > >> Currently, OVS uses an AF_XDP memory pool per interface, so a furthe=
+r
+> > >> optimization could be to use a global memory pool so this extra copy
+> > >> is not needed.
+> > > Is it even possible to make this further optimization? Since every
+> > > interface has it's own non-shared umem, so from my point of view, at
+> > > least one
+> > > copy for case as you described above (when RX interface is different
+> > > then TX interface) is necessery. Or am I missing something?
+> >
+> > Some one @Intel told me it would be possible to have one huge mempool
+> > that can be shared between interfaces. However I have not
+> > researched/tried it.
+>
+> I thought about it before, but the problem is cq and fq are per-umem.
+> So when having only one umem shared with many queues or devices,
+> each one has to acquire a lock, then they can access cq or fq. I think
+> that might become much slower.
 
-The ring clean up routines in i40e and ixgbe are asynchronous, so they
-will likely not be ready when you return from the xsk_socket__delete()
-call. What happens if you add a sleep(1) before you create it a second
-time?
+You basically have to implement a mempool that can be used by multiple
+processes. Unfortunately, there is no lean and mean standalone
+implementation of a mempool. There is a good one in DPDK, but then you
+get the whole DPDK package into your application which is likely what
+you wanted to avoid in the first place. Anyone for writing libmempool?
 
 /Magnus
 
-On Wed, Sep 25, 2019 at 5:47 PM J=C3=BAlius Milan <Julius.Milan@pantheon.te=
-ch> wrote:
->
-> Hi folks
->
->
->
-> I am stuck with proper cleanup of AF_XDP socket. Not sure if I am doing s=
-omething wrong or is it a bug.
->
-> I create xdp socket, then I remove it and then I am trying to create it a=
-gain and got EBUSY from bind syscall
->
-> of xsk_socket__create.
->
->
->
-> My cleanup looks like this:
->
-> xsk_socket__delete();
->
-> xsk_umem__delete();
->
-> bpf_set_link_xdp_fd(ifindex, -1, opt_xdp_flags);
->
->
->
-> Attaching simple test case. It=E2=80=99s just reduced and modified xdpsoc=
-k_user.c form kernel samples.
->
-> Tested on kernel v5.3 4d856f72c10ecb060868ed10ff1b1453943fc6c8 and relate=
-d libbpf.
->
->
->
-> Thanks a lot
->
-> Julius
+> > Maybe Magnus can confirm?
+> >
+> >
+> > > J=C3=BAlius
+> > >
+> > > -----Original Message-----
+> > > From: Eelco Chaudron [mailto:echaudro@redhat.com]
+> > > Sent: Monday, September 23, 2019 3:02 PM
+> > > To: J=C3=BAlius Milan <Julius.Milan@pantheon.tech>
+> > > Cc: Magnus Karlsson <magnus.karlsson@gmail.com>; William Tu
+> > > <u9012063@gmail.com>; Bj=C3=B6rn T=C3=B6pel <bjorn.topel@intel.com>; =
+Marek
+> > > Z=C3=A1vodsk=C3=BD <marek.zavodsky@pantheon.tech>; Jesper Dangaard Br=
+ouer
+> > > <brouer@redhat.com>; xdp-newbies@vger.kernel.org; Karlsson, Magnus
+> > > <magnus.karlsson@intel.com>; Thomas F Herbert <therbert@redhat.com>;
+> > > Kevin Laatz <kevin.laatz@intel.com>
+> > > Subject: Re: AF_XDP integration with FDio VPP? (Was: Questions about
+> > > XDP)
+> > >
+> > >
+> > >
+> > > On 23 Sep 2019, at 11:00, J=C3=BAlius Milan wrote:
+> > >
+> > >> Many Thanks Magnus
+> > >>
+> > >>>> I have next 2 questions:
+> > >>>>
+> > >>>> 1] When I use xsk_ring_prod__reserve and successive
+> > >>>> xsk_ring_prod__submit. Is it correct to submit also less than I
+> > >>>> reserved?
+> > >>>>     In some cases I can't exactly determine how much to reserve in
+> > >>>> advance, since vpp buffers have different size than xdp frames.
+> > >>>
+> > >>> Let me see so I understand this correctly. Ponder you reserve 10
+> > >>> slots and later submit 4. This means you have reserved 6 more than
+> > >>> you need.
+> > >>> Do you want to "unreserve" these and give them back to the ring?
+> > >>> This
+> > >>> is not supported by the interface today. Another way of solving thi=
+s
+> > >>> (if this is your problem and I am understanding it correctly, that
+> > >>> is) is that you in the next iteration only reserve 10 - 6 =3D 4 slo=
+ts
+> > >>> because you already have 6 slots available from the last iteration.
+> > >>> You could still submit 10 after this. But adding something like an
+> > >>> unreserve option would be easy as long as we made sure it only
+> > >>> affected local ring state. The global state seen in the shared
+> > >>> variables between user space and kernel would not be touched, as
+> > >>> this
+> > >>> would affect performance negatively. Please let me know what you
+> > >>> think.
+> > >>>
+> > >> Yes, You understand it correctly, I implemented it the way you
+> > >> suggested, i.e. by marking index and count of reserved slots (not
+> > >> committed yet, but works well), thanks again.
+> > >>
+> > >>>> 2] Can I use hugepage backed memory for umem? If not, is it planne=
+d
+> > >>>> for future?
+> > >>>>     Yet it does copy pakets from rx rings to vpp buffers, but
+> > >>>> speculating about straight zerocopy way.
+> > >>>
+> > >>> Yes you can use huge pages today, but the internal AF_XDP code has
+> > >>> not been optimized to use huge pages, so you will not get the full
+> > >>> benefit from them today. Kevin Laatz, added to this mail, is workin=
+g
+> > >>> on optimizing the AF_XDP code for huge pages. If you want to know
+> > >>> more or have some requirements, do not hesitate to contact him.
+> > >>>
+> > >> Kevin will the API for using hugepages change while optimization
+> > >> process significantly or can I already start to rewrite my vpp drive=
+r
+> > >> to use hugepages backed memory?
+> > >> Also please let me know, when you consider AF_XDP code optimized to
+> > >> use huge pages.
+> > >>
+> > >> William, if I may ask next question.
+> > >> Does OVS implementation of af_xdp driver copy paket data from af_xdp
+> > >> mmaped ring buffers into OVS "buffers" (some structure to represent
+> > >> the packet in OVS) or is it zerocopy in this manner, i.e. OVS
+> > >> "buffers" mempool is directly mmaped as ring and so no copy on RX is
+> > >> needed. Since in 2nd case it would be very valuable for me as
+> > >> inspiration.
+> > >
+> > > Currently, OVS uses the mmaped memory directly, however on egress, it
+> > > is copying the memory to the egress interface it=E2=80=99s mmaped mem=
+ory.
+> > > Currently, OVS uses an AF_XDP memory pool per interface, so a further
+> > > optimization could be to use a global memory pool so this extra copy
+> > > is not needed.
+> > >
+> > >>
+> > >>> /Magnus
+> > >>>
+> > >>
+> > >> Thanks a lot,
+> > >>
+> > >> J=C3=BAlius
