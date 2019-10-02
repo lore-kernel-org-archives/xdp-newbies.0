@@ -1,29 +1,29 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:37801 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728702AbfIQRDU (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 17 Sep 2019 13:03:20 -0400
+Received: from lb.pantheon.sk ([46.229.239.20]:32901 "EHLO lb.pantheon.sk"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725851AbfJBKpI (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 2 Oct 2019 06:45:08 -0400
+From: =?utf-8?B?SsO6bGl1cyBNaWxhbg==?= <Julius.Milan@pantheon.tech>
+Subject: xdpsock problem testing multiple queues
+Date: Wed, 2 Oct 2019 10:45:04 +0000
+Message-ID: <ccfd36d0372547099b96ea494e2c6369@pantheon.tech>
+Content-Language: en-US
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-References: <00000000000029a3a00592b41c48@google.com> <CAM_iQpX0FAvhcZgKjRd=3Rbp8cbfYiUqkF2KnmF9Pd0U4EkSDw@mail.gmail.com>
- <vbfk1a7cooq.fsf@mellanox.com>
-In-Reply-To: <vbfk1a7cooq.fsf@mellanox.com>
-From: Cong Wang <xiyou.wangcong@gmail.com>
-Date: Tue, 17 Sep 2019 10:03:08 -0700
-Message-ID: <CAM_iQpWNSdx59iTTNO6GdyZ6NBAMD8=wON6Q7dvnhiX50pwEvQ@mail.gmail.com>
-Subject: Re: BUG: sleeping function called from invalid context in tcf_chain0_head_change_cb_del
-Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Vlad Buslov <vladbu@mellanox.com>
-Cc: syzbot <syzbot+ac54455281db908c581e@syzkaller.appspotmail.com>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, David Miller <davem@davemloft.net>, David Ahern <dsahern@gmail.com>, Florian Fainelli <f.fainelli@gmail.com>, "hawk@kernel.org" <hawk@kernel.org>, Ido Schimmel <idosch@mellanox.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@mellanox.com>, Jiri Pirko <jiri@resnulli.us>, John Fastabend <john.fastabend@gmail.com>, Martin KaFai Lau <kafai@fb.com>, LKML <linux-kernel@vger.kernel.org>, Linux Kernel Network Developers <netdev@vger.kernel.org>, Nikolay Aleksandrov <nikolay@cumulusnetworks.com>, Petr Machata <petrm@mellanox.com>, Roopa Prabhu <roopa@cumulusnetworks.com>, Song Liu <songliubraving@fb.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "yhs@fb.com" <yhs@fb.com>
+To: Xdp <xdp-newbies@vger.kernel.org>
+Cc: Magnus Karlsson <magnus.karlsson@gmail.com>, =?utf-8?B?TWFyZWsgWsOhdm9kc2vDvQ==?= <marek.zavodsky@pantheon.tech>, Jesper Dangaard Brouer <brouer@redhat.com>, William Tu <u9012063@gmail.com>, Eelco Chaudron <echaudro@redhat.com>
 
-On Tue, Sep 17, 2019 at 1:27 AM Vlad Buslov <vladbu@mellanox.com> wrote:
-> Hi Cong,
->
-> Don't see why we would need qdisc tree lock while releasing the
-> reference to (or destroying) previous Qdisc. I've skimmed through other
-> scheds and it looks like sch_multiq, sch_htb and sch_tbf are also
-> affected. Do you want me to send patches?
-
-Yes, please do.
+SGkgYWxsDQoNCldlIGFyZSB0cnlpbmcgdG8gdGVzdCBtdWx0aXBsZSBSWCBxdWV1ZXMgd2l0aCBz
+YW1wbGUgcHJvZ3JhbSB4ZHBzb2NrIGZyb20ga2VybmVsIG9uIHZtd2FyZSB2aXJ0dWFsIG1hY2hp
+bmUgd2l0aCAyIHF1ZXVlcy4NClRoZSBkcml2ZXIgb24gdGhlIE5JQyBpczoNCiMgZXRodG9vbCAt
+aSBlbnMxOTINCmRyaXZlcjogdm14bmV0Mw0KdmVyc2lvbjogMS40LjE2LjAtay1OQVBJDQoNCk5J
+QyBoYXMgMiBxdWV1ZXMsIEkgY2FuIGNoZWNrIGl0IGJ5IGV0aHRvb2wgLVMuDQoNCkJ1dCB3aGVu
+IEkgdHJ5IHRvIHVzZSBxdWV1ZSAxLCBJIGFtIGdldHRpbmcgZm9sbG93aW5nOg0KIyAuL3hkcHNv
+Y2sgLWkgZW5zMTkyIC1xIDENCi9ob21lL2ptaWxhbi93cy9wdC14ZHAvbGludXgvc2FtcGxlcy9i
+cGYveGRwc29ja191c2VyLmM6eHNrX2NvbmZpZ3VyZV9zb2NrZXQ6MzE1OiBlcnJubzogMS8iT3Bl
+cmF0aW9uIG5vdCBwZXJtaXR0ZWQiDQoNCkFueSBpZGVhcyB3aGF0IHRoZSBwcm9ibGVtIGNvdWxk
+IGJlPyBNYXliZSB2bXhuZXQzIGRyaXZlciBkb2VzIG5vdCBzdXBwb3J0IHNvbWUgbmVjZXNzYXJ5
+IG9wZXJhdGlvbnMgcmVsYXRlZCB0byBxdWV1ZXM/DQoNCkJlc3QgUmVnYXJkcw0KSsO6bGl1cw0K
