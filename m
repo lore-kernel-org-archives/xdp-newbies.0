@@ -1,114 +1,62 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg1-f194.google.com ([209.85.215.194]:33597 "EHLO
-        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726261AbfJ3TEF (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 30 Oct 2019 15:04:05 -0400
-Received: by mail-pg1-f194.google.com with SMTP id u23so2106610pgo.0
-        for <xdp-newbies@vger.kernel.org>; Wed, 30 Oct 2019 12:04:05 -0700 (PDT)
+Received: from mail-yw1-f66.google.com ([209.85.161.66]:40733 "EHLO
+        mail-yw1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726002AbfJDWWI (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 4 Oct 2019 18:22:08 -0400
 MIME-Version: 1.0
-From: Farid Zakaria <farid.m.zakaria@gmail.com>
-Date: Wed, 30 Oct 2019 12:03:53 -0700
-Message-ID: <CACCo2j=TJYZ68ur53vNYxaS2qQgPv6ouij3P=tmrno-SJFTw0Q@mail.gmail.com>
-Subject: bpf_helpers and you... some more...
+From: "Daniel T. Lee" <danieltimlee@gmail.com>
+Date: Sat, 5 Oct 2019 07:21:50 +0900
+Message-ID: <CAEKGpzhoYHrE4NTvaWSpy-R6CiLYehGHzLM6v+-9j8iemNyK0g@mail.gmail.com>
+Subject: samples/bpf not working?
 Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Xdp <xdp-newbies@vger.kernel.org>
+To: bpf <bpf@vger.kernel.org>, xdp-newbies@vger.kernel.org, Daniel Borkmann <daniel@iogearbox.net>, Alexei Starovoitov <ast@kernel.org>, netdev <netdev@vger.kernel.org>
 
-This is my attempt of a continuation of David's prior e-mail
-https://www.spinics.net/lists/xdp-newbies/msg00179.html
+Currently, building the bpf samples isn't working.
+Running make from the directory 'samples/bpf' will just shows following
+result without compiling any samples.
 
-I was curious how ebpf filters are wired and work. The heavy use of C
-macros makes the source code difficult for me to comprehend (maybe
-there's an online pre-processed version?).
-I'm hoping others may find this exploratory-dive insightful (hopefully
-it's accurate enough).
+$ make
+make -C ../../ /git/linux/samples/bpf/ BPF_SAMPLES_PATH=/git/linux/samples/bpf
+make[1]: Entering directory '/git/linux'
+  CALL    scripts/checksyscalls.sh
+  CALL    scripts/atomic/check-atomics.sh
+  DESCEND  objtool
+make[1]: Leaving directory '/git/linux'
+$ ls *kern.o
+ls: cannot access '*kern.o': No such file or directory
 
-Let's write a very trivial ebpf filter (hello_world_kern.c) and have
-it print "hello world"
+By using 'git bisect', found the problem is derived from below commit.
+commit 394053f4a4b3 ("kbuild: make single targets work more correctly")
 
-    #include <linux/bpf.h>
+> Currently, the single target build directly descends into the directory
+> of the target. For example,
+>
+>     $ make foo/bar/baz.o
+>
+> ... directly descends into foo/bar/.
+>
+> On the other hand, the normal build usually descends one directory at
+> a time, i.e. descends into foo/, and then foo/bar/.
+>
+> This difference causes some problems.
+>
+> [...]
+>
+> This commit fixes those problems by making the single target build
+> descend in the same way as the normal build does.
 
-    #define __section(NAME) __attribute__((section(NAME), used))
+Not familiar with kbuild, so I'm not sure why this led to build failure.
+My humble guess is, samples/bpf/Makefile tries to run make from current
+directory, 'sample/bpf', but somehow upper commit changed the way it works.
 
-    static char _license[] __section("license") = "GPL";
+samples/bpf/Makefile:232
+# Trick to allow make to be run from this directory
+all:
+        $(MAKE) -C ../../ $(CURDIR)/ BPF_SAMPLES_PATH=$(CURDIR)
 
-    /* helper functions called from eBPF programs written in C */
-    static int (*bpf_trace_printk)(const char *fmt, int fmt_size,
-                                ...) = (void *)BPF_FUNC_trace_printk;
+I've tried to figure out the problem with 'make --trace', but not sure why
+it's not working. Just a hunch with build directory.
 
-    __section("hello_world") int hello_world_filter(struct __sk_buff *skb) {
-        char msg[] = "hello world";
-        bpf_debug_printk(msg, sizeof(msg));
-        return 0;
-    }
-
-If we compile the above using the below we can inspect the LLVM IR.
-    clang -c -o hello_world_kern.ll -x c -S -emit-llvm hello_world_kern.c
-
-The few lines that standout are:
-
-    @bpf_trace_printk = internal global i32 (i8*, i32, ...)* inttoptr
-(i64 6 to i32 (i8*, i32, ...)*), align 8
-    ....
-    %6 = load i32 (i8*, i32, ...)*, i32 (i8*, i32, ...)**
-@bpf_trace_printk, align 8
-    %7 = getelementptr inbounds [13 x i8], [13 x i8]* %3, i32 0, i32 0
-    %8 = call i32 (i8*, i32, ...) %6(i8* %7, i32 13)
-
-The above demonstrates that the value of BPF_FUNC_trace_printk is
-simply the integer 6 and it is being casted to a function pointer.
-Sure enough, we can confirm that `bpf_trace_printk` is the 6th value
-in the enumeration of known bpf bpf_helpers.
-(https://elixir.bootlin.com/linux/v5.3.7/source/include/uapi/linux/bpf.h#L2724)
-
-We can go even further and take this LLVM IR and generate human
-readable eBPF assembly using `llc`
-
-    llc hello_world_kern.ll -march=bpf
-
-Depending on the optimization level of the earlier `clang` call you
-may see different results however using `-O3` we can see
-
-    call 6
-
-Great! so we know that the call to `bpf_trace_printk` gets translated
-into a call instruction with immediate value of 6.
-
-How does it end up calling code within the kernel though?
-Once the Verifier verifies the bytecode it calls `fixup_bpf_calls`
-(https://elixir.bootlin.com/linux/v5.3.8/source/kernel/bpf/verifier.c#L8869)
-which goes through all the instructions and makes the necessary
-adjustment to the immediate value
-
-    fixup_bpf_calls(...) {
-        ...
-        patch_call_imm:
-            fn = env->ops->get_func_proto(insn->imm, env->prog);
-            /* all functions that have prototype and verifier allowed
-            * programs to call them, must be real in-kernel functions
-            */
-            if (!fn->func) {
-                verbose(env,
-                    "kernel subsystem misconfigured func %s#%d\n",
-                    func_id_name(insn->imm), insn->imm);
-                return -EFAULT;
-            }
-            insn->imm = fn->func - __bpf_call_base;
-
-N.B. I haven't deciphered how __bpf_call_base is used / works
-
-The `get_func_proto` will return the function prototypes registered by
-every subsystem such as in net.
-(https://elixir.bootlin.com/linux/v5.3.8/source/net/core/filter.c#L5991)
-At this point in the method it's a simple switch statement to get the
-matching function prototype given the numeric value.
-
-I'd love to see more on the code path of how the non-JIT vs JIT
-instructions get handled.
-For the net subsystem, I can see where the ebpf prog is invoked
-(https://elixir.bootlin.com/linux/v5.3.8/source/net/core/filter.c#L119),
-but it's difficult to work out how the choice of executing the
-function directly (in the case of JIT) vs running it through the
-interpreter is handled.
+Any ideas to fix this problem?
