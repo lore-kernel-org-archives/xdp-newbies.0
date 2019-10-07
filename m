@@ -1,183 +1,50 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:43909 "EHLO
-        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726566AbfJGE6F (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Mon, 7 Oct 2019 00:58:05 -0400
-Received: by mail-pg1-f195.google.com with SMTP id i32so129884pgl.10
-        for <xdp-newbies@vger.kernel.org>; Sun, 06 Oct 2019 21:58:05 -0700 (PDT)
-From: Eric Sage <eric@sage.org>
-Subject: [PATCH] samples/bpf: make xdp_monitor use raw_tracepoints
-Date: Mon,  7 Oct 2019 04:57:26 +0000
-Message-Id: <20191007045726.21467-1-eric@sage.org>
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:41313 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726969AbfJGIgf (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 7 Oct 2019 04:36:35 -0400
+Received: by mail-lj1-f199.google.com with SMTP id l13so3234229lji.7
+        for <xdp-newbies@vger.kernel.org>; Mon, 07 Oct 2019 01:36:32 -0700 (PDT)
+From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Subject: Re: Unable to run eBPF program that uses maps
+In-Reply-To: <CAM-scZMSvAE0jny0b__Da1j=krBB38J8w_H_12s=sy7T=F0spQ@mail.gmail.com>
+References: <CAM-scZMSvAE0jny0b__Da1j=krBB38J8w_H_12s=sy7T=F0spQ@mail.gmail.com>
+Date: Mon, 07 Oct 2019 10:36:28 +0200
+Message-ID: <87k19hlzoz.fsf@toke.dk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: netdev@vger.kernel.org
-Cc: bpf@vger.kernel.org, daniel@iogearbox.net, xdp-newbies@vger.kernel.org, brouer@redhat.org, ast@kernel.org, Eric Sage <eric@sage.org>
+Content-Transfer-Encoding: 8bit
+To: Radu Stoenescu <radu.stoe@gmail.com>, xdp-newbies@vger.kernel.org
 
-raw_tracepoints are an eBPF alternative to standard tracepoints which
-attach to a tracepoint without the perf layer being executed, making
-them faster.
+Radu Stoenescu <radu.stoe@gmail.com> writes:
 
-Since xdp_monitor is supposed to have as little impact on the system as
-possible it is switched to using them by append raw_ to the SEC names.
+> I'm running this Ubuntu: Linux anemie 5.0.0-31-generic #33~18.04.1-Ubuntu SMP
+>
+> I've cloned and compiled the Linux kernel - the same version and
+> config as of my machine's.
+>
+> When trying to run the xdp_redirec_map sample program from samples/bpf I get:
+>
+> sudo ./xdp_redirect_map 2 1
+> #=> failed to create map 0 (tx_port): 1 Operation not permitted
+>
+> I read that, on certain systems, the default limit of locked memory
+> might pose problems, and I mitigated that as seen below:
+>
+> ulimit -a
+>
+> core file size          (blocks, -c) 0
+> data seg size           (kbytes, -d) unlimited
+> scheduling priority             (-e) 0
+> file size               (blocks, -f) unlimited
+> pending signals                 (-i) 31231
+> max locked memory       (kbytes, -l) 1024
 
-There was also a small issues with 'samples/bpf/bpf_load' - it was
-loading the raw_tracepoints with the tracing subsystem name still
-attached, which the bpf syscall rejects with a No such file or directory
-error. This is now fixed.
+Is this run as your regular user? The limit will be reset in the sudo
+environment that loads the program; so you'll need to set it as root (so
+something like `sudo -i; ulimit -l 1024; ./xdp_redirect_map 2 1`)
 
-Signed-off-by: Eric Sage <eric@sage.org>
----
- samples/bpf/bpf_load.c         |  5 +++--
- samples/bpf/xdp_monitor_kern.c | 26 +++++++++++++-------------
- 2 files changed, 16 insertions(+), 15 deletions(-)
-
-diff --git a/samples/bpf/bpf_load.c b/samples/bpf/bpf_load.c
-index 4574b1939e49..6f57eee8e913 100644
---- a/samples/bpf/bpf_load.c
-+++ b/samples/bpf/bpf_load.c
-@@ -156,9 +156,10 @@ static int load_and_attach(const char *event, struct bpf_insn *prog, int size)
- 	}
- 
- 	if (is_raw_tracepoint) {
--		efd = bpf_raw_tracepoint_open(event + 15, fd);
-+		efd = bpf_raw_tracepoint_open(event + 19, fd);
- 		if (efd < 0) {
--			printf("tracepoint %s %s\n", event + 15, strerror(errno));
-+			printf("tracepoint %s %s\n", event + 19,
-+						strerror(errno));
- 			return -1;
- 		}
- 		event_fd[prog_cnt - 1] = efd;
-diff --git a/samples/bpf/xdp_monitor_kern.c b/samples/bpf/xdp_monitor_kern.c
-index ad10fe700d7d..6f67c38468b9 100644
---- a/samples/bpf/xdp_monitor_kern.c
-+++ b/samples/bpf/xdp_monitor_kern.c
-@@ -23,10 +23,10 @@ struct bpf_map_def SEC("maps") exception_cnt = {
- };
- 
- /* Tracepoint format: /sys/kernel/debug/tracing/events/xdp/xdp_redirect/format
-+ * Notice: For raw_tracepoints first 8 bytes are not part of 'format' struct
-  * Code in:                kernel/include/trace/events/xdp.h
-  */
- struct xdp_redirect_ctx {
--	u64 __pad;		// First 8 bytes are not accessible by bpf code
- 	int prog_id;		//	offset:8;  size:4; signed:1;
- 	u32 act;		//	offset:12  size:4; signed:0;
- 	int ifindex;		//	offset:16  size:4; signed:1;
-@@ -65,44 +65,44 @@ int xdp_redirect_collect_stat(struct xdp_redirect_ctx *ctx)
- 	 */
- }
- 
--SEC("tracepoint/xdp/xdp_redirect_err")
-+SEC("raw_tracepoint/xdp/xdp_redirect_err")
- int trace_xdp_redirect_err(struct xdp_redirect_ctx *ctx)
- {
- 	return xdp_redirect_collect_stat(ctx);
- }
- 
- 
--SEC("tracepoint/xdp/xdp_redirect_map_err")
-+SEC("raw_tracepoint/xdp/xdp_redirect_map_err")
- int trace_xdp_redirect_map_err(struct xdp_redirect_ctx *ctx)
- {
- 	return xdp_redirect_collect_stat(ctx);
- }
- 
- /* Likely unloaded when prog starts */
--SEC("tracepoint/xdp/xdp_redirect")
-+SEC("raw_tracepoint/xdp/xdp_redirect")
- int trace_xdp_redirect(struct xdp_redirect_ctx *ctx)
- {
- 	return xdp_redirect_collect_stat(ctx);
- }
- 
- /* Likely unloaded when prog starts */
--SEC("tracepoint/xdp/xdp_redirect_map")
-+SEC("raw_tracepoint/xdp/xdp_redirect_map")
- int trace_xdp_redirect_map(struct xdp_redirect_ctx *ctx)
- {
- 	return xdp_redirect_collect_stat(ctx);
- }
- 
- /* Tracepoint format: /sys/kernel/debug/tracing/events/xdp/xdp_exception/format
-+ * Notice: For raw_tracepoints first 8 bytes are not part of 'format' struct
-  * Code in:                kernel/include/trace/events/xdp.h
-  */
- struct xdp_exception_ctx {
--	u64 __pad;	// First 8 bytes are not accessible by bpf code
- 	int prog_id;	//	offset:8;  size:4; signed:1;
- 	u32 act;	//	offset:12; size:4; signed:0;
- 	int ifindex;	//	offset:16; size:4; signed:1;
- };
- 
--SEC("tracepoint/xdp/xdp_exception")
-+SEC("raw_tracepoint/xdp/xdp_exception")
- int trace_xdp_exception(struct xdp_exception_ctx *ctx)
- {
- 	u64 *cnt;
-@@ -144,10 +144,10 @@ struct bpf_map_def SEC("maps") cpumap_kthread_cnt = {
- };
- 
- /* Tracepoint: /sys/kernel/debug/tracing/events/xdp/xdp_cpumap_enqueue/format
-+ * Notice: For raw_tracepoints first 8 bytes are not part of 'format' struct
-  * Code in:         kernel/include/trace/events/xdp.h
-  */
- struct cpumap_enqueue_ctx {
--	u64 __pad;		// First 8 bytes are not accessible by bpf code
- 	int map_id;		//	offset:8;  size:4; signed:1;
- 	u32 act;		//	offset:12; size:4; signed:0;
- 	int cpu;		//	offset:16; size:4; signed:1;
-@@ -156,7 +156,7 @@ struct cpumap_enqueue_ctx {
- 	int to_cpu;		//	offset:28; size:4; signed:1;
- };
- 
--SEC("tracepoint/xdp/xdp_cpumap_enqueue")
-+SEC("raw_tracepoint/xdp/xdp_cpumap_enqueue")
- int trace_xdp_cpumap_enqueue(struct cpumap_enqueue_ctx *ctx)
- {
- 	u32 to_cpu = ctx->to_cpu;
-@@ -179,10 +179,10 @@ int trace_xdp_cpumap_enqueue(struct cpumap_enqueue_ctx *ctx)
- }
- 
- /* Tracepoint: /sys/kernel/debug/tracing/events/xdp/xdp_cpumap_kthread/format
-+ * Notice: For raw_tracepoints first 8 bytes are not part of 'format' struct
-  * Code in:         kernel/include/trace/events/xdp.h
-  */
- struct cpumap_kthread_ctx {
--	u64 __pad;		// First 8 bytes are not accessible by bpf code
- 	int map_id;		//	offset:8;  size:4; signed:1;
- 	u32 act;		//	offset:12; size:4; signed:0;
- 	int cpu;		//	offset:16; size:4; signed:1;
-@@ -191,7 +191,7 @@ struct cpumap_kthread_ctx {
- 	int sched;		//	offset:28; size:4; signed:1;
- };
- 
--SEC("tracepoint/xdp/xdp_cpumap_kthread")
-+SEC("raw_tracepoint/xdp/xdp_cpumap_kthread")
- int trace_xdp_cpumap_kthread(struct cpumap_kthread_ctx *ctx)
- {
- 	struct datarec *rec;
-@@ -218,10 +218,10 @@ struct bpf_map_def SEC("maps") devmap_xmit_cnt = {
- };
- 
- /* Tracepoint: /sys/kernel/debug/tracing/events/xdp/xdp_devmap_xmit/format
-+ * Notice: For raw_tracepoints first 8 bytes are not part of 'format' struct
-  * Code in:         kernel/include/trace/events/xdp.h
-  */
- struct devmap_xmit_ctx {
--	u64 __pad;		// First 8 bytes are not accessible by bpf code
- 	int map_id;		//	offset:8;  size:4; signed:1;
- 	u32 act;		//	offset:12; size:4; signed:0;
- 	u32 map_index;		//	offset:16; size:4; signed:0;
-@@ -232,7 +232,7 @@ struct devmap_xmit_ctx {
- 	int err;		//	offset:36; size:4; signed:1;
- };
- 
--SEC("tracepoint/xdp/xdp_devmap_xmit")
-+SEC("raw_tracepoint/xdp/xdp_devmap_xmit")
- int trace_xdp_devmap_xmit(struct devmap_xmit_ctx *ctx)
- {
- 	struct datarec *rec;
--- 
-2.18.1
+-Toke
