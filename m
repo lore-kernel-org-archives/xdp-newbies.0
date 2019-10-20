@@ -1,44 +1,47 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-lf1-f47.google.com ([209.85.167.47]:46999 "EHLO
-        mail-lf1-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725992AbfJSQMI (ORCPT
+Received: from mail-ed1-f53.google.com ([209.85.208.53]:38450 "EHLO
+        mail-ed1-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726374AbfJTVH1 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Sat, 19 Oct 2019 12:12:08 -0400
-Received: by mail-lf1-f47.google.com with SMTP id t8so6897811lfc.13
-        for <xdp-newbies@vger.kernel.org>; Sat, 19 Oct 2019 09:12:07 -0700 (PDT)
+        Sun, 20 Oct 2019 17:07:27 -0400
+Received: by mail-ed1-f53.google.com with SMTP id l21so8454212edr.5
+        for <xdp-newbies@vger.kernel.org>; Sun, 20 Oct 2019 14:07:25 -0700 (PDT)
 MIME-Version: 1.0
-References: <CACCo2jk9rx3sf78RPFr39-JVZgaymsJVd6vg=WMKLmWfYZrNaA@mail.gmail.com>
-In-Reply-To: <CACCo2jk9rx3sf78RPFr39-JVZgaymsJVd6vg=WMKLmWfYZrNaA@mail.gmail.com>
-From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Date: Sat, 19 Oct 2019 09:11:54 -0700
-Message-ID: <CAADnVQ+X-Fz68XkLPDVBntkcboMoXGg_ArCKMzeeEqfQmvRx-g@mail.gmail.com>
-Subject: Re: sharing a simple ebpf code sample
+From: Zvi Effron <zeffron@riotgames.com>
+Date: Sun, 20 Oct 2019 16:07:13 -0500
+Message-ID: <CAC1LvL3efhuf8dc-aQKepMND24drwVAHAzVs-4Np4CUTV8qOgQ@mail.gmail.com>
+Subject: How to debug XDP_REDIRECT errors
 Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Farid Zakaria <farid.m.zakaria@gmail.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>
+To: Xdp <xdp-newbies@vger.kernel.org>
 
-On Sat, Oct 19, 2019 at 2:37 AM Farid Zakaria <farid.m.zakaria@gmail.com> wrote:
->
-> Hi,
->
-> I just wanted to share a code sample I put together which does
-> MPLSinIP encap/decap via clasct (not xdp).
->
-> https://github.com/fzakaria/ebpf-mpls-encap-decap
->
-> I know there's quite a few samples in the Linux source tree but I
-> found them lacking in terms of comments for someone new to the new
-> space.
-> (They were more geared at demonstrating a particular feature
-> specifically rather than simply instructional)
->
-> Learning & using ebpf for a project at work in a similar capacity
-> (encap/decap) has been a joy/fun to work with.
+Hello,
 
-Thanks for sharing.
-I think we can create new bpf_examples_and_links.rst file in Documentation/bpf/
-with links for various repos, samples, examples, etc
-Like yours, cilium, cloudflare, Jesper's docs, etc.
-At least from kernel tree all the places will be reachable.
+I'm trying to get some additional performance out of XDP on the i40e
+driver (under kernel 5.0.7, Fedora 28) by adjusting the queues to be
+one per desired core. I have several cores isolated for network
+traffic, so I'm adjusting the queues to be one per isolated core (with
+IRQ adjustments to match) as opposed to the default of one per online
+core. I've noticed that when I adjust the number of queues down, I see
+packet loss proportional to the number of queues missing. For example,
+if I drop the queues from the default of 36 down to 34, I see ~6%
+packet loss.
+
+Using the trace_pipe, I've managed to confirm that my program is
+successfully calling bpf_redirect_map() for all of the packet (no
+losst). I found the xdp_monitor tutorial[1] and ran it, and it shows
+the loss showing up as XDP_REDIRECT errors (which I believe means the
+raw_tracepoint xdp:xdp_redirect_map_err).
+
+At this point, I'm a bit stuck on how to proceed further to determine
+what is causing the redirect error and where the packet is being
+dropped.
+
+Any help in pointing me in the right direction for debugging
+techniques would be greatly appreciated.
+
+Thanks!
+--Zvi
+
+[1]: https://github.com/xdp-project/xdp-tutorial/blob/master/tracing02-xdp-monitor
