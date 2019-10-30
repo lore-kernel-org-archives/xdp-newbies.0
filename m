@@ -1,87 +1,137 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from forward105p.mail.yandex.net ([77.88.28.108]:59864 "EHLO
-        forward105p.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726302AbfJ3Poc (ORCPT
+Received: from us-smtp-1.mimecast.com ([207.211.31.81]:37873 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726552AbfJ3QjP (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 30 Oct 2019 11:44:32 -0400
-Received: from mxback4o.mail.yandex.net (mxback4o.mail.yandex.net [IPv6:2a02:6b8:0:1a2d::1e])
-        by forward105p.mail.yandex.net (Yandex) with ESMTP id E27C44D41FBE
-        for <xdp-newbies@vger.kernel.org>; Wed, 30 Oct 2019 18:44:28 +0300 (MSK)
+        Wed, 30 Oct 2019 12:39:15 -0400
+Date: Wed, 30 Oct 2019 17:39:02 +0100
+From: Jesper Dangaard Brouer <brouer@redhat.com>
 Subject: Re: bidirectional: => AF_XDP , <= XDP_REDIRECT
+Message-ID: <20191030173902.09311289@carbon>
+In-Reply-To: <ac54dbc6-245a-c1b6-4bef-47296c69ec75@yandex.ru>
 References: <d52b5b48-06cf-42dc-180d-896601cf3efb@yandex.ru>
- <87imq0ut8l.fsf@toke.dk> <e83a6f5d-785e-d3c7-6bd8-63d972973427@yandex.ru>
- <87a7bcusg3.fsf@toke.dk>
-From: Ilya Goslhtein <ilejn@yandex.ru>
-Message-ID: <ac54dbc6-245a-c1b6-4bef-47296c69ec75@yandex.ru>
-Date: Wed, 30 Oct 2019 18:44:27 +0300
+        <87imq0ut8l.fsf@toke.dk>
+        <e83a6f5d-785e-d3c7-6bd8-63d972973427@yandex.ru>
+        <87a7bcusg3.fsf@toke.dk>
+        <ac54dbc6-245a-c1b6-4bef-47296c69ec75@yandex.ru>
 MIME-Version: 1.0
-In-Reply-To: <87a7bcusg3.fsf@toke.dk>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8bit
-Content-Language: en-US
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: xdp-newbies@vger.kernel.org
+To: Ilya Goslhtein <ilejn@yandex.ru>
+Cc: xdp-newbies@vger.kernel.org, brouer@redhat.com
 
-Hello,
 
-playing with xdpbridge https://github.com/ilejn/xdpbridge/ I've observed 
-a limitation which is serious for me.
+On Wed, 30 Oct 2019 18:44:27 +0300 Ilya Goslhtein <ilejn@yandex.ru> wrote:
 
-xdpbridge is basically a combination of xdp_redirect_map sample 
-(world=>client path) and slightly more advanced l2fwd mode of xdpsock 
-(client=>world path),
-where AF_XDP sockets are bound to two different interfaces (vanilla 
-l2fwd mode uses same interface as ingress and egress) and where 
-multithreading is supported.
+> Hello,
+>=20
+> playing with xdpbridge https://github.com/ilejn/xdpbridge/ I've observed=
+=20
+> a limitation which is serious for me.
 
-xdpbridge sets options for client and egress interfaces independently.
+Hmm... I took a short look at your code.
 
-So, setting zerocopy bind flag for world interface (-z command line 
-parameter) prevents this interface from working as ingress for 
-world=>client path, although different queues are used. No errors, just 
-no data transfer.
+Sorry for this candid/blunt evaluation: I think you are doing it wrong.
+Both on how you use other FOSS code and how you use BPF/XDP.
 
-It would be nice to understand if this issue fundamental or specific for 
-the kernel (5.0.0-31-generic #33~18.04.1-Ubuntu) or card (Intel 
-Corporation 82599ES 10-Gigabit SFI/SFP+ Network Connection (rev 01)) or 
-driver.
-Or, may be, it is just my mistake.
+First of all you are using bpf_load.c[1], which everybody should stop
+using (sorry, I know I sort of started that trend).  Instead everybody
+should use libbpf[2].  Second you have copied over bpf_load.c and
+re-indented the entire file, which is bad, because it makes it very
+hard to track the difference between the original FOSS project and your
+project.
 
-I do appreciate any comments or suggestions.
+You *also* use libbpf, but directly from the kernel tree.  We don't
+recommend doing it this way.  Facebook engineers are maintaining a
+libbpf mirror on github[2], which can be used as a git-submodule.
+Before all distros start shipping libbpf, the easiest way to get
+started is to use libbpf as a git-submodule.
 
-On 10.09.2019 17:38, Toke Høiland-Jørgensen wrote:
-> Ilya Goslhtein <ilejn@yandex.ru> writes:
->
->> Hello Toke,
->>
->> thanks for the response.
->>
->> I do not think that it is the case.
->>
->> The interface I am trying to share is outgoing for xdpbridge and
->> incoming for xdp_bridge_map.
->>
->> xdpbridge does not load xdp program for outgoing interface (while loads
->> for incoming).
->>
->> xdp_bridge_map loads dummy XDP program for outgoing redirect, while it
->> is Ok if it is already exists.
->>
->>
->> It seems that if I use different queues for incoming and outgoing
->> packets, everything is Ok, while I am not 100% sure yet. Does it look
->> realistic?
-> Oh, right, yeah, the AF_XDP socket will need to configure a hardware
-> queue to use; depending on your hardware, that could be incompatible
-> with running a regular XDP program on the same hardware queue.
->
-> Incidently, we are working on a way to make this work better; talk
-> starts in five minutes at LPC:
-> https://linuxplumbersconf.org/event/4/contributions/462/
->
-> -Toke
+[1] https://github.com/ilejn/xdpbridge/blob/master/bpf_load.c
+[2] https://github.com/libbpf/libbpf
 
--- 
+
+> xdpbridge is basically a combination of xdp_redirect_map sample=20
+> (world=3D>client path) and slightly more advanced l2fwd mode of xdpsock=
+=20
+> (client=3D>world path), =20
+> where AF_XDP sockets are bound to two different interfaces (vanilla=20
+> l2fwd mode uses same interface as ingress and egress) and where=20
+> multithreading is supported.
+
+IMHO choosing AF_XDP for a bridge implementation is the wrong approach.
+I would implement this in the XDP BPF-program, and use fallback to the
+normal Linux bridging code (for broadcasting, ARP etc).
+
+
+> xdpbridge sets options for client and egress interfaces independently.
+>=20
+> So, setting zerocopy bind flag for world interface (-z command line=20
+> parameter) prevents this interface from working as ingress for=20
+> world=3D>client path, although different queues are used. No errors, just=
+  =20
+> no data transfer.
+
+Sounds like you want part of the traffic to reach the normal kernel
+networking stack.  In that case, the XDP program should sort that out
+(and call XDP_PASS) before doing the XDP_REDIRECT step into AF_XDP.
+
+=20
+> It would be nice to understand if this issue fundamental or specific
+> for the kernel (5.0.0-31-generic #33~18.04.1-Ubuntu) or card (Intel=20
+> Corporation 82599ES 10-Gigabit SFI/SFP+ Network Connection (rev 01))
+> or driver.
+> Or, may be, it is just my mistake.
+>=20
+> I do appreciate any comments or suggestions.
+
+I'm glad that you are open to feedback.
+
+I recommend you look at our XDP-tutorial[3], to see an example of how
+Toke and I recommend structuring a project that want to use XDP/BPF.
+
+
+[3] https://github.com/xdp-project/xdp-tutorial
+--=20
 Best regards,
-Ilya Golshtein
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
+
+
+=20
+> On 10.09.2019 17:38, Toke H=C3=B8iland-J=C3=B8rgensen wrote:
+> > Ilya Goslhtein <ilejn@yandex.ru> writes:
+> > =20
+> >> Hello Toke,
+> >>
+> >> thanks for the response.
+> >>
+> >> I do not think that it is the case.
+> >>
+> >> The interface I am trying to share is outgoing for xdpbridge and
+> >> incoming for xdp_bridge_map.
+> >>
+> >> xdpbridge does not load xdp program for outgoing interface (while load=
+s
+> >> for incoming).
+> >>
+> >> xdp_bridge_map loads dummy XDP program for outgoing redirect, while it
+> >> is Ok if it is already exists.
+> >>
+> >>
+> >> It seems that if I use different queues for incoming and outgoing
+> >> packets, everything is Ok, while I am not 100% sure yet. Does it look
+> >> realistic? =20
+> > Oh, right, yeah, the AF_XDP socket will need to configure a hardware
+> > queue to use; depending on your hardware, that could be incompatible
+> > with running a regular XDP program on the same hardware queue.
+> >
+> > Incidently, we are working on a way to make this work better; talk
+> > starts in five minutes at LPC:
+> > https://linuxplumbersconf.org/event/4/contributions/462/
+> >
+> > -Toke =20
+>=20
