@@ -1,28 +1,31 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-il1-f174.google.com ([209.85.166.174]:45256 "EHLO
-        mail-il1-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726094AbfKHDgd (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 7 Nov 2019 22:36:33 -0500
-Received: by mail-il1-f174.google.com with SMTP id o18so3854565ils.12
-        for <xdp-newbies@vger.kernel.org>; Thu, 07 Nov 2019 19:36:32 -0800 (PST)
-Subject: Re: xdp with mlx5 not working as expected
-References: <a47dae54-87c8-c563-0c3c-524f4c95518e@gmail.com>
- <VI1PR05MB5102CF9D51954A7674C1F92DBE7B0@VI1PR05MB5102.eurprd05.prod.outlook.com>
+Received: from mail-pl1-f175.google.com ([209.85.214.175]:37579 "EHLO
+        mail-pl1-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727619AbfKTRw5 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 20 Nov 2019 12:52:57 -0500
+Received: by mail-pl1-f175.google.com with SMTP id bb5so116842plb.4
+        for <xdp-newbies@vger.kernel.org>; Wed, 20 Nov 2019 09:52:56 -0800 (PST)
 From: David Ahern <dsahern@gmail.com>
-Message-ID: <62ce7c93-88de-f458-60ab-1f149e3bd1ac@gmail.com>
-Date: Thu, 7 Nov 2019 20:36:30 -0700
+Subject: error loading xdp program on virtio nic
+Message-ID: <c484126f-c156-2a17-b47d-06d08121c38b@gmail.com>
+Date: Wed, 20 Nov 2019 10:52:53 -0700
 MIME-Version: 1.0
-In-Reply-To: <VI1PR05MB5102CF9D51954A7674C1F92DBE7B0@VI1PR05MB5102.eurprd05.prod.outlook.com>
-Content-Type: text/plain; charset=windows-1252
 Content-Language: en-US
-Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Saeed Mahameed <saeedm@mellanox.com>, Tariq Toukan <tariqt@mellanox.com>, Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Jason Wang <jasowang@redhat.com>
 
+Hi:
 
-I think it is a vlan problem. Host traffic is untagged; VM traffic is
-tagged.
+Trying to load an XDP program on a virtio based nic is failing with:
 
-Never mind; I think I see the problem.
+virtio_net: XDP expects header/data in single page, any_header_sg required
+
+I have not encountered this error before and not able to find what is
+missing. Any tips?
+
+Thanks,
+David
