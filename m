@@ -1,45 +1,84 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f193.google.com ([209.85.160.193]:42848 "EHLO
-        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726046AbfKVRm6 (ORCPT
+Received: from mail-oi1-f195.google.com ([209.85.167.195]:44888 "EHLO
+        mail-oi1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726695AbfKVT0c (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 22 Nov 2019 12:42:58 -0500
-Subject: Re: error loading xdp program on virtio nic
-References: <c484126f-c156-2a17-b47d-06d08121c38b@gmail.com>
- <89f56317-5955-e692-fcf0-ee876aae068b@redhat.com>
- <3dc7b9d8-bcb2-1a90-630e-681cbf0f1ace@gmail.com>
- <18659bd0-432e-f317-fa8a-b5670a91c5b9@redhat.com>
- <f7b8df14-ef7f-be76-a990-b9d71139bcaa@gmail.com>
- <20191121072625.3573368f@carbon>
- <4686849f-f3b8-dd1d-0fe4-3c176a37b67a@redhat.com>
- <df4ae5e7-3f79-fd28-ea2e-43612ff61e6f@gmail.com>
- <f7b19bae-a9cf-d4bf-7eee-bfe644d87946@redhat.com>
- <8324a37e-5507-2ae6-53f6-949c842537e0@gmail.com>
- <20191122175749.47728e42@carbon>
-From: David Ahern <dsahern@gmail.com>
-Message-ID: <1fc9364a-ab96-e085-1fc5-9ed29f43f815@gmail.com>
-Date: Fri, 22 Nov 2019 10:42:53 -0700
+        Fri, 22 Nov 2019 14:26:32 -0500
+Received: by mail-oi1-f195.google.com with SMTP id s71so7459384oih.11
+        for <xdp-newbies@vger.kernel.org>; Fri, 22 Nov 2019 11:26:32 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <20191122175749.47728e42@carbon>
-Content-Language: en-US
+References: <CA+ZpPeySfq2H8RsPuJj0Y8dVkT5h09OHN=udtcxsvF_5_Tj+Lw@mail.gmail.com>
+In-Reply-To: <CA+ZpPeySfq2H8RsPuJj0Y8dVkT5h09OHN=udtcxsvF_5_Tj+Lw@mail.gmail.com>
+From: Joubert Berger <joubert@berger-family.org>
+Date: Fri, 22 Nov 2019 14:26:21 -0500
+Message-ID: <CA+ZpPeziZpoJuCcRUX6s0nAiB-UoWBfVfAVKc1LYgB7QcvDSbg@mail.gmail.com>
+Subject: Re: XDP - Bridge - not redirecting all UDP
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: Jason Wang <jasowang@redhat.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+To: xdp-newbies@vger.kernel.org
 
-On 11/22/19 9:57 AM, Jesper Dangaard Brouer wrote:
-> Implementation wise, I would not add flags to xdp_buff / xdp_md.
-> Instead I propose in[1] slide 46, that the verifier should detect the
-> XDP features used by a BPF-prog.  If you XDP prog doesn't use e.g.
-> XDP_TX, then you should be allowed to run it on a virtio_net device
-> with less queue configured, right?
+I did some more investigation.
 
-Thanks for the reference and yes, that is the goal: allow XDP in the
-most use cases possible. e.g., Why limit XDP_DROP which requires no
-resources because XDP_TX does not work?
+First, my setup:  Raspberry Pi (ARM7) running 64-bit SuSE
+(4.12.14-lp151.28.25-default)
+As mentioned before I have it setup as a bridge.  eth0 is using the
+lan78xx driver and eth1 is using ax88179_178a driver.
 
-I agree a flag in the api is an ugly way to allow it. For the verifier
-approach, you mean add an internal flag (e.g., bitmask of return codes)
-that the program uses and the NIC driver can check at attach time?
+I tried to simplify things, so use xdp-tutorial/basic01-xdp-pass and
+changed xdp_prog_simple() to print the destination IP address:
+int  xdp_prog_simple(struct xdp_md *ctx)
+{
+    void *data_end =3D (void*)(long) ctx->data_end;
+    void *data =3D (void*)(long) ctx->data;
+    struct ethhdr *eth =3D (struct ethhdr*) data;
+
+    if (eth + 1 > data_end) {
+        return XDP_PASS;
+    }
+
+    if (eth->h_proto !=3D bpf_htons(ETH_P_IP))
+        return XDP_PASS;
+
+    struct iphdr *iph =3D data + sizeof(struct ethhdr);
+    if (iph + 1 > data_end)
+        return XDP_PASS;
+
+    if (iph->protocol !=3D IPPROTO_UDP)
+        return XDP_PASS;
+
+    bpf_printk("udp: dst port: %x proto=3D%d\n", bpf_ntohl(iph->daddr),
+iph->protocol);
+
+    return XDP_PASS;
+}
+
+Then wrote a small test tool to be able to send udp packets.  I have
+it set to send 20 udp packets.
+When I look at trace_pipe for the above print statement, I will see
+less than 20 lines.
+
+So, for some reason, I am not getting all the packets.  Any thoughts?
+I am not sure where to go from here.
+
+On Thu, Nov 21, 2019 at 3:42 PM Joubert Berger
+<joubert@berger-family.org> wrote:
+>
+> I have been playing around with Ilya's xdpbridge sample.  In my case, wha=
+t I am interested in is pushing all UDP traffic to userspace.  All other tr=
+affic can flow through my box.  So, I setup something like this:
+>
+> eth0 --> br0 --> eth1
+>
+> I then capture all packets on eth0/eth1 and return XDP_PASS for all but  =
+UDP packets.  These I redirect it to the user space application. There I se=
+t the UDP checksum to zero, that way I know it hit my code and then send it=
+ to "other" interface.
+>
+> The problem is that not *all* my UDP traffic has the checksum set to zero=
+.  Anyone have any ideas why that might be the case?  Why is only some of t=
+he UDP traffic being pushed to user space?
+>
+> --joubert
+>
