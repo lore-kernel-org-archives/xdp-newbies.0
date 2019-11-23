@@ -1,36 +1,45 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:52507 "EHLO
-        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1730803AbfKVK62 (ORCPT
+Received: from us-smtp-2.mimecast.com ([207.211.31.81]:38050 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726451AbfKWN1z (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 22 Nov 2019 05:58:28 -0500
-Received: by mail-lf1-f70.google.com with SMTP id o140so1688508lff.18
-        for <xdp-newbies@vger.kernel.org>; Fri, 22 Nov 2019 02:58:26 -0800 (PST)
-From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <thoiland@redhat.com>
-Subject: Re: Access Hardware Timestamp in eBPF Program
-In-Reply-To: <20191121231636.GA5888@DEV.igk.intel.com>
-References: <ce15150c-01e4-5621-0d13-ebe0f7cd2333@web.de> <20191121231636.GA5888@DEV.igk.intel.com>
-Date: Fri, 22 Nov 2019 11:58:23 +0100
-Message-ID: <87imnc5ga8.fsf@toke.dk>
+        Sat, 23 Nov 2019 08:27:55 -0500
+Received: by mail-lf1-f72.google.com with SMTP id t28so2385711lfq.6
+        for <xdp-newbies@vger.kernel.org>; Sat, 23 Nov 2019 05:27:51 -0800 (PST)
+From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Subject: Re: error loading xdp program on virtio nic
+In-Reply-To: <1fc9364a-ab96-e085-1fc5-9ed29f43f815@gmail.com>
+References: <c484126f-c156-2a17-b47d-06d08121c38b@gmail.com> <89f56317-5955-e692-fcf0-ee876aae068b@redhat.com> <3dc7b9d8-bcb2-1a90-630e-681cbf0f1ace@gmail.com> <18659bd0-432e-f317-fa8a-b5670a91c5b9@redhat.com> <f7b8df14-ef7f-be76-a990-b9d71139bcaa@gmail.com> <20191121072625.3573368f@carbon> <4686849f-f3b8-dd1d-0fe4-3c176a37b67a@redhat.com> <df4ae5e7-3f79-fd28-ea2e-43612ff61e6f@gmail.com> <f7b19bae-a9cf-d4bf-7eee-bfe644d87946@redhat.com> <8324a37e-5507-2ae6-53f6-949c842537e0@gmail.com> <20191122175749.47728e42@carbon> <1fc9364a-ab96-e085-1fc5-9ed29f43f815@gmail.com>
+Date: Sat, 23 Nov 2019 14:27:48 +0100
+Message-ID: <87k17q3ep7.fsf@toke.dk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=WINDOWS-1252
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 Content-Transfer-Encoding: 8bit
-To: Piotr Raczynski <piotr.raczynski@intel.com>, Christoph Kuhr <christoph.kuhr@web.de>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+To: David Ahern <dsahern@gmail.com>, Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: Jason Wang <jasowang@redhat.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-Piotr Raczynski <piotr.raczynski@intel.com> writes:
+David Ahern <dsahern@gmail.com> writes:
 
->> Is there a way to access such timestamps in a XDP eBPF program?
+> On 11/22/19 9:57 AM, Jesper Dangaard Brouer wrote:
+>> Implementation wise, I would not add flags to xdp_buff / xdp_md.
+>> Instead I propose in[1] slide 46, that the verifier should detect the
+>> XDP features used by a BPF-prog.  If you XDP prog doesn't use e.g.
+>> XDP_TX, then you should be allowed to run it on a virtio_net device
+>> with less queue configured, right?
 >
-> Unfortunately, as of now there is no universal way for XDP programs,
-> even in native mode, to access information taken from hardware,
-> e.g. from Rx descriptor. Technically it would be possible, but there
-> are no interfaces now that would allow common scheme for different
-> drivers.
+> Thanks for the reference and yes, that is the goal: allow XDP in the
+> most use cases possible. e.g., Why limit XDP_DROP which requires no
+> resources because XDP_TX does not work?
+>
+> I agree a flag in the api is an ugly way to allow it. For the verifier
+> approach, you mean add an internal flag (e.g., bitmask of return codes)
+> that the program uses and the NIC driver can check at attach time?
 
-Adding this is on the TODO list, though:
-https://github.com/xdp-project/xdp-project/blob/master/xdp-project.org#metadata-available-to-programs
+Yes, that's more or less what we've discussed. With the actual set of
+flags, and the API for the driver (new ndo?) TBD. Suggestions welcome; I
+anticipate this is something Jesper and I need to circle back to soonish
+in any case (unless someone beats us to it!).
 
 -Toke
