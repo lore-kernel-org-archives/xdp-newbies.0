@@ -1,9 +1,9 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-2.mimecast.com ([205.139.110.61]:45504 "EHLO
+Received: from us-smtp-2.mimecast.com ([205.139.110.61]:33396 "EHLO
         us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726921AbfKYCmN (ORCPT
+        by vger.kernel.org with ESMTP id S1726895AbfKYCsb (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Sun, 24 Nov 2019 21:42:13 -0500
+        Sun, 24 Nov 2019 21:48:31 -0500
 Subject: Re: error loading xdp program on virtio nic
 References: <c484126f-c156-2a17-b47d-06d08121c38b@gmail.com>
  <89f56317-5955-e692-fcf0-ee876aae068b@redhat.com>
@@ -15,67 +15,44 @@ References: <c484126f-c156-2a17-b47d-06d08121c38b@gmail.com>
  <df4ae5e7-3f79-fd28-ea2e-43612ff61e6f@gmail.com>
  <f7b19bae-a9cf-d4bf-7eee-bfe644d87946@redhat.com>
  <8324a37e-5507-2ae6-53f6-949c842537e0@gmail.com>
- <20191122175749.47728e42@carbon>
 From: Jason Wang <jasowang@redhat.com>
-Message-ID: <6c55b35f-9ffe-c192-651c-f5ca3d02de52@redhat.com>
-Date: Mon, 25 Nov 2019 10:42:01 +0800
+Message-ID: <8041b387-5cfb-7a57-fc01-9be6967d8658@redhat.com>
+Date: Mon, 25 Nov 2019 10:48:19 +0800
 MIME-Version: 1.0
-In-Reply-To: <20191122175749.47728e42@carbon>
+In-Reply-To: <8324a37e-5507-2ae6-53f6-949c842537e0@gmail.com>
 Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
 Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: quoted-printable
-To: Jesper Dangaard Brouer <brouer@redhat.com>, David Ahern <dsahern@gmail.com>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: David Ahern <dsahern@gmail.com>, Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
 
-On 2019/11/23 =E4=B8=8A=E5=8D=8812:57, Jesper Dangaard Brouer wrote:
-> On Fri, 22 Nov 2019 08:43:50 -0700
-> David Ahern <dsahern@gmail.com> wrote:
->
->> On 11/21/19 11:09 PM, Jason Wang wrote:
->>>> Doubling the number of queues for each tap device adds overhead to the
->>>> hypervisor if you only want to allow XDP_DROP or XDP_DIRECT. Am I
->>>> understanding that correctly?
->>>
->>> Yes, but there's almost impossible to know whether or not XDP_TX will b=
-e
->>> used by the program. If we don't use per CPU TX queue, it must be
->>> serialized through locks, not sure it's worth try that (not by default,
->>> of course).
->>>   =20
->> This restriction is going to prevent use of XDP in VMs in general cloud
->> hosting environments. 2x vhost threads for vcpus is a non-starter.
+On 2019/11/22 =E4=B8=8B=E5=8D=8811:43, David Ahern wrote:
+> On 11/21/19 11:09 PM, Jason Wang wrote:
+>>> Doubling the number of queues for each tap device adds overhead to the
+>>> hypervisor if you only want to allow XDP_DROP or XDP_DIRECT. Am I
+>>> understanding that correctly?
 >>
->> If one XDP feature has high resource needs, then we need to subdivide
->> the capabilities to let some work and others fail. For example, a flag
->> can be added to xdp_buff / xdp_md that indicates supported XDP features.
->> If there are insufficient resources for XDP_TX, do not show support for
->> it. If a program returns XDP_TX anyways, packets will be dropped.
+>> Yes, but there's almost impossible to know whether or not XDP_TX will be
+>> used by the program. If we don't use per CPU TX queue, it must be
+>> serialized through locks, not sure it's worth try that (not by default,
+>> of course).
 >>
-> This sounds like concrete use-case and solid argument why we need XDP
-> feature detection and checks. (Last part of LPC talk[1] were about
-> XDP features).
+> This restriction is going to prevent use of XDP in VMs in general cloud
+> hosting environments. 2x vhost threads for vcpus is a non-starter.
 >
-> An interesting perspective you bring up, is that XDP features are not
-> static per device driver.  It actually needs to be dynamic, as your
-> XDP_TX feature request depend on the queue resources available.
+> If one XDP feature has high resource needs, then we need to subdivide
+> the capabilities to let some work and others fail. For example, a flag
+> can be added to xdp_buff / xdp_md that indicates supported XDP features.
+> If there are insufficient resources for XDP_TX, do not show support for
+> it. If a program returns XDP_TX anyways, packets will be dropped.
 >
-> Implementation wise, I would not add flags to xdp_buff / xdp_md.
-> Instead I propose in[1] slide 46, that the verifier should detect the
-> XDP features used by a BPF-prog.  If you XDP prog doesn't use e.g.
-> XDP_TX, then you should be allowed to run it on a virtio_net device
-> with less queue configured, right?
 
-
-Yes, I think so. But I remember we used to have something like=20
-header_adjust in the past but finally removed ...
+Or we can just:
+- If queues is sufficient, using per-cpu TX queue
+- If not, synchronize through spinlocks (like what TAP did right now,=20
+since there's no easy way to have more queues on the fly)
 
 Thanks
-
-
->
->
-> [1] http://people.netfilter.org/hawk/presentations/LinuxPlumbers2019/xdp-=
-distro-view.pdf
