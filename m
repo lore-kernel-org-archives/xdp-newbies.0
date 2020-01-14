@@ -1,42 +1,63 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ot1-f46.google.com ([209.85.210.46]:35736 "EHLO
-        mail-ot1-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725820AbgANJ7b (ORCPT
+Received: from mail-qk1-f176.google.com ([209.85.222.176]:42813 "EHLO
+        mail-qk1-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728656AbgANUwj (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 14 Jan 2020 04:59:31 -0500
-Received: by mail-ot1-f46.google.com with SMTP id i15so12061066oto.2
-        for <xdp-newbies@vger.kernel.org>; Tue, 14 Jan 2020 01:59:30 -0800 (PST)
+        Tue, 14 Jan 2020 15:52:39 -0500
+Received: by mail-qk1-f176.google.com with SMTP id z14so13536142qkg.9
+        for <xdp-newbies@vger.kernel.org>; Tue, 14 Jan 2020 12:52:38 -0800 (PST)
+Received: from neptune.home ([206.174.180.53])
+        by smtp.gmail.com with ESMTPSA id t38sm8314020qta.78.2020.01.14.12.52.36
+        for <xdp-newbies@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 14 Jan 2020 12:52:36 -0800 (PST)
+Message-ID: <242dfd7986c0d382f80462f5ce0cbe8a69fac2cd.camel@coverfire.com>
+Subject: AF_XDP with Rust
+From: dan@coverfire.com
+Date: Tue, 14 Jan 2020 15:52:35 -0500
 MIME-Version: 1.0
-References: <14f9e1bf5c3a41dbaec53f83cb5f0564@isi.edu> <CAJ8uoz1FcfDYa1PaQuY-Yk+keEX5FT6+q2H2eLTce6DxcQjuiA@mail.gmail.com>
- <20200113151159.GB68570@smtp.ads.isi.edu>
-In-Reply-To: <20200113151159.GB68570@smtp.ads.isi.edu>
-From: Magnus Karlsson <magnus.karlsson@gmail.com>
-Date: Tue, 14 Jan 2020 10:59:19 +0100
-Message-ID: <CAJ8uoz1Ax5CAfO4wfo0Pj+jieeRN+gj0s2LpeeJ53uTorFP0ng@mail.gmail.com>
-Subject: Re: zero-copy between interfaces
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-To: Ryan Goodfellow <rgoodfel@isi.edu>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+To: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-On Mon, Jan 13, 2020 at 4:12 PM Ryan Goodfellow <rgoodfel@isi.edu> wrote:
->
-> On Mon, Jan 13, 2020 at 10:16:47AM +0100, Magnus Karlsson wrote:
-> > Thanks for taking XDP and AF_XDP for a sping. I will start by fixing
-> > this out-of-memory issue. With your umem size, we are hitting the size
-> > limit of kmalloc. I will fix this by using kvmalloc that tries to
-> > allocate with vmalloc if kmalloc fails. Should hopefully make it
-> > possible for you to allocate larger umems.
-> >
->
-> Thanks!
+https://github.com/aterlo/afxdp-rs
 
-Just sent out a patch on the mailing list. Would be great if you could
-try it out.
+afxdp-rs provides a Rust interface to AF_XDP. The docs.rs build is
+broken right now but at high level this provides:
+- Mem mapped area
+- Umem (completion queue and fill queue)
+- AF_XDP sockets (Tx/Rx, Tx-only, Rx-only)
+- Buf (to represent a packet). Templated to allow user customization.
+- BufPool to manage Bufs (this doesn't do much in the sample programs
+but is useful in more complicated scenarios)
+- 1 link and 2 link forwarding examples
 
-/Magnus
+Performance
 
-> --
-> ~ ry
+Test System:
+
+* Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz
+* Single X710 (4 physical 10G ports) (i40e)
+* Kernel: 5.4.2-300.fc31.x86_64
+* Kernel boot args: skew_tick=1 mitigations=off selinux=0 isolcpus=4-27 
+nohz_full=4-27 rcu_nobcs=4-27 default_hugepagesz=1G hugepagesz=1G
+hugepages=4
+
+Traffic Generator:
+
+* Intel(R) Core(TM) i7-7700 CPU @ 3.60GHz
+* Single X710 (4 physical 10G ports) (i40e)
+* Traffic goes from one port, through test system and to second port on
+the same X710
+* T-Rex traffic generator (https://trex-tgn.cisco.com/) (DPDK)
+* 64-byte UDP packets
+
+Scenario 1: l2fwd-2link on a single core running userspace and NAPI
+
+Small amounts of packet loss start at about 6.5M packets-per-second
+(PPS) unidirectional and 6.0M PPS bi-directional (3M each direction).
+
+Little effort has been put into optimizing this so I expect there are
+some easy performance wins still.
