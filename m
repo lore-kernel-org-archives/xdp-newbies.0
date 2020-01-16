@@ -1,349 +1,182 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mga04.intel.com ([192.55.52.120]:63734 "EHLO mga04.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726329AbgAPJcL (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 16 Jan 2020 04:32:11 -0500
-Date: Thu, 16 Jan 2020 03:24:59 +0100
-From: Maciej Fijalkowski <maciej.fijalkowski@intel.com>
-Subject: Re: XDP invalid memory access
-Message-ID: <20200116022459.GA2853@ranger.igk.intel.com>
-References: <CAK86TEf+GY3F8resRW11DNvate5uqSsh=JAQuJHhBuL0sQpvjg@mail.gmail.com>
+Received: from mail-oi1-f195.google.com ([209.85.167.195]:45590 "EHLO
+        mail-oi1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726084AbgAPOdD (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Thu, 16 Jan 2020 09:33:03 -0500
+Received: by mail-oi1-f195.google.com with SMTP id n16so19008679oie.12
+        for <xdp-newbies@vger.kernel.org>; Thu, 16 Jan 2020 06:33:03 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <CAK86TEf+GY3F8resRW11DNvate5uqSsh=JAQuJHhBuL0sQpvjg@mail.gmail.com>
+References: <14f9e1bf5c3a41dbaec53f83cb5f0564@isi.edu> <CAJ8uoz1FcfDYa1PaQuY-Yk+keEX5FT6+q2H2eLTce6DxcQjuiA@mail.gmail.com>
+ <20200113151159.GB68570@smtp.ads.isi.edu> <CAJ8uoz1Ax5CAfO4wfo0Pj+jieeRN+gj0s2LpeeJ53uTorFP0ng@mail.gmail.com>
+ <20200114205250.GA85903@smtp.ads.isi.edu> <20200115014137.GA105434@smtp.ads.isi.edu>
+ <CAJ8uoz2VTXAT9ryF9Ls2JjacEw0Bc23t9w2jDEoMdA0dRc6Aaw@mail.gmail.com>
+ <CAJ8uoz1Nf+Fsg40tfdnMenFiCjRBJN9maY9rVo--trt+Uwkqwg@mail.gmail.com> <20200116020414.GA46831@smtp.ads.isi.edu>
+In-Reply-To: <20200116020414.GA46831@smtp.ads.isi.edu>
+From: Magnus Karlsson <magnus.karlsson@gmail.com>
+Date: Thu, 16 Jan 2020 15:32:51 +0100
+Message-ID: <CAJ8uoz2WqQMVVu8F9JPBc2-Z=yvkg_9LH6cycxtYvJhJ4ytWJQ@mail.gmail.com>
+Subject: Re: zero-copy between interfaces
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
-To: Vincent Li <mchun.li@gmail.com>
-Cc: xdp-newbies@vger.kernel.org, daniel@iogearbox.net, andriin@fb.com, dsahern@gmail.com
+To: Ryan Goodfellow <rgoodfel@isi.edu>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-On Wed, Jan 15, 2020 at 02:11:04PM -0800, Vincent Li wrote:
-> Hi,
->=20
-> I am writing a sample XDP program to parse tcp packet options, code
-> below, compiled ok, when I attach it to a network interface
->=20
-> #clang -O2 -emit-llvm -c tcp_option.c -o - |llc -march=3Dbpf
-> -filetype=3Dobj -o tcp_option.o
->=20
->=20
-> # ip link set dev enp3s0 xdpgeneric object tcp_option.o verbose
->=20
->=20
-> Prog section 'prog' rejected: Permission denied (13)!
->=20
->  - Type:         6
->=20
->  - Instructions: 42 (0 over limit)
->=20
->  - License:      GPL
->=20
->=20
-> Verifier analysis:
->=20
->=20
-> 0: (61) r2 =3D *(u32 *)(r1 +4)
->=20
-> 1: (61) r1 =3D *(u32 *)(r1 +0)
->=20
-> 2: (bf) r3 =3D r1
->=20
-> 3: (07) r3 +=3D 54
->=20
-> 4: (b7) r0 =3D 2
->=20
-> 5: (2d) if r3 > r2 goto pc+35
->=20
->  R0_w=3Dinv2 R1_w=3Dpkt(id=3D0,off=3D0,r=3D54,imm=3D0)
-> R2_w=3Dpkt_end(id=3D0,off=3D0,imm=3D0) R3_w=3Dpkt(id=3D0,off=3D54,r=3D54,=
-imm=3D0)
-> R10=3Dfp0
->=20
-> 6: (71) r2 =3D *(u8 *)(r1 +12)
->=20
-> 7: (71) r3 =3D *(u8 *)(r1 +13)
->=20
-> 8: (67) r3 <<=3D 8
->=20
-> 9: (4f) r3 |=3D r2
->=20
-> 10: (b7) r0 =3D 2
->=20
-> 11: (55) if r3 !=3D 0x8 goto pc+29
->=20
->  R0_w=3Dinv2 R1_w=3Dpkt(id=3D0,off=3D0,r=3D54,imm=3D0)
-> R2_w=3Dinv(id=3D0,umax_value=3D255,var_off=3D(0x0; 0xff)) R3_w=3Dinv8 R10=
-=3Dfp0
->=20
-> 12: (71) r2 =3D *(u8 *)(r1 +23)
->=20
-> 13: (b7) r0 =3D 2
->=20
-> 14: (55) if r2 !=3D 0x6 goto pc+26
->=20
->  R0=3Dinv2 R1=3Dpkt(id=3D0,off=3D0,r=3D54,imm=3D0) R2=3Dinv6 R3=3Dinv8 R1=
-0=3Dfp0
->=20
-> 15: (69) r1 =3D *(u16 *)(r1 +46)
->=20
-> 16: (bf) r2 =3D r1
->=20
-> 17: (57) r2 &=3D 7936
->=20
-> 18: (b7) r0 =3D 2
->=20
-> 19: (55) if r2 !=3D 0x200 goto pc+21
->=20
->  R0_w=3Dinv2 R1_w=3Dinv(id=3D0,umax_value=3D65535,var_off=3D(0x0; 0xffff)=
+On Thu, Jan 16, 2020 at 3:04 AM Ryan Goodfellow <rgoodfel@isi.edu> wrote:
+>
+> On Wed, Jan 15, 2020 at 09:20:30AM +0100, Magnus Karlsson wrote:
+> > On Wed, Jan 15, 2020 at 8:40 AM Magnus Karlsson
+> > <magnus.karlsson@gmail.com> wrote:
+> > >
+> > > On Wed, Jan 15, 2020 at 2:41 AM Ryan Goodfellow <rgoodfel@isi.edu> wr=
+ote:
+> > > >
+> > > > On Tue, Jan 14, 2020 at 03:52:50PM -0500, Ryan Goodfellow wrote:
+> > > > > On Tue, Jan 14, 2020 at 10:59:19AM +0100, Magnus Karlsson wrote:
+> > > > > >
+> > > > > > Just sent out a patch on the mailing list. Would be great if yo=
+u could
+> > > > > > try it out.
+> > > > >
+> > > > > Thanks for the quick turnaround. I gave this patch a go, both in =
+the bpf-next
+> > > > > tree and manually applied to the 5.5.0-rc3 branch I've been worki=
+ng with up to
+> > > > > this point. It does allow for allocating more memory, however pac=
+ket
+> > > > > forwarding no longer works. I did not see any complaints from dme=
+sg, but here
+> > > > > is an example iperf3 session from a client that worked before.
+> > > > >
+> > > > > ry@xd2:~$ iperf3 -c 10.1.0.2
+> > > > > Connecting to host 10.1.0.2, port 5201
+> > > > > [  5] local 10.1.0.1 port 53304 connected to 10.1.0.2 port 5201
+> > > > > [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+> > > > > [  5]   0.00-1.00   sec  5.91 MBytes  49.5 Mbits/sec    2   1.41 =
+KBytes
+> > > > > [  5]   1.00-2.00   sec  0.00 Bytes  0.00 bits/sec    1   1.41 KB=
+ytes
+> > > > > [  5]   2.00-3.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KB=
+ytes
+> > > > > [  5]   3.00-4.00   sec  0.00 Bytes  0.00 bits/sec    1   1.41 KB=
+ytes
+> > > > > [  5]   4.00-5.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KB=
+ytes
+> > > > > [  5]   5.00-6.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KB=
+ytes
+> > > > > [  5]   6.00-7.00   sec  0.00 Bytes  0.00 bits/sec    1   1.41 KB=
+ytes
+> > > > > [  5]   7.00-8.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KB=
+ytes
+> > > > > [  5]   8.00-9.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KB=
+ytes
+> > > > > ^C[  5]  10.00-139.77 sec  0.00 Bytes  0.00 bits/sec    4   1.41 =
+KBytes
+> > > > > - - - - - - - - - - - - - - - - - - - - - - - - -
+> > > > > [ ID] Interval           Transfer     Bitrate         Retr
+> > > > > [  5]   0.00-139.77 sec  5.91 MBytes   355 Kbits/sec    9        =
+     sender
+> > > > > [  5]   0.00-139.77 sec  0.00 Bytes  0.00 bits/sec               =
+   receiver
+> > > > > iperf3: interrupt - the client has terminated
+> > > > >
+> > > > > I'll continue to investigate and report back with anything that I=
+ find.
+> > > >
+> > > > Interestingly I found this behavior to exist in the bpf-next tree i=
+ndependent
+> > > > of the patch being present.
+> > >
+> > > Ryan,
+> > >
+> > > Could you please do a bisect on it? In the 12 commits after the merge
+> > > commit below there are number of sensitive rewrites of the ring acces=
+s
+> > > functions. Maybe one of them breaks your code. When you say "packet
+> > > forwarding no longer works", do you mean it works for a second or so,
+> > > then no packets come through? What HW are you using?
+> > >
+> > > commit ce3cec27933c069d2015a81e59b93eb656fe7ee4
+> > > Merge: 99cacdc 1d9cb1f
+> > > Author: Alexei Starovoitov <ast@kernel.org>
+> > > Date:   Fri Dec 20 16:00:10 2019 -0800
+> > >
+> > >     Merge branch 'xsk-cleanup'
+> > >
+> > >     Magnus Karlsson says:
+> > >
+> > >     =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> > >     This patch set cleans up the ring access functions of AF_XDP in h=
+ope
+> > >     that it will now be easier to understand and maintain. I used to =
+get a
+> > >     headache every time I looked at this code in order to really unde=
+rstand it,
+> > >     but now I do think it is a lot less painful.
+> > >     <snip>
+> > >
+> > > /Magnus
+> >
+> > I see that you have debug messages in your application. Could you
+> > please run with those on and send me the output so I can see where it
+> > stops. A bisect that pin-points what commit that breaks your program
+> > plus the debug output should hopefully send us on the right path for a
+> > fix.
+> >
+> > Thanks: Magnus
+> >
+>
+> Hi Magnus,
+>
+> I did a bisect starting from the head of the bpf-next tree (990bca1) down=
+ to
+> the first commit before the patch series you identified (df034c9). The re=
+sult
+> was identifying df0ae6f as the commit that causes the issue I am seeing.
+>
+> I've posted output from the program in debugging mode here
+>
+> - https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/19303=
+75
+
+Perfect. Thanks.
+
+> Yes, you are correct in that forwarding works for a brief period and then=
+ stops.
+> I've noticed that the number of packets that are forwarded is equal to th=
+e size
+> of the producer/consumer descriptor rings. I've posted two ping traces fr=
+om a
+> client ping that shows this.
+>
+> - https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/19303=
+76
+> - https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/19303=
+77
+>
+> I've also noticed that when the forwarding stops, the CPU usage for the p=
+roc
+> running the program is pegged, which is not the norm for this program as =
+it uses
+> a poll call with a timeout on the xsk fd.
+
+I will replicate your setup and try to reproduce it. Only have one
+port connected to my load generator now, but when I get into the
+office, I will connect two ports.
+
+In what loop does the execution get stuck when it hangs at 100% load?
+
+/Magnus
+
+> The hardware I am using is a Mellanox ConnectX4 2x100G card (MCX416A-CCAT=
 )
-> R2_w=3Dinv512 R3=3Dinv8 R10=3Dfp0
->=20
-> 20: (77) r1 >>=3D 2
->=20
-> 21: (57) r1 &=3D 60
->=20
-> 22: (07) r1 +=3D -20
->=20
-> 23: (18) r2 =3D 0x0
->=20
-> 25: (63) *(u32 *)(r2 +0) =3D r1
->=20
-> R2 invalid mem access 'inv' <----------------
-
-So it's not out of the bounds access but rather null dereference since r2
-has been loaded with 0 on previous insn.
-
->=20
-> processed 25 insns (limit 1000000) max_states_per_insn 0 total_states
-> 1 peak_states 1 mark_read 1
->=20
->=20
-> it appears optlen =3D tcphdr->doff*4 - sizeof(*tcphdr); is invalid ? if
-> I comment out lines between 60 and 73, no problem with invalid mem
-> access
-
-I see that optlen is a global variable. This line might be valid but
-you're using iproute2's loader for your XDP program, right? AFAIK it
-doesn't have support for BPF global variables, only libbpf does (Daniel,
-Andrii? is that true?).
-
-So you have to either make the optlen a local variable or go with writing
-the loader part that is based on libbpf usage (see samples/bpf directory
-in kernel tree, for example xdp1_user.c).
-
-Could you next time try a little better with the format of data you're
-providing? I'm pretty sure other folks would have spotted earlier that
-optlen is global if the code was properly formatted :)
-
-To wrap this rant up, making optlen a local var does the job for me.
-
->=20
->=20
->=20
->=20
->=20
->      1 #include <stdint.h>
->=20
->      2 #include <arpa/inet.h>
->=20
->      3 #include <asm/byteorder.h>
->=20
->      4 #include <linux/bpf.h>
->=20
->      5 #include <linux/if_ether.h>
->=20
->      6 #include <linux/ip.h>
->=20
->      7 #include <linux/tcp.h>
->=20
->      8 #include <linux/pkt_cls.h>
->=20
->      9
->=20
->     10 /*
->=20
->     11 * Sample XDP to parse tcp option.
->=20
->     12 * compile it with:
->=20
->     13 *      clang -O2 -emit-llvm -c tcp_option.c -o - |llc
-> -march=3Dbpf -filetype=3Dobj -o tcp_option.o
->=20
->     14  * attach it to a device with XDP as:
->=20
->     15  *  ip link set dev lo xdp object tcp_option.o verbose
->=20
->     16 */
->=20
->     17
->=20
->     18 #define SEC(NAME) __attribute__((section(NAME), used))
->=20
->     19
->=20
->     20 #define TCPOPT_EOL        0       /* End of options (1)           =
-   */
->=20
->     21 #define TCPOPT_NOP        1       /* No-op (1)                    =
-   */
->=20
->     22 #define TCPOPT_MAXSEG     2       /* Maximum segment size (4)     =
-   */
->=20
->     23 #define TCPOPT_WSCALE     3       /* Window scaling (3)           =
-   */
->=20
->     24 #define TCPOPT_SACKOK     4       /* Selective ACK permitted (2)  =
-   */
->=20
->     25 #define TCPOPT_SACK       5       /* Actual selective ACK (10-34) =
-   */
->=20
->     26 #define TCPOPT_TSTAMP     8       /* Timestamp (10)               =
-   */
->=20
->     27
->=20
->     28
->=20
->     29 /* from bpf_helpers.h */
->=20
->     30
->=20
->     31 static int (*bpf_trace_printk)(const char *fmt, int fmt_size, ...)=
- =3D
->=20
->     32         (void *) BPF_FUNC_trace_printk;
->=20
->     33
->=20
->     34 static unsigned long long (*bpf_get_prandom_u32)(void) =3D
->=20
->     35 (void *) BPF_FUNC_get_prandom_u32;
->=20
->     36
->=20
->     37 const __u8 *op;
->=20
->     38 int i, optlen;
->=20
->     39
->=20
->     40 static int tcp_option(void *data, void *data_end)
->=20
->     41 {
->=20
->     42 struct ethhdr *eth =3D (struct ethhdr *)data;
->=20
->     43 struct iphdr *iph =3D (struct iphdr *)(eth + 1);
->=20
->     44 struct tcphdr *tcphdr =3D (struct tcphdr *)(iph + 1);
->=20
->     45 int tcplen;
->=20
->     46
->=20
->     47 /* sanity check needed by the eBPF verifier */
->=20
->     48 if ((void *)(tcphdr + 1) > data_end)
->=20
->     49 return 0;
->=20
->     50
->=20
->     51 /* skip non TCP packets */
->=20
->     52 if (eth->h_proto !=3D __constant_htons(ETH_P_IP) || iph->protocol
-> !=3D IPPROTO_TCP)
->=20
->     53 return 0;
->=20
->     54
->=20
->     55 /* incompatible flags, or PSH already set */
->=20
->     56 if (tcphdr->ack || tcphdr->fin || tcphdr->rst || tcphdr->psh)
->=20
->     57 return 0;
->=20
->     58
->=20
->     59 if (tcphdr->syn) {
->=20
->     60 optlen =3D tcphdr->doff*4 - sizeof(*tcphdr);
->=20
->     61                 if (!optlen)
->=20
->     62                       return -1;
->=20
->     63 /*
->=20
->     64                 for (i =3D 0; i < optlen; ) {
->=20
->     65                         if (op[i] =3D=3D TCPOPT_EOL) {
->=20
->     66                  char fmt[] =3D "XDP: tcp opt eol kind seen %d \n"=
-;
->=20
->     67                  bpf_trace_printk(fmt, sizeof(fmt), op[i]);
->=20
->     68 }
->=20
->     69                         if (op[i] < 2)
->=20
->     70                                 i++;
->=20
->     71                         else
->=20
->     72                                 i +=3D op[i+1] ? : 1;
->=20
->     73                 }
->=20
->     74 */
->=20
->     75
->=20
->     76                char fmt[] =3D "XDP: tcp syn seen \n";
->=20
->     77                bpf_trace_printk(fmt, sizeof(fmt));
->=20
->     78
->=20
->     79 }
->=20
->     80
->=20
->     81 return 0;
->=20
->     82 }
->=20
->     83
->=20
->     84 SEC("prog")
->=20
->     85 int xdp_main(struct xdp_md *ctx)
->=20
->     86 {
->=20
->     87 void *data_end =3D (void *)(uintptr_t)ctx->data_end;
->=20
->     88 void *data =3D (void *)(uintptr_t)ctx->data;
->=20
->     89
->=20
->     90 if (tcp_option(data, data_end))
->=20
->     91 return XDP_DROP;
->=20
->     92
->=20
->     93 return XDP_PASS;
->=20
->     94 }
->=20
->     95
->=20
->     96
->=20
->     97 char _license[] SEC("license") =3D "GPL";
+> running the mlx5 driver. The program is running in zero copy mode. I also=
+ tested
+> this code out in a virtual machine with virtio NICs in SKB mode which use=
+s
+> xdpgeneric - there were no issues in that setting.
+>
+> --
+> ~ ry
