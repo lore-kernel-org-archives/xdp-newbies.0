@@ -1,142 +1,152 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-1.mimecast.com ([207.211.31.81]:28433 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1731650AbgAPJpm (ORCPT
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:45542 "EHLO
+        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387569AbgAPTGk (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 16 Jan 2020 04:45:42 -0500
-Received: by mail-lf1-f71.google.com with SMTP id 6so3760746lfj.17
-        for <xdp-newbies@vger.kernel.org>; Thu, 16 Jan 2020 01:45:39 -0800 (PST)
-From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+        Thu, 16 Jan 2020 14:06:40 -0500
+Received: by mail-pl1-f194.google.com with SMTP id b22so8714819pls.12
+        for <xdp-newbies@vger.kernel.org>; Thu, 16 Jan 2020 11:06:39 -0800 (PST)
+From: Vincent Li <mchun.li@gmail.com>
+Date: Thu, 16 Jan 2020 11:06:35 -0800 (PST)
 Subject: Re: XDP invalid memory access
-In-Reply-To: <20200116022459.GA2853@ranger.igk.intel.com>
-References: <CAK86TEf+GY3F8resRW11DNvate5uqSsh=JAQuJHhBuL0sQpvjg@mail.gmail.com> <20200116022459.GA2853@ranger.igk.intel.com>
-Date: Thu, 16 Jan 2020 10:45:36 +0100
-Message-ID: <87y2u7spj3.fsf@toke.dk>
+In-Reply-To: <87y2u7spj3.fsf@toke.dk>
+Message-ID: <alpine.OSX.2.21.2001161059220.5400@jiadeimac.local>
+References: <CAK86TEf+GY3F8resRW11DNvate5uqSsh=JAQuJHhBuL0sQpvjg@mail.gmail.com> <20200116022459.GA2853@ranger.igk.intel.com> <87y2u7spj3.fsf@toke.dk>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/mixed; boundary="0-781027806-1579201596=:5400"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Maciej Fijalkowski <maciej.fijalkowski@intel.com>, Vincent Li <mchun.li@gmail.com>
-Cc: xdp-newbies@vger.kernel.org, daniel@iogearbox.net, andriin@fb.com, dsahern@gmail.com
+To: =?ISO-8859-15?Q?Toke_H=F8iland-J=F8rgensen?= <toke@redhat.com>
+Cc: Maciej Fijalkowski <maciej.fijalkowski@intel.com>, Vincent Li <mchun.li@gmail.com>, xdp-newbies@vger.kernel.org, daniel@iogearbox.net, andriin@fb.com, dsahern@gmail.com
 
-Maciej Fijalkowski <maciej.fijalkowski@intel.com> writes:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> On Wed, Jan 15, 2020 at 02:11:04PM -0800, Vincent Li wrote:
->> Hi,
->> 
->> I am writing a sample XDP program to parse tcp packet options, code
->> below, compiled ok, when I attach it to a network interface
->> 
->> #clang -O2 -emit-llvm -c tcp_option.c -o - |llc -march=bpf
->> -filetype=obj -o tcp_option.o
->> 
->> 
->> # ip link set dev enp3s0 xdpgeneric object tcp_option.o verbose
->> 
->> 
->> Prog section 'prog' rejected: Permission denied (13)!
->> 
->>  - Type:         6
->> 
->>  - Instructions: 42 (0 over limit)
->> 
->>  - License:      GPL
->> 
->> 
->> Verifier analysis:
->> 
->> 
->> 0: (61) r2 = *(u32 *)(r1 +4)
->> 
->> 1: (61) r1 = *(u32 *)(r1 +0)
->> 
->> 2: (bf) r3 = r1
->> 
->> 3: (07) r3 += 54
->> 
->> 4: (b7) r0 = 2
->> 
->> 5: (2d) if r3 > r2 goto pc+35
->> 
->>  R0_w=inv2 R1_w=pkt(id=0,off=0,r=54,imm=0)
->> R2_w=pkt_end(id=0,off=0,imm=0) R3_w=pkt(id=0,off=54,r=54,imm=0)
->> R10=fp0
->> 
->> 6: (71) r2 = *(u8 *)(r1 +12)
->> 
->> 7: (71) r3 = *(u8 *)(r1 +13)
->> 
->> 8: (67) r3 <<= 8
->> 
->> 9: (4f) r3 |= r2
->> 
->> 10: (b7) r0 = 2
->> 
->> 11: (55) if r3 != 0x8 goto pc+29
->> 
->>  R0_w=inv2 R1_w=pkt(id=0,off=0,r=54,imm=0)
->> R2_w=inv(id=0,umax_value=255,var_off=(0x0; 0xff)) R3_w=inv8 R10=fp0
->> 
->> 12: (71) r2 = *(u8 *)(r1 +23)
->> 
->> 13: (b7) r0 = 2
->> 
->> 14: (55) if r2 != 0x6 goto pc+26
->> 
->>  R0=inv2 R1=pkt(id=0,off=0,r=54,imm=0) R2=inv6 R3=inv8 R10=fp0
->> 
->> 15: (69) r1 = *(u16 *)(r1 +46)
->> 
->> 16: (bf) r2 = r1
->> 
->> 17: (57) r2 &= 7936
->> 
->> 18: (b7) r0 = 2
->> 
->> 19: (55) if r2 != 0x200 goto pc+21
->> 
->>  R0_w=inv2 R1_w=inv(id=0,umax_value=65535,var_off=(0x0; 0xffff))
->> R2_w=inv512 R3=inv8 R10=fp0
->> 
->> 20: (77) r1 >>= 2
->> 
->> 21: (57) r1 &= 60
->> 
->> 22: (07) r1 += -20
->> 
->> 23: (18) r2 = 0x0
->> 
->> 25: (63) *(u32 *)(r2 +0) = r1
->> 
->> R2 invalid mem access 'inv' <----------------
->
-> So it's not out of the bounds access but rather null dereference since r2
-> has been loaded with 0 on previous insn.
->
->> 
->> processed 25 insns (limit 1000000) max_states_per_insn 0 total_states
->> 1 peak_states 1 mark_read 1
->> 
->> 
->> it appears optlen = tcphdr->doff*4 - sizeof(*tcphdr); is invalid ? if
->> I comment out lines between 60 and 73, no problem with invalid mem
->> access
->
-> I see that optlen is a global variable. This line might be valid but
-> you're using iproute2's loader for your XDP program, right? AFAIK it
-> doesn't have support for BPF global variables, only libbpf does (Daniel,
-> Andrii? is that true?).
+--0-781027806-1579201596=:5400
+Content-Type: text/plain; charset=ISO-8859-15
+Content-Transfer-Encoding: 8BIT
 
-Yes, this is true. Converting the iproute2 loader is still on my todo list...
 
-> So you have to either make the optlen a local variable or go with writing
-> the loader part that is based on libbpf usage (see samples/bpf directory
-> in kernel tree, for example xdp1_user.c).
 
-You could also try the xdp-loader in xdp-tools:
-https://github.com/xdp-project/xdp-tools
+On Thu, 16 Jan 2020, Toke Høiland-Jørgensen wrote:
 
-It's somewhat basic still, but should be able to at least load a basic
-program - please file a bug report if it fails.
+Hi Toke,
 
--Toke
+> 
+> You could also try the xdp-loader in xdp-tools:
+> https://github.com/xdp-project/xdp-tools
+> 
+> It's somewhat basic still, but should be able to at least load a basic
+> program - please file a bug report if it fails.
+
+I tried the xdp-tools xdp-loader, when the optlen is global variable, I 
+got:
+# xdp-loader load enp3s0 tcp_option.o
+Couldn't load BPF program: Relocation failed
+
+if I move the optlen, i variable to local variable, I got:
+
+# xdp-loader load enp3s0 tcp_option.o
+Couldn't load eBPF object: Invalid argument(-22)
+
+Here is the complete code:
+
+#include <stdint.h>
+#include <arpa/inet.h>
+#include <asm/byteorder.h>
+#include <linux/bpf.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <linux/pkt_cls.h>
+
+/*
+ * Sample XDP to parse tcp option.
+ * compile it with:
+ * clang -O2 -emit-llvm -c tcp_option.c -o - |llc -march=bpf -filetype=obj -o tcp_option.o
+ * attach it to a device with XDP as:
+ * 	ip link set dev lo xdp object tcp_option.o verbose
+ */
+
+#define SEC(NAME) __attribute__((section(NAME), used))
+
+#define TCPOPT_EOL        0       /* End of options (1)              */
+#define TCPOPT_NOP        1       /* No-op (1)                       */
+#define TCPOPT_MAXSEG     2       /* Maximum segment size (4)        */
+#define TCPOPT_WSCALE     3       /* Window scaling (3)              */
+#define TCPOPT_SACKOK     4       /* Selective ACK permitted (2)     */
+#define TCPOPT_SACK       5       /* Actual selective ACK (10-34)    */
+#define TCPOPT_TSTAMP     8       /* Timestamp (10)                  */
+
+
+/* from bpf_helpers.h */
+
+static int (*bpf_trace_printk)(const char *fmt, int fmt_size, ...) =
+(void *) BPF_FUNC_trace_printk;
+
+static unsigned long long (*bpf_get_prandom_u32)(void) =
+(void *) BPF_FUNC_get_prandom_u32;
+
+
+static int tcp_option(void *data, void *data_end)
+{
+	struct ethhdr *eth = (struct ethhdr *)data;
+	struct iphdr *iph = (struct iphdr *)(eth + 1);
+	struct tcphdr *tcphdr = (struct tcphdr *)(iph + 1);
+	const __u8 *op;
+	int i, optlen;
+
+	/* sanity check needed by the eBPF verifier */
+	if ((void *)(tcphdr + 1)  > data_end)
+		return 0;
+
+	/* skip non TCP packets */
+	if (eth->h_proto != __constant_htons(ETH_P_IP) || iph->protocol != IPPROTO_TCP)
+		return 0;
+
+	/* incompatible flags, or PSH already set */
+	if (tcphdr->ack || tcphdr->fin || tcphdr->rst || tcphdr->psh)
+		return 0;
+
+	if (tcphdr->syn) {
+		if (((void *)(tcphdr + 1) + tcphdr->doff*4) > data_end)
+			return 0;
+
+		optlen = tcphdr->doff*4 - sizeof(*tcphdr);
+		for (i = 0; i < optlen; ) {
+			if (op[i] == TCPOPT_EOL ) {
+				char fmt[] = "XDP: tcp source : %d tcp option eol\n";
+				bpf_trace_printk(fmt, sizeof(fmt), (int)tcphdr->source);
+				return 1;
+			}
+			if (op[i] < 2)
+				i++;
+			else
+				i += op[i+1] ? : 1;
+		}
+#if 0
+		if (tcphdr->doff*4 == 44 || tcphdr->doff*4 == 28) {
+			char fmt[] = "XDP: tcp source : %d data offset :%d\n";
+			bpf_trace_printk(fmt, sizeof(fmt), (int)tcphdr->source, (int)tcphdr->doff*4);
+			return 1;
+		}
+#endif
+	}
+	return 0;
+}
+
+SEC("prog")
+int xdp_main(struct xdp_md *ctx)
+{
+	void *data_end = (void *)(uintptr_t)ctx->data_end;
+	void *data = (void *)(uintptr_t)ctx->data;
+
+	if (tcp_option(data, data_end))
+		return XDP_DROP;
+
+	return XDP_PASS;
+}
+
+
+char _license[] SEC("license") = "GPL";
+--0-781027806-1579201596=:5400--
