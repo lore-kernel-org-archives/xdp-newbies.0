@@ -1,99 +1,133 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-2.mimecast.com ([205.139.110.61]:39975 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726343AbgAQLHI (ORCPT
+Received: from mail-c.ads.isi.edu ([128.9.180.198]:16697 "EHLO
+        mail-c.ads.isi.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726684AbgAQRQk (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 17 Jan 2020 06:07:08 -0500
-Received: by mail-lj1-f200.google.com with SMTP id k21so6130141ljg.3
-        for <xdp-newbies@vger.kernel.org>; Fri, 17 Jan 2020 03:07:05 -0800 (PST)
-From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-Subject: Re: XDP invalid memory access
-In-Reply-To: <alpine.OSX.2.21.2001161059220.5400@jiadeimac.local>
-References: <CAK86TEf+GY3F8resRW11DNvate5uqSsh=JAQuJHhBuL0sQpvjg@mail.gmail.com> <20200116022459.GA2853@ranger.igk.intel.com> <87y2u7spj3.fsf@toke.dk> <alpine.OSX.2.21.2001161059220.5400@jiadeimac.local>
-Date: Fri, 17 Jan 2020 12:07:02 +0100
-Message-ID: <87blr2qr3d.fsf@toke.dk>
+        Fri, 17 Jan 2020 12:16:40 -0500
+Date: Fri, 17 Jan 2020 12:16:37 -0500
+From: Ryan Goodfellow <rgoodfel@isi.edu>
+Subject: Re: zero-copy between interfaces
+Message-ID: <20200117171637.GB69024@smtp.ads.isi.edu>
+References: <14f9e1bf5c3a41dbaec53f83cb5f0564@isi.edu>
+ <CAJ+HfNhdPEe34DVUAj4eHxLkBUSTo2CXbLHoWu+dwFCp753oMg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAJ+HfNhdPEe34DVUAj4eHxLkBUSTo2CXbLHoWu+dwFCp753oMg@mail.gmail.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
-To: Vincent Li <mchun.li@gmail.com>
-Cc: Maciej Fijalkowski <maciej.fijalkowski@intel.com>, xdp-newbies@vger.kernel.org, daniel@iogearbox.net, andriin@fb.com, dsahern@gmail.com
+To: =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@gmail.com>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, intel-wired-lan <intel-wired-lan@lists.osuosl.org>, Magnus Karlsson <magnus.karlsson@gmail.com>, =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@intel.com>
 
-Vincent Li <mchun.li@gmail.com> writes:
+On Fri, Jan 17, 2020 at 01:32:07PM +0100, Björn Töpel wrote:
+> On Mon, 13 Jan 2020 at 01:28, Ryan Goodfellow <rgoodfel@isi.edu> wrote:
+> >
+> [...]
+> >
+> > I could not get zero-copy to work with the i40e driver as it would crash. I've
+> > attached the corresponding traces from dmesg.
+> 
+> Thanks Ryan! I had a look at the crash, and it's in the XDP setup:
+> 
+> i40e_xdp_setup:
+> ...
+>  for (i = 0; i < vsi->num_queue_pairs; i++)
+>      WRITE_ONCE(vsi->rx_rings[i]->xdp_prog, vsi->xdp_prog);
+> 
+> and the vsi->rx_ring[0] is NULL. This is clearly broken.
+> 
+> It would help with more lines from your dmesg: the cut i40e log hints
+> that something is really broken:
+> 
+> [  328.579154] i40e 0000:b7:00.2: failed to get tracking for 256
+> queues for VSI 0 err -12
+> [  328.579280] i40e 0000:b7:00.2: setup of MAIN VSI failed
+> [  328.579367] i40e 0000:b7:00.2: can't remove VEB 162 with 0 VSIs left
+> 
+> Is it possible to dig out the complete log?
 
-> On Thu, 16 Jan 2020, Toke HÃ¸iland-JÃ¸rgensen wrote:
->
-> Hi Toke,
->
->> 
->> You could also try the xdp-loader in xdp-tools:
->> https://github.com/xdp-project/xdp-tools
->> 
->> It's somewhat basic still, but should be able to at least load a basic
->> program - please file a bug report if it fails.
->
-> I tried the xdp-tools xdp-loader, when the optlen is global variable, I 
-> got:
-> # xdp-loader load enp3s0 tcp_option.o
-> Couldn't load BPF program: Relocation failed
->
-> if I move the optlen, i variable to local variable, I got:
->
-> # xdp-loader load enp3s0 tcp_option.o
-> Couldn't load eBPF object: Invalid argument(-22)
+Hi Björn,
 
-OK, I tried this, and there were a couple of issues:
+I've linked a full dmesg log from an XDP setup crash. Note that there are 
+two i40e cards on this machine. The X710 (0000:65:00.0, 0000:65:00.1) works 
+fine, the X722 (0000:b7:00.0, 0000:b7:00.1, 0000:b7:00.2, 0000:b7:00.3) is the
+one that is crashing on XDP setup.
 
-- The xdp-loader didn't set the BPF program type to XDP, and since your
-  section name doesn't have an xdp_ prefix libbpf couldn't auto-detect
-  it. I've pushed a fix for this to the xdp-tools repo so the loader
-  will always set the program type to XDP now.
+https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/1931080
 
-- There are a couple of bugs in your program:
+Some info that may be useful:
 
-First, when compiling with warnings turned on, I get this:
+ry@turbine:~$ sudo ethtool -i eno7
+driver: i40e
+version: 2.8.20-k
+firmware-version: 3.33 0x80001006 1.1747.0
+expansion-rom-version:
+bus-info: 0000:b7:00.2
+supports-statistics: yes
+supports-test: yes
+supports-eeprom-access: yes
+supports-register-dump: yes
+supports-priv-flags: yes
 
-tcp_options.c:64:29: error: variable 'op' is uninitialized when used here [-Werror,-Wuninitialized]
-                        if (op[i] == TCPOPT_EOL ) {
-                            ^~
-tcp_options.c:43:23: note: initialize the variable 'op' to silence this warning
-        const __u8 *op;
-                      ^
-                       = 0
+The firmware version 3.33 was the latest I could find as of a few weeks ago.
 
-after fixing that (adding this line after the optlen = assignment):
+ry@turbine:~$ sudo lspci -vvv | grep 722
+b7:00.0 Ethernet controller: Intel Corporation Ethernet Connection X722 for 10GBASE-T (rev 04)
+	DeviceName: Intel LAN X722 #1
+	Subsystem: Super Micro Computer Inc Ethernet Connection X722 for 10GBASE-T
+b7:00.1 Ethernet controller: Intel Corporation Ethernet Connection X722 for 10GBASE-T (rev 04)
+	DeviceName: Intel LAN X722 #2
+	Subsystem: Super Micro Computer Inc Ethernet Connection X722 for 10GBASE-T
+b7:00.2 Ethernet controller: Intel Corporation Ethernet Connection X722 for 10GbE SFP+ (rev 04)
+	DeviceName: Intel LAN X722 #3
+	Subsystem: Super Micro Computer Inc Ethernet Connection X722 for 10GbE SFP+
+b7:00.3 Ethernet controller: Intel Corporation Ethernet Connection X722 for 10GbE SFP+ (rev 04)
+	DeviceName: Intel LAN X722 #4
+	Subsystem: Super Micro Computer Inc Ethernet Connection X722 for 10GbE SFP+
 
-                op = (const __u8 *)(tcphdr + 1);
+ry@ryzen:~$ uname -a
+Linux ryzen 4.19.0-6-amd64 #1 SMP Debian 4.19.67-2+deb10u2 (2019-11-11) x86_64 GNU/Linux
 
-the verifier then complains about out-of-bounds reading of the packet
-data (pass -vv to xdp-loader to get the full debug output from libbpf).
-You are not checking that the op pointer doesn't read out-of-bounds.
+ry@turbine:~/kmoa/bpf-next$ git log -2
+commit 60d71397d27e7859fdaaaaab6594e4d977ae46e2 (HEAD -> master)
+Author: Ryan Goodfellow <rgoodfel@isi.edu>
+Date:   Wed Jan 15 16:54:39 2020 -0500
 
-I fixed that by adding a couple of bounds checks inside the for loop.
-The whole thing now looks like this:
+    add xdpsock_multidev sample program
 
-                optlen = tcphdr->doff*4 - sizeof(*tcphdr);
-                op = (const __u8 *)(tcphdr + 1);
-                for (i = 0; i < optlen; ) {
-                        if ((void *)op + i + 1 > data_end)
-                                return 0;
-                        if (op[i] == TCPOPT_EOL ) {
-                                char fmt[] = "XDP: tcp source : %d tcp option eol\n";
-                                bpf_trace_printk(fmt, sizeof(fmt), (int)tcphdr->source);
-                                return 1;
-                        }
-                        if (op[i] < 2)
-                                i++;
-                        else
-                                i += ((void *)op + 2 < data_end && op[i+1]) ? : 1;
-                }
+    This is a simple program that uses AF_XDP sockets to forward packets
+    between two interfaces using a common memory region and no copying of
+    packets.
 
+    Signed-off-by: Ryan Goodfellow <rgoodfel@isi.edu>
 
-With this, I can successfully load the program using xdp-loader. Turning
-the variables back into globals still doesn't work, but I think that
-error message should be fairly obvious:
+commit 9173cac3b64e6785dd604f5075e6035b045a0026 (origin/master, origin/HEAD)
+Author: Andrii Nakryiko <andriin@fb.com>
+Date:   Wed Jan 15 11:08:56 2020 -0800
 
-libbpf: invalid relo for 'op' in special section 0xfff2; forgot to initialize global var?..
+    libbpf: Support .text sub-calls relocations
 
--Toke
+    The LLVM patch https://reviews.llvm.org/D72197 makes LLVM emit function call
+    relocations within the same section. This includes a default .text section,
+    which contains any BPF sub-programs. This wasn't the case before and so libbpf
+    was able to get a way with slightly simpler handling of subprogram call
+    relocations.
+
+    This patch adds support for .text section relocations. It needs to ensure
+    correct order of relocations, so does two passes:
+    - first, relocate .text instructions, if there are any relocations in it;
+    - then process all the other programs and copy over patched .text instructions
+    for all sub-program calls.
+
+    v1->v2:
+    - break early once .text program is processed.
+
+    Signed-off-by: Andrii Nakryiko <andriin@fb.com>
+    Signed-off-by: Alexei Starovoitov <ast@kernel.org>
+    Acked-by: Yonghong Song <yhs@fb.com>
+    Cc: Alexei Starovoitov <ast@kernel.org>
+    Link: https://lore.kernel.org/bpf/20200115190856.2391325-1-andriin@fb.com
+
+-- 
+~ ry
