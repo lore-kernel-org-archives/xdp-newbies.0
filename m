@@ -1,78 +1,75 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-qt1-f196.google.com ([209.85.160.196]:45014 "EHLO
-        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726603AbgAQRlF (ORCPT
+Received: from mail-c.ads.isi.edu ([128.9.180.198]:29252 "EHLO
+        mail-c.ads.isi.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726603AbgAQRyM (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 17 Jan 2020 12:41:05 -0500
-Received: by mail-qt1-f196.google.com with SMTP id w8so7959247qts.11
-        for <xdp-newbies@vger.kernel.org>; Fri, 17 Jan 2020 09:41:04 -0800 (PST)
-MIME-Version: 1.0
-References: <14f9e1bf5c3a41dbaec53f83cb5f0564@isi.edu> <CAJ8uoz1FcfDYa1PaQuY-Yk+keEX5FT6+q2H2eLTce6DxcQjuiA@mail.gmail.com>
- <20200113151159.GB68570@smtp.ads.isi.edu> <CAJ8uoz1Ax5CAfO4wfo0Pj+jieeRN+gj0s2LpeeJ53uTorFP0ng@mail.gmail.com>
- <20200114205250.GA85903@smtp.ads.isi.edu>
-In-Reply-To: <20200114205250.GA85903@smtp.ads.isi.edu>
-From: William Tu <u9012063@gmail.com>
-Date: Fri, 17 Jan 2020 09:40:27 -0800
-Message-ID: <CALDO+SZZdA+te293-kjF_dSUo79D_Wn3Lv2ureB4SKUYVPFF+g@mail.gmail.com>
+        Fri, 17 Jan 2020 12:54:12 -0500
+Date: Fri, 17 Jan 2020 12:54:09 -0500
+From: Ryan Goodfellow <rgoodfel@isi.edu>
 Subject: Re: zero-copy between interfaces
+Message-ID: <20200117175409.GC69024@smtp.ads.isi.edu>
+References: <14f9e1bf5c3a41dbaec53f83cb5f0564@isi.edu>
+ <20200113124134.3974cbed@carbon>
+ <20200113152759.GD68570@smtp.ads.isi.edu>
+ <20200113180411.24d8bd40@carbon>
+MIME-Version: 1.0
+In-Reply-To: <20200113180411.24d8bd40@carbon>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=WINDOWS-1252
 Content-Transfer-Encoding: quoted-printable
-To: Ryan Goodfellow <rgoodfel@isi.edu>
-Cc: Magnus Karlsson <magnus.karlsson@gmail.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+Content-Disposition: inline
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-On Tue, Jan 14, 2020 at 12:53 PM Ryan Goodfellow <rgoodfel@isi.edu> wrote:
->
-> On Tue, Jan 14, 2020 at 10:59:19AM +0100, Magnus Karlsson wrote:
-> >
-> > Just sent out a patch on the mailing list. Would be great if you could
-> > try it out.
->
-> Thanks for the quick turnaround. I gave this patch a go, both in the bpf-=
-next
-> tree and manually applied to the 5.5.0-rc3 branch I've been working with =
-up to
-> this point. It does allow for allocating more memory, however packet
-> forwarding no longer works. I did not see any complaints from dmesg, but =
-here
-> is an example iperf3 session from a client that worked before.
->
-> ry@xd2:~$ iperf3 -c 10.1.0.2
-> Connecting to host 10.1.0.2, port 5201
-> [  5] local 10.1.0.1 port 53304 connected to 10.1.0.2 port 5201
-> [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
-> [  5]   0.00-1.00   sec  5.91 MBytes  49.5 Mbits/sec    2   1.41 KBytes
-> [  5]   1.00-2.00   sec  0.00 Bytes  0.00 bits/sec    1   1.41 KBytes
-> [  5]   2.00-3.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KBytes
-> [  5]   3.00-4.00   sec  0.00 Bytes  0.00 bits/sec    1   1.41 KBytes
-> [  5]   4.00-5.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KBytes
-> [  5]   5.00-6.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KBytes
-> [  5]   6.00-7.00   sec  0.00 Bytes  0.00 bits/sec    1   1.41 KBytes
-> [  5]   7.00-8.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KBytes
-> [  5]   8.00-9.00   sec  0.00 Bytes  0.00 bits/sec    0   1.41 KBytes
-> ^C[  5]  10.00-139.77 sec  0.00 Bytes  0.00 bits/sec    4   1.41 KBytes
-> - - - - - - - - - - - - - - - - - - - - - - - - -
-> [ ID] Interval           Transfer     Bitrate         Retr
-> [  5]   0.00-139.77 sec  5.91 MBytes   355 Kbits/sec    9             sen=
-der
-> [  5]   0.00-139.77 sec  0.00 Bytes  0.00 bits/sec                  recei=
-ver
-> iperf3: interrupt - the client has terminated
->
-> I'll continue to investigate and report back with anything that I find.
->
-Hi Ryan,
+On Mon, Jan 13, 2020 at 06:04:11PM +0100, Jesper Dangaard Brouer wrote:
+> On Mon, 13 Jan 2020 10:28:00 -0500
+> Ryan Goodfellow <rgoodfel@isi.edu> wrote:
+>=20
+> > On Mon, Jan 13, 2020 at 12:41:34PM +0100, Jesper Dangaard Brouer wrote:
+> > > On Mon, 13 Jan 2020 00:18:36 +0000
+> > > Ryan Goodfellow <rgoodfel@isi.edu> wrote:
+> > >  =20
+> > > > The numbers that I have been able to achive with this code are the =
+following. MTU
+> > > > is 1500 in all cases.
+> > > >=20
+> > > >     mlx5: pps ~ 2.4 Mpps, 29 Gbps (driver mode, zero-copy)
+> > > >     i40e: pps ~ 700 Kpps, 8 Gbps (skb mode, copy)
+> > > >     virtio: pps ~ 200 Kpps, 2.4 Gbps (skb mode, copy, all qemu/kvm =
+VMs)
+> > > >=20
+> > > > Are these numbers in the ballpark of what's expected? =20
+> > >=20
+> > > I would say they are too slow / low.
+> > >=20
+> > > Have you remembered to do bulking?
+> > >  =20
+> >=20
+> > I am using a batch size of 256.
+>=20
+> Hmm...
+>=20
+> Maybe you can test with xdp_redirect_map program in samples/bpf/ and
+> compare the performance on this hardware?
 
-Not sure if this is the same, but we hit something similar in OVS
-AF_XDP's implementation.
-In our case, it happens when using native-mode, not the driver
-zero-copy mode, and
-iperf works a couple seconds then down to zero. FYI:
-https://mail.openvswitch.org/pipermail/ovs-dev/2019-November/365076.html
-and fixes
-https://github.com/openvswitch/ovs/commit/161773c72a33a86a23d4892e3c7448cee=
-9946317
+Hi Jesper,
 
-Regards,
-William
+I tried to use this program, however it does not seem to work for bidirecti=
+onal
+traffic across the two interfaces?
+
+Now that I have an i40e card that is working here is an update to the numbe=
+rs.
+
+At 1500 MTU the i40e runs at 9.7 GBPS (using the X710-DA4 10G interface), w=
+ith
+approx 800 Kpps. Dropping the MSS size down to 700 in iperf3 yields similar
+near-line rate performance at 1.6 Mpps. This appears to be the limit as dro=
+pping
+the MSS further results in degraded performance at similar packet rates (co=
+uld
+be an iperf3 artifact).
+
+--=20
+~ ry
