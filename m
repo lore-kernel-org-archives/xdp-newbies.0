@@ -1,39 +1,45 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.31]:54804 "EHLO mga06.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726642AbgATRET (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 20 Jan 2020 12:04:19 -0500
+Received: from mail-c.ads.isi.edu ([128.9.180.198]:50716 "EHLO
+        mail-c.ads.isi.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726642AbgATSdN (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 20 Jan 2020 13:33:13 -0500
+Date: Mon, 20 Jan 2020 13:33:09 -0500
+From: Ryan Goodfellow <rgoodfel@isi.edu>
 Subject: Re: zero-copy between interfaces
+Message-ID: <20200120183309.GA10990@smtp.ads.isi.edu>
 References: <14f9e1bf5c3a41dbaec53f83cb5f0564@isi.edu>
  <CAJ+HfNhdPEe34DVUAj4eHxLkBUSTo2CXbLHoWu+dwFCp753oMg@mail.gmail.com>
  <20200117171637.GB69024@smtp.ads.isi.edu>
-From: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>
-Message-ID: <a0f645bc-82b6-5b14-4608-bfde991a6678@intel.com>
-Date: Mon, 20 Jan 2020 18:04:15 +0100
+ <CAJ8uoz0i2NVxBty18Cq=kK5_Ysue=pt1psBBahLFiZqN168OiQ@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20200117171637.GB69024@smtp.ads.isi.edu>
-Content-Language: en-US
+In-Reply-To: <CAJ8uoz0i2NVxBty18Cq=kK5_Ysue=pt1psBBahLFiZqN168OiQ@mail.gmail.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Ryan Goodfellow <rgoodfel@isi.edu>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, intel-wired-lan <intel-wired-lan@lists.osuosl.org>, Magnus Karlsson <magnus.karlsson@gmail.com>
+Content-Type: text/plain; charset=WINDOWS-1252
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+To: Magnus Karlsson <magnus.karlsson@gmail.com>
+Cc: =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@gmail.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, intel-wired-lan <intel-wired-lan@lists.osuosl.org>, =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@intel.com>
 
-
-On 2020-01-17 18:16, Ryan Goodfellow wrote:
-[...]
+On Mon, Jan 20, 2020 at 09:24:05AM +0100, Magnus Karlsson wrote:
 >=20
-> https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/1931080
+> I was wondering if you could run two small experiments since I cannot
+> reproduce this?
 >=20
+> 1: Run your program using the two ports on your X710 card. Does it
+> work? This is my setup and works for me.
 
-Ryan, thanks a lot for the detailed report! Much appreciated!
+The X710 card works without issue.
 
-Long story short, the i40e crash is that the drivers tries to allocate=20
-256 queues, but the HW is short on queues. The drivers enters a broken=20
-state, which triggers the crash.
+> 2: On your Mellanox setup, insert a kick_tx() call for each of your
+> two sockets before the poll() call in your forward() function. Just to
+> see if it works when we explicitly wake up the driver.
 
-I'll make sure we'll get a patch for this.
+This did not have an effect on the observed behavior. Exactly N packets go
+through the interface where N is equal to the size of the FQ/CQ rings and t=
+hen
+forwarding halts.
 
-
-Bj=C3=B6rn
+--
+~ ry
