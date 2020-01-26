@@ -1,74 +1,77 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from q2relay107.mxroute.com ([160.202.107.107]:35955 "EHLO
-        q2relay107.mxroute.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728057AbgAWVnx (ORCPT
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:46204 "EHLO
+        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729014AbgAZExG (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 23 Jan 2020 16:43:53 -0500
-Received: from filter003.mxroute.com [168.235.111.26] (Authenticated sender: mN4UYu2MZsgR)
- by q2relay107.mxroute.com (ZoneMTA) with ESMTPSA id 16fd457ecec00098e2.001
- for <xdp-newbies@vger.kernel.org>
- (version=TLSv1/SSLv3 cipher=ECDHE-RSA-AES128-GCM-SHA256);
- Thu, 23 Jan 2020 21:38:49 +0000
-Received: from ocean.mxroute.com (ocean.mxroute.com [195.201.59.214])
-        by filter003.mxroute.com (Postfix) with ESMTPS id C260A6003E
-        for <xdp-newbies@vger.kernel.org>; Thu, 23 Jan 2020 21:38:47 +0000 (UTC)
-Subject: Re: Measuring/Debugging XDP Performance
-References: <6c3dc8ff-e2bd-a06e-d9f0-c5be0103d266@gflclan.com>
- <20200123141122.3783e298@carbon>
- <23ec64c0-e0d7-a60b-ecc4-6ca401dc4896@gflclan.com>
- <20200123213808.7a1f200b@carbon>
-From: Christian Deacon <gamemann@gflclan.com>
-Message-ID: <fdd597bf-7da9-f9bd-d97f-f1bd90f14281@gflclan.com>
-Date: Thu, 23 Jan 2020 15:38:43 -0600
+        Sat, 25 Jan 2020 23:53:06 -0500
+Received: by mail-pg1-f193.google.com with SMTP id z124so3376456pgb.13
+        for <xdp-newbies@vger.kernel.org>; Sat, 25 Jan 2020 20:53:06 -0800 (PST)
+Message-ID: <03dce571f7c17726938daaf0fa576d75b2a5f90f.camel@coverfire.com>
+Subject: Re: zero-copy between interfaces
+From: Dan Siemon <dan@coverfire.com>
+Date: Sat, 25 Jan 2020 23:53:00 -0500
+In-Reply-To: <20200118140857.GA9363@smtp.ads.isi.edu>
+References: <14f9e1bf5c3a41dbaec53f83cb5f0564@isi.edu>
+         <20200113124134.3974cbed@carbon> <20200113152759.GD68570@smtp.ads.isi.edu>
+         <20200113180411.24d8bd40@carbon> <20200117175409.GC69024@smtp.ads.isi.edu>
+         <20200118111405.28fd1c75@carbon> <20200118140857.GA9363@smtp.ads.isi.edu>
 MIME-Version: 1.0
-In-Reply-To: <20200123213808.7a1f200b@carbon>
-Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: xdp-newbies@vger.kernel.org
+To: Ryan Goodfellow <rgoodfel@isi.edu>, Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-Hey Jesper,
+On Sat, 2020-01-18 at 09:08 -0500, Ryan Goodfellow wrote:
+> On Sat, Jan 18, 2020 at 11:14:05AM +0100, Jesper Dangaard
+> Brouerwrote:
+> > 
+> > I'm wondering why did you choose/need AF_XDP technology for doing
+> > forwarding?
+> 
+> This is just a sample program used to demonstrate moving packets
+> between
+> different interfaces efficiently using AF_XDP.
+> 
+> Our actual use case is performing network emulation in userspace. For
+> example,
+> representing impaired links or entire networks with link-by-link
+> shaping
+> specifications. We are using AF_XDP to get packets to/from our
+> network emulation
+> software as quickly as possible without having to go through the
+> entire network
+> stack, as the emulation host's network configuration does not
+> influence the
+> networks it's emulating.
+> 
+> Traditionally we've used DPDK for this, but are porting to AF_XDP for
+> the 
+> relative simplicity and flexibility it provides. Some specific
+> benefits for us
+> are:
+> 
+> - Can attach to VTEPs which allows us to hook into some EVPN/VXLAN
+> based
+>   networks we have easily. Alternatively with the BPF program
+> flexibility, we
+>   also have the option to split out BGP control plane traffic from
+> overlay
+>   traffic when attaching to the physical interface and pass it
+> through to the 
+>   kernel. Both of these approaches let the kernel manage the FDB for
+> VTEPs as 
+>   well as taking care of encap/decap (potentially offloaded to the
+> NIC itself) 
+>   and let our software focus on emulation.
+> 
+> - Using XDP in virtual machines in our testing environment is
+> straightforward,
+>   while this is possible with DPDK and virtio, the setup was rather
+> convoluted.
 
-
-Thank you for the information and that makes a lot more sense! I didn't 
-realize we had a NIC that doesn't support XDP-native. I will see if I 
-can get a better NIC card for this dedicated server (I don't believe our 
-current NIC card supports any other drivers besides `igb`).
-
-
-In the meantime, I have stopped announcing my dedicated server to our 
-Anycast network and have started announcing the four-core VPS that had 
-similar issues before ordering the dedicated server (even though I feel 
-this VPS should be able to handle the traffic load). The CPU is 
-virtualized and running at 2.5 GHz per core. The VPS's OS is Ubuntu 
-18.10 and the kernel is '4.18.0-20'. The NIC driver is "virtio-pci", 
-which I believe is supported (please correct me if I'm wrong, I do see 
-'virtio_net' in the list of supported XDP drivers which I'd assume is 
-the same thing).
-
-
-I will execute the 'perf' commands tonight when we have higher traffic 
-load and reply with the output.
-
-
-Thank you for your help!
-
-
-On 1/23/2020 2:38 PM, Jesper Dangaard Brouer wrote:
-> On Thu, 23 Jan 2020 11:22:31 -0600
-> Christian Deacon <gamemann@gflclan.com> wrote:
->
->> Thank you for the information and I will try these commands tonight when
->> there is higher traffic load! The 'perf' command seems interesting.
-> Thanks for the perf output in the private email thread. From the output
-> I can clearly see the problem (some copy pasted below signature).  You
-> are using the driver igb which does not support XDP-native, and is thus
-> using generic-XDP.
->
-> This driver only have 192 bytes headroom, where 256 is needed.  Thus,
-> running XDP-generic will be slower than running the normal network
-> stack, as every packet will get reallocated and copied.
->
+I'm in a very similar situation. The per-packet work we do is
+complicated. Doing it all in BPF would be much more painful if even
+possible. For us, AF_XDP is a nice, simple DPDK. We have no need for
+BPF in the AF_XDP path.
