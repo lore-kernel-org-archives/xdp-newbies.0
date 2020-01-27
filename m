@@ -1,70 +1,125 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-oi1-f195.google.com ([209.85.167.195]:42406 "EHLO
-        mail-oi1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727046AbgA0M4C (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 27 Jan 2020 07:56:02 -0500
-Received: by mail-oi1-f195.google.com with SMTP id j132so5425744oih.9
-        for <xdp-newbies@vger.kernel.org>; Mon, 27 Jan 2020 04:56:02 -0800 (PST)
+Received: from mail-eopbgr60070.outbound.protection.outlook.com ([40.107.6.70]:55296
+        "EHLO EUR04-DB3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727177AbgA0OBy (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 27 Jan 2020 09:01:54 -0500
+From: Maxim Mikityanskiy <maximmi@mellanox.com>
+Subject: Re: zero-copy between interfaces
+Date: Mon, 27 Jan 2020 14:01:48 +0000
+Message-ID: <b1b9342b-b9e5-f576-c06c-3a43dcf2b189@mellanox.com>
+References: <CAJ8uoz1FcfDYa1PaQuY-Yk+keEX5FT6+q2H2eLTce6DxcQjuiA@mail.gmail.com>
+ <20200113151159.GB68570@smtp.ads.isi.edu>
+ <CAJ8uoz1Ax5CAfO4wfo0Pj+jieeRN+gj0s2LpeeJ53uTorFP0ng@mail.gmail.com>
+ <20200114205250.GA85903@smtp.ads.isi.edu>
+ <20200115014137.GA105434@smtp.ads.isi.edu>
+ <CAJ8uoz2VTXAT9ryF9Ls2JjacEw0Bc23t9w2jDEoMdA0dRc6Aaw@mail.gmail.com>
+ <CAJ8uoz1Nf+Fsg40tfdnMenFiCjRBJN9maY9rVo--trt+Uwkqwg@mail.gmail.com>
+ <20200116020414.GA46831@smtp.ads.isi.edu>
+ <CAJ8uoz0yqYTq+OOK8p0XRcWyMkfnJ1ZT7hUew9w3FuHr=4K-QQ@mail.gmail.com>
+ <4c03813d-5edf-7e9e-8905-31902b5acb71@mellanox.com>
+ <20200122214352.GA13201@smtp.ads.isi.edu>
+In-Reply-To: <20200122214352.GA13201@smtp.ads.isi.edu>
+Content-Language: en-US
+Content-ID: <76DB147DA480B2469873E6881616CA63@eurprd05.prod.outlook.com>
 MIME-Version: 1.0
-References: <CAMyc9bWnDuwDx_i=NjoAS1cDd5Fuy6T05ukSQZpjQv2Ji36jGg@mail.gmail.com>
-In-Reply-To: <CAMyc9bWnDuwDx_i=NjoAS1cDd5Fuy6T05ukSQZpjQv2Ji36jGg@mail.gmail.com>
-From: Magnus Karlsson <magnus.karlsson@gmail.com>
-Date: Mon, 27 Jan 2020 13:55:50 +0100
-Message-ID: <CAJ8uoz1=Se+-hYWO6E11_LM9kS2Z1Eqeq17pB=oQC1tDR75WiA@mail.gmail.com>
-Subject: Re: Maximum xdpsock txpush rate with AF_XDP ??
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-To: Cameron Elliott <cameron@cameronelliott.com>
-Cc: Xdp <xdp-newbies@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: base64
+To: Ryan Goodfellow <rgoodfel@isi.edu>, Magnus Karlsson <magnus.karlsson@gmail.com>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Tariq Toukan <tariqt@mellanox.com>, Saeed Mahameed <saeedm@mellanox.com>, Moshe Shemesh <moshe@mellanox.com>
 
-On Mon, Jan 27, 2020 at 1:37 PM Cameron Elliott
-<cameron@cameronelliott.com> wrote:
->
-> I am trying see what the highest rate I can push out of a single
-> x710/QDA2 port is.
->
-> I have seen numbers like 50+ mpps in a  Magnus and Bj=C3=B6rn youtube vid=
-eo,
-> but granted, I know very little as I am really new to the x710 and XDP/AF=
-_XDP.
->
-> But I am only able to get about 2.2 mpps,  nothing like Magnus and
-> Bj=C3=B6rn have been able to achieve.
-
-You are using the SKB mode, not the zero-copy mode that will give you
-higher numbers. Somewhere around 20 Mpps if you run a new kernel.
-
-> One big issue is this command "sudo ./xdpsock -t  -i enp1s0f0 -N -z"
-> Fails with:
-> samples/bpf/xdpsock_user.c:xsk_configure_socket:322: errno:
-> 95/"Operation not supported"
-
-What driver are you using? It seems it does not support zero copy. The
-virtual function (vf) driver of x710/i40e does not but the physical
-function driver does.
-
-> Is there a guide or README I should read on how to try to achieve
-> numbers like theirs?
->
-> If there is not a guide, would it be helpful if I wrote one? (a small
-> guide on maxing rxdrop/tspush/l2fwd)
-> (it would seem like a good trade to get some help from others here,
-> and write a simple guide from a newbies
-> perspective like mine, if someone wants to give me some help)
-
-A guide published on the net would always be helpful.
-
-Thanks: Magnus
-
->
-> --------------
-> Kernel/os:     Linux lumen 5.3.0-26-generic #28~18.04.1-Ubuntu
-> Intel NIC:      version: 2.10.19.30 / firmware-version: 7.10 0x80006456 1=
-.2527.0
-> Xeon 1225 V6 with 4 cores
->
->
-> Thank you
+T24gMjAyMC0wMS0yMiAyMzo0MywgUnlhbiBHb29kZmVsbG93IHdyb3RlOg0KPiBPbiBUdWUsIEph
+biAyMSwgMjAyMCBhdCAwMTo0MDo1MFBNICswMDAwLCBNYXhpbSBNaWtpdHlhbnNraXkgd3JvdGU6
+DQo+Pj4+IEkndmUgcG9zdGVkIG91dHB1dCBmcm9tIHRoZSBwcm9ncmFtIGluIGRlYnVnZ2luZyBt
+b2RlIGhlcmUNCj4+Pj4NCj4+Pj4gLSBodHRwczovL2dpdGxhYi5jb20vbWVyZ2V0Yi90ZWNoL25l
+dHdvcmstZW11bGF0aW9uL2tlcm5lbC9zbmlwcGV0cy8xOTMwMzc1DQo+Pj4+DQo+Pj4+IFllcywg
+eW91IGFyZSBjb3JyZWN0IGluIHRoYXQgZm9yd2FyZGluZyB3b3JrcyBmb3IgYSBicmllZiBwZXJp
+b2QgYW5kIHRoZW4gc3RvcHMuDQo+Pj4+IEkndmUgbm90aWNlZCB0aGF0IHRoZSBudW1iZXIgb2Yg
+cGFja2V0cyB0aGF0IGFyZSBmb3J3YXJkZWQgaXMgZXF1YWwgdG8gdGhlIHNpemUNCj4+Pj4gb2Yg
+dGhlIHByb2R1Y2VyL2NvbnN1bWVyIGRlc2NyaXB0b3IgcmluZ3MuIEkndmUgcG9zdGVkIHR3byBw
+aW5nIHRyYWNlcyBmcm9tIGENCj4+Pj4gY2xpZW50IHBpbmcgdGhhdCBzaG93cyB0aGlzLg0KPj4+
+Pg0KPj4+PiAtIGh0dHBzOi8vZ2l0bGFiLmNvbS9tZXJnZXRiL3RlY2gvbmV0d29yay1lbXVsYXRp
+b24va2VybmVsL3NuaXBwZXRzLzE5MzAzNzYNCj4+Pj4gLSBodHRwczovL2dpdGxhYi5jb20vbWVy
+Z2V0Yi90ZWNoL25ldHdvcmstZW11bGF0aW9uL2tlcm5lbC9zbmlwcGV0cy8xOTMwMzc3DQo+Pg0K
+Pj4gVGhlc2Ugc25pcHBldHMgYXJlIG5vdCBhdmFpbGFibGUuDQo+IA0KPiBBcG9sb2dpZXMsIEkg
+aGFkIHRoZSB3cm9uZyBwZXJtaXNzaW9ucyBzZXQuIFRoZXkgc2hvdWxkIGJlIGF2YWlsYWJsZSBu
+b3cuDQo+IA0KPj4NCj4+Pj4NCj4+Pj4gSSd2ZSBhbHNvIG5vdGljZWQgdGhhdCB3aGVuIHRoZSBm
+b3J3YXJkaW5nIHN0b3BzLCB0aGUgQ1BVIHVzYWdlIGZvciB0aGUgcHJvYw0KPj4+PiBydW5uaW5n
+IHRoZSBwcm9ncmFtIGlzIHBlZ2dlZCwgd2hpY2ggaXMgbm90IHRoZSBub3JtIGZvciB0aGlzIHBy
+b2dyYW0gYXMgaXQgdXNlcw0KPj4+PiBhIHBvbGwgY2FsbCB3aXRoIGEgdGltZW91dCBvbiB0aGUg
+eHNrIGZkLg0KPj4NCj4+IFRoaXMgaW5mb3JtYXRpb24gbGVkIG1lIHRvIGEgZ3Vlc3Mgd2hhdCBt
+YXkgYmUgaGFwcGVuaW5nLiBPbiB0aGUgUlgNCj4+IHNpZGUsIG1seDVlIGFsbG9jYXRlcyBwYWdl
+cyBpbiBidWxrcyBmb3IgcGVyZm9ybWFuY2UgcmVhc29ucyBhbmQgdG8NCj4+IGxldmVyYWdlIGhh
+cmR3YXJlIGZlYXR1cmVzIHRhcmdldGVkIHRvIHBlcmZvcm1hbmNlLiBJbiBBRl9YRFAgbW9kZSwN
+Cj4+IGJ1bGtpbmcgb2YgZnJhbWVzIGlzIGFsc28gdXNlZCAob24geDg2LCB0aGUgYnVsayBzaXpl
+IGlzIDY0IHdpdGgNCj4+IHN0cmlkaW5nIFJRIGVuYWJsZWQsIGFuZCA4IG90aGVyd2lzZSwgaG93
+ZXZlciwgaXQncyBpbXBsZW1lbnRhdGlvbg0KPj4gZGV0YWlscyB0aGF0IG1pZ2h0IGNoYW5nZSBs
+YXRlcikuIElmIHlvdSBkb24ndCBwdXQgZW5vdWdoIGZyYW1lcyB0byBYU0sNCj4+IEZpbGwgUmlu
+ZywgdGhlIGRyaXZlciB3aWxsIGJlIGRlbWFuZGluZyBtb3JlIGZyYW1lcyBhbmQgcmV0dXJuIGZy
+b20NCj4+IHBvbGwoKSBpbW1lZGlhdGVseS4gQmFzaWNhbGx5LCBpbiB0aGUgYXBwbGljYXRpb24s
+IHlvdSBzaG91bGQgcHV0IGFzDQo+PiBtYW55IGZyYW1lcyB0byB0aGUgRmlsbCBSaW5nIGFzIHlv
+dSBjYW4uIFBsZWFzZSBjaGVjayBpZiB0aGF0IGNvdWxkIGJlDQo+PiB0aGUgcm9vdCBjYXVzZSBv
+ZiB5b3VyIGlzc3VlLg0KPiANCj4gVGhlIGNvZGUgaW4gdGhpcyBhcHBsaWNhdGlvbiBtYWtlcyBh
+biBlZmZvcnQgdG8gcmVsZW5pc2ggdGhlIGZpbGwgcmluZyBhcyBmYXN0DQo+IGFzIHBvc3NpYmxl
+LiBUaGUgYmFzaWMgbG9vcCBvZiB0aGUgYXBwbGljYXRpb24gaXMgdG8gZmlyc3QgY2hlY2sgaWYg
+dGhlcmUgYXJlDQo+IGFueSBkZXNjcmlwdG9ycyB0byBiZSBjb25zdW1lZCBmcm9tIHRoZSBjb21w
+bGV0aW9uIHF1ZXVlIG9yIGFueSBkZXNjcmlwdG9ycyB0aGF0DQo+IGNhbiBiZSBhZGRlZCB0byB0
+aGUgZmlsbCBxdWV1ZSwgYW5kIG9ubHkgdGhlbiB0byBtb3ZlIG9uIHRvIG1vdmluZyBwYWNrZXRz
+DQo+IHRocm91Z2ggdGhlIHJ4IGFuZCB0eCByaW5ncy4NCj4gDQo+IGh0dHBzOi8vZ2l0bGFiLmNv
+bS9tZXJnZXRiL3RlY2gvbmV0d29yay1lbXVsYXRpb24va2VybmVsL2Jsb2IvdjUuNS1tb2Evc2Ft
+cGxlcy9icGYveGRwc29ja19tdWx0aWRldi5jI0w0NTItNDc0DQoNCkkgcmVwcm9kdWNlZCB5b3Vy
+IGlzc3VlIGFuZCBkaWQgbXkgaW52ZXN0aWdhdGlvbiwgYW5kIGhlcmUgaXMgd2hhdCBJIGZvdW5k
+Og0KDQoxLiBDb21taXQgZGYwYWU2Zjc4YTQ1ICh0aGF0IHlvdSBmb3VuZCBkdXJpbmcgYmlzZWN0
+KSBpbnRyb2R1Y2VzIGFuIA0KaW1wb3J0YW50IGJlaGF2aW9yYWwgY2hhbmdlICh3aGljaCBJIHRo
+b3VnaHQgd2FzIG5vdCB0aGF0IGltcG9ydGFudCkuIA0KeHNrcV9uYl9hdmFpbCB1c2VkIHRvIHJl
+dHVybiBtaW4oZW50cmllcywgZGNudCksIGJ1dCBhZnRlciB0aGUgY2hhbmdlIGl0IA0KanVzdCBy
+ZXR1cm5zIGVudHJpZXMsIHdoaWNoIG1heSBiZSBhcyBiaWcgYXMgdGhlIHJpbmcgc2l6ZS4NCg0K
+Mi4geHNrcV9wZWVrX2FkZHIgdXBkYXRlcyBxLT5yaW5nLT5jb25zdW1lciBvbmx5IHdoZW4gcS0+
+Y29uc190YWlsIA0KY2F0Y2hlcyB1cCB3aXRoIHEtPmNvbnNfaGVhZC4gU28sIGJlZm9yZSB0aGF0
+IHBhdGNoIGFuZCBvbmUgcHJldmlvdXMgDQpwYXRjaCwgY29uc19oZWFkIC0gY29uc190YWlsIHdh
+cyBub3QgbW9yZSB0aGFuIDE2LCBzbyB0aGUgY29uc3VtZXIgaW5kZXggDQp3YXMgdXBkYXRlZCBw
+ZXJpb2RpY2FsbHkuIE5vdyBjb25zdW1lciBpcyB1cGRhdGVkIG9ubHkgd2hlbiB0aGUgd2hvbGUg
+DQpyaW5nIGlzIGV4aGF1c3RlZC4NCg0KMy4gVGhlIGFwcGxpY2F0aW9uIGNhbid0IHJlcGxlbmlz
+aCB0aGUgZmlsbCByaW5nIGlmIHRoZSBjb25zdW1lciBpbmRleCANCmRvZXNuJ3QgbW92ZS4gQXMg
+YSBjb25zZXF1ZW5jZSwgcmVmaWxsaW5nIHRoZSBkZXNjcmlwdG9ycyBieSB0aGUgDQphcHBsaWNh
+dGlvbiBjYW4ndCBoYXBwZW4gaW4gcGFyYWxsZWwgd2l0aCB1c2luZyB0aGVtIGJ5IHRoZSBkcml2
+ZXIuIEl0IA0Kc2hvdWxkIGhhdmUgc29tZSBwZXJmb3JtYW5jZSBwZW5hbHR5IGFuZCBwb3NzaWJs
+eSBldmVuIGxlYWQgdG8gcGFja2V0IA0KZHJvcHMsIGJlY2F1c2UgdGhlIGRyaXZlciB1c2VzIGFs
+bCB0aGUgZGVzY3JpcHRvcnMgYW5kIG9ubHkgdGhlbiANCmFkdmFuY2VzIHRoZSBjb25zdW1lciBp
+bmRleCwgYW5kIHRoZW4gaXQgaGFzIHRvIHdhaXQgdW50aWwgdGhlIA0KYXBwbGljYXRpb24gcmVm
+aWxscyB0aGUgcmluZywgYnVzeS1sb29waW5nIGFuZCBsb3NpbmcgcGFja2V0cy4NCg0KNC4gQXMg
+bWx4NWUgYWxsb2NhdGVzIGZyYW1lcyBpbiBiYXRjaGVzLCB0aGUgY29uc2VxdWVuY2VzIGFyZSBl
+dmVuIG1vcmUgDQpzZXZlcmU6IGl0J3MgYSBkZWFkbG9jayB3aGVyZSB0aGUgZHJpdmVyIHdhaXRz
+IGZvciB0aGUgYXBwbGljYXRpb24sIGFuZCANCnZpY2UgdmVyc2EuIFRoZSBkcml2ZXIgbmV2ZXIg
+cmVhY2hlcyB0aGUgcG9pbnQgd2hlcmUgY29uc190YWlsIGdldHMgDQplcXVhbCB0byBjb25zX2hl
+YWQuIEUuZy4sIGlmIGNvbnNfdGFpbCArIDMgPT0gY29uc19oZWFkLCBhbmQgdGhlIGJhdGNoIA0K
+c2l6ZSByZXF1ZXN0ZWQgYnkgdGhlIGRyaXZlciBpcyA4LCB0aGUgZHJpdmVyIHdvbid0IHBlZWsg
+YW55dGhpbmcgZnJvbSANCnRoZSBmaWxsIHJpbmcgd2FpdGluZyBmb3IgZGlmZmVyZW5jZSBiZXR3
+ZWVuIGNvbnNfdGFpbCBhbmQgY29uc19oZWFkIHRvIA0KaW5jcmVhc2UgdG8gYmUgYXQgbGVhc3Qg
+OC4gT24gdGhlIG90aGVyIGhhbmQsIHRoZSBhcHBsaWNhdGlvbiBjYW4ndCBwdXQgDQphbnl0aGlu
+ZyB0byB0aGUgcmluZywgYmVjYXVzZSBpdCBzdGlsbCB0aGlua3MgdGhhdCB0aGUgY29uc3VtZXIg
+aW5kZXggaXMgDQowLiBBcyBjb25zX3RhaWwgbmV2ZXIgcmVhY2hlcyBjb25zX2hlYWQsIHRoZSBj
+b25zdW1lciBpbmRleCBkb2Vzbid0IGdldCANCnVwZGF0ZWQsIGhlbmNlIHRoZSBkZWFkbG9jay4N
+Cg0KU28sIGluIG15IHZpc2lvbiwgdGhlIGRlY2lzaW9uIHRvIHJlbW92ZSBSWF9CQVRDSF9TSVpF
+IGFuZCBwZXJpb2RpYyANCnVwZGF0ZXMgb2YgdGhlIGNvbnN1bWVyIGluZGV4IHdhcyB3cm9uZy4g
+SXQgdG90YWxseSBicmVha3MgbWx4NWUsIHRoYXQgDQpkb2VzIGJhdGNoaW5nLCBhbmQgaXQgd2ls
+bCBhZmZlY3QgdGhlIHBlcmZvcm1hbmNlIG9mIGFueSBkcml2ZXIsIGJlY2F1c2UgDQp0aGUgYXBw
+bGljYXRpb24gY2FuJ3QgcmVmaWxsIHRoZSByaW5nIHVudGlsIGl0IGdldHMgY29tcGxldGVseSBl
+bXB0eSBhbmQgDQp0aGUgZHJpdmVyIHN0YXJ0cyB3YWl0aW5nIGZvciBmcmFtZXMuIEkgc3VnZ2Vz
+dCB0aGF0IHBlcmlvZGljIHVwZGF0ZXMgb2YgDQp0aGUgY29uc3VtZXIgaW5kZXggc2hvdWxkIGJl
+IHJlYWRkZWQgdG8geHNrcV9jb25zX3BlZWtfYWRkci4NCg0KTWFnbnVzLCB3aGF0IGRvIHlvdSB0
+aGluayBvZiB0aGUgc3VnZ2VzdGlvbiBhYm92ZT8NCg0KVGhhbmtzLA0KTWF4DQoNCj4+DQo+PiBJ
+IHRyYWNrZWQgdGhpcyBpc3N1ZSBpbiBvdXIgaW50ZXJuYWwgYnVnIHRyYWNrZXIgaW4gY2FzZSB3
+ZSBuZWVkIHRvDQo+PiBwZXJmb3JtIGFjdHVhbCBkZWJ1Z2dpbmcgb2YgbWx4NWUuIEknbSBsb29r
+aW5nIGZvcndhcmQgdG8geW91ciBmZWVkYmFjaw0KPj4gb24gbXkgYXNzdW1wdGlvbiBhYm92ZS4N
+Cj4+DQo+Pj4+IFRoZSBoYXJkd2FyZSBJIGFtIHVzaW5nIGlzIGEgTWVsbGFub3ggQ29ubmVjdFg0
+IDJ4MTAwRyBjYXJkIChNQ1g0MTZBLUNDQVQpDQo+Pj4+IHJ1bm5pbmcgdGhlIG1seDUgZHJpdmVy
+Lg0KPj4NCj4+IFRoaXMgb25lIHNob3VsZCBydW4gd2l0aG91dCBzdHJpZGluZyBSUSwgcGxlYXNl
+IHZlcmlmeSBpdCB3aXRoIGV0aHRvb2wNCj4+IC0tc2hvdy1wcml2LWZsYWdzICh0aGUgZmxhZyBu
+YW1lIGlzIHJ4X3N0cmlkaW5nX3JxKS4NCj4gDQo+IEkgZG8gbm90IHJlbWVtYmVyIGNoYW5naW5n
+IHRoaXMgb3B0aW9uLCBzbyB3aGF0ZXZlciB0aGUgZGVmYXVsdCBpcywgaXMgd2hhdCBpdA0KPiB3
+YXMgcnVubmluZyB3aXRoLiBJIGFtIHRyYXZlbGluZyB0aGlzIHdlZWsgYW5kIGRvIG5vdCBoYXZl
+IGFjY2VzcyB0byB0aGVzZQ0KPiBzeXN0ZW1zLCBidXQgd2lsbCBlbnN1cmUgdGhhdCB0aGlzIGZs
+YWcgaXMgc2V0IHByb3Blcmx5IHdoZW4gSSBnZXQgYmFjay4NCj4gDQoNCg==
