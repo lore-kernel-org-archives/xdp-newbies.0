@@ -1,77 +1,54 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:46204 "EHLO
-        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729014AbgAZExG (ORCPT
+Received: from mail-oi1-f177.google.com ([209.85.167.177]:36434 "EHLO
+        mail-oi1-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729887AbgA0MIy (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Sat, 25 Jan 2020 23:53:06 -0500
-Received: by mail-pg1-f193.google.com with SMTP id z124so3376456pgb.13
-        for <xdp-newbies@vger.kernel.org>; Sat, 25 Jan 2020 20:53:06 -0800 (PST)
-Message-ID: <03dce571f7c17726938daaf0fa576d75b2a5f90f.camel@coverfire.com>
-Subject: Re: zero-copy between interfaces
-From: Dan Siemon <dan@coverfire.com>
-Date: Sat, 25 Jan 2020 23:53:00 -0500
-In-Reply-To: <20200118140857.GA9363@smtp.ads.isi.edu>
-References: <14f9e1bf5c3a41dbaec53f83cb5f0564@isi.edu>
-         <20200113124134.3974cbed@carbon> <20200113152759.GD68570@smtp.ads.isi.edu>
-         <20200113180411.24d8bd40@carbon> <20200117175409.GC69024@smtp.ads.isi.edu>
-         <20200118111405.28fd1c75@carbon> <20200118140857.GA9363@smtp.ads.isi.edu>
+        Mon, 27 Jan 2020 07:08:54 -0500
+Received: by mail-oi1-f177.google.com with SMTP id c16so6410887oic.3
+        for <xdp-newbies@vger.kernel.org>; Mon, 27 Jan 2020 04:08:54 -0800 (PST)
 MIME-Version: 1.0
+From: Cameron Elliott <cameron@cameronelliott.com>
+Date: Mon, 27 Jan 2020 04:08:41 -0800
+Message-ID: <CAMyc9bWnDuwDx_i=NjoAS1cDd5Fuy6T05ukSQZpjQv2Ji36jGg@mail.gmail.com>
+Subject: Maximum xdpsock txpush rate with AF_XDP ??
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-To: Ryan Goodfellow <rgoodfel@isi.edu>, Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+To: xdp-newbies@vger.kernel.org
 
-On Sat, 2020-01-18 at 09:08 -0500, Ryan Goodfellow wrote:
-> On Sat, Jan 18, 2020 at 11:14:05AM +0100, Jesper Dangaard
-> Brouerwrote:
-> > 
-> > I'm wondering why did you choose/need AF_XDP technology for doing
-> > forwarding?
-> 
-> This is just a sample program used to demonstrate moving packets
-> between
-> different interfaces efficiently using AF_XDP.
-> 
-> Our actual use case is performing network emulation in userspace. For
-> example,
-> representing impaired links or entire networks with link-by-link
-> shaping
-> specifications. We are using AF_XDP to get packets to/from our
-> network emulation
-> software as quickly as possible without having to go through the
-> entire network
-> stack, as the emulation host's network configuration does not
-> influence the
-> networks it's emulating.
-> 
-> Traditionally we've used DPDK for this, but are porting to AF_XDP for
-> the 
-> relative simplicity and flexibility it provides. Some specific
-> benefits for us
-> are:
-> 
-> - Can attach to VTEPs which allows us to hook into some EVPN/VXLAN
-> based
->   networks we have easily. Alternatively with the BPF program
-> flexibility, we
->   also have the option to split out BGP control plane traffic from
-> overlay
->   traffic when attaching to the physical interface and pass it
-> through to the 
->   kernel. Both of these approaches let the kernel manage the FDB for
-> VTEPs as 
->   well as taking care of encap/decap (potentially offloaded to the
-> NIC itself) 
->   and let our software focus on emulation.
-> 
-> - Using XDP in virtual machines in our testing environment is
-> straightforward,
->   while this is possible with DPDK and virtio, the setup was rather
-> convoluted.
+I am trying see what the highest rate I can push out of a single
+x710/QDA2 port is.
 
-I'm in a very similar situation. The per-packet work we do is
-complicated. Doing it all in BPF would be much more painful if even
-possible. For us, AF_XDP is a nice, simple DPDK. We have no need for
-BPF in the AF_XDP path.
+I have seen numbers like 50+ mpps in a  Magnus and Bj=C3=B6rn youtube video=
+,
+but granted, I know very little as I am really new to the x710 and XDP/AF_X=
+DP.
+
+But I am only able to get about 2.2 mpps,  nothing like Magnus and
+Bj=C3=B6rn have been able to achieve.
+
+One big issue is this command "sudo ./xdpsock -t  -i enp1s0f0 -N -z"
+Fails with:
+samples/bpf/xdpsock_user.c:xsk_configure_socket:322: errno:
+95/"Operation not supported"
+
+
+Is there a guide or README I should read on how to try to achieve
+numbers like theirs?
+
+If there is not a guide, would it be helpful if I wrote one? (a small
+guide on maxing rxdrop/tspush/l2fwd)
+(it would seem like a good trade to get some help from others here,
+and write a simple guide from a newbies
+perspective like mine, if someone wants to give me some help)
+
+
+--------------
+Kernel/os:     Linux lumen 5.3.0-26-generic #28~18.04.1-Ubuntu
+Intel NIC:      version: 2.10.19.30 / firmware-version: 7.10 0x80006456 1.2=
+527.0
+Xeon 1225 V6 with 4 cores
+
+
+Thank you
