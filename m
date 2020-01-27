@@ -1,125 +1,184 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-eopbgr60070.outbound.protection.outlook.com ([40.107.6.70]:55296
-        "EHLO EUR04-DB3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727177AbgA0OBy (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 27 Jan 2020 09:01:54 -0500
-From: Maxim Mikityanskiy <maximmi@mellanox.com>
-Subject: Re: zero-copy between interfaces
-Date: Mon, 27 Jan 2020 14:01:48 +0000
-Message-ID: <b1b9342b-b9e5-f576-c06c-3a43dcf2b189@mellanox.com>
+Received: from mail-oi1-f193.google.com ([209.85.167.193]:35232 "EHLO
+        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729203AbgA0Py4 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 27 Jan 2020 10:54:56 -0500
+Received: by mail-oi1-f193.google.com with SMTP id b18so3144803oie.2
+        for <xdp-newbies@vger.kernel.org>; Mon, 27 Jan 2020 07:54:56 -0800 (PST)
+MIME-Version: 1.0
 References: <CAJ8uoz1FcfDYa1PaQuY-Yk+keEX5FT6+q2H2eLTce6DxcQjuiA@mail.gmail.com>
- <20200113151159.GB68570@smtp.ads.isi.edu>
- <CAJ8uoz1Ax5CAfO4wfo0Pj+jieeRN+gj0s2LpeeJ53uTorFP0ng@mail.gmail.com>
- <20200114205250.GA85903@smtp.ads.isi.edu>
- <20200115014137.GA105434@smtp.ads.isi.edu>
+ <20200113151159.GB68570@smtp.ads.isi.edu> <CAJ8uoz1Ax5CAfO4wfo0Pj+jieeRN+gj0s2LpeeJ53uTorFP0ng@mail.gmail.com>
+ <20200114205250.GA85903@smtp.ads.isi.edu> <20200115014137.GA105434@smtp.ads.isi.edu>
  <CAJ8uoz2VTXAT9ryF9Ls2JjacEw0Bc23t9w2jDEoMdA0dRc6Aaw@mail.gmail.com>
  <CAJ8uoz1Nf+Fsg40tfdnMenFiCjRBJN9maY9rVo--trt+Uwkqwg@mail.gmail.com>
- <20200116020414.GA46831@smtp.ads.isi.edu>
- <CAJ8uoz0yqYTq+OOK8p0XRcWyMkfnJ1ZT7hUew9w3FuHr=4K-QQ@mail.gmail.com>
- <4c03813d-5edf-7e9e-8905-31902b5acb71@mellanox.com>
- <20200122214352.GA13201@smtp.ads.isi.edu>
-In-Reply-To: <20200122214352.GA13201@smtp.ads.isi.edu>
-Content-Language: en-US
-Content-ID: <76DB147DA480B2469873E6881616CA63@eurprd05.prod.outlook.com>
-MIME-Version: 1.0
+ <20200116020414.GA46831@smtp.ads.isi.edu> <CAJ8uoz0yqYTq+OOK8p0XRcWyMkfnJ1ZT7hUew9w3FuHr=4K-QQ@mail.gmail.com>
+ <4c03813d-5edf-7e9e-8905-31902b5acb71@mellanox.com> <20200122214352.GA13201@smtp.ads.isi.edu>
+ <b1b9342b-b9e5-f576-c06c-3a43dcf2b189@mellanox.com>
+In-Reply-To: <b1b9342b-b9e5-f576-c06c-3a43dcf2b189@mellanox.com>
+From: Magnus Karlsson <magnus.karlsson@gmail.com>
+Date: Mon, 27 Jan 2020 16:54:44 +0100
+Message-ID: <CAJ8uoz1wuCmPehXNX2_OddF2YC=2mNaFZC4f+6j9VkmSTSPaQQ@mail.gmail.com>
+Subject: Re: zero-copy between interfaces
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: base64
-To: Ryan Goodfellow <rgoodfel@isi.edu>, Magnus Karlsson <magnus.karlsson@gmail.com>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Tariq Toukan <tariqt@mellanox.com>, Saeed Mahameed <saeedm@mellanox.com>, Moshe Shemesh <moshe@mellanox.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+To: Maxim Mikityanskiy <maximmi@mellanox.com>
+Cc: Ryan Goodfellow <rgoodfel@isi.edu>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Tariq Toukan <tariqt@mellanox.com>, Saeed Mahameed <saeedm@mellanox.com>, Moshe Shemesh <moshe@mellanox.com>
 
-T24gMjAyMC0wMS0yMiAyMzo0MywgUnlhbiBHb29kZmVsbG93IHdyb3RlOg0KPiBPbiBUdWUsIEph
-biAyMSwgMjAyMCBhdCAwMTo0MDo1MFBNICswMDAwLCBNYXhpbSBNaWtpdHlhbnNraXkgd3JvdGU6
-DQo+Pj4+IEkndmUgcG9zdGVkIG91dHB1dCBmcm9tIHRoZSBwcm9ncmFtIGluIGRlYnVnZ2luZyBt
-b2RlIGhlcmUNCj4+Pj4NCj4+Pj4gLSBodHRwczovL2dpdGxhYi5jb20vbWVyZ2V0Yi90ZWNoL25l
-dHdvcmstZW11bGF0aW9uL2tlcm5lbC9zbmlwcGV0cy8xOTMwMzc1DQo+Pj4+DQo+Pj4+IFllcywg
-eW91IGFyZSBjb3JyZWN0IGluIHRoYXQgZm9yd2FyZGluZyB3b3JrcyBmb3IgYSBicmllZiBwZXJp
-b2QgYW5kIHRoZW4gc3RvcHMuDQo+Pj4+IEkndmUgbm90aWNlZCB0aGF0IHRoZSBudW1iZXIgb2Yg
-cGFja2V0cyB0aGF0IGFyZSBmb3J3YXJkZWQgaXMgZXF1YWwgdG8gdGhlIHNpemUNCj4+Pj4gb2Yg
-dGhlIHByb2R1Y2VyL2NvbnN1bWVyIGRlc2NyaXB0b3IgcmluZ3MuIEkndmUgcG9zdGVkIHR3byBw
-aW5nIHRyYWNlcyBmcm9tIGENCj4+Pj4gY2xpZW50IHBpbmcgdGhhdCBzaG93cyB0aGlzLg0KPj4+
-Pg0KPj4+PiAtIGh0dHBzOi8vZ2l0bGFiLmNvbS9tZXJnZXRiL3RlY2gvbmV0d29yay1lbXVsYXRp
-b24va2VybmVsL3NuaXBwZXRzLzE5MzAzNzYNCj4+Pj4gLSBodHRwczovL2dpdGxhYi5jb20vbWVy
-Z2V0Yi90ZWNoL25ldHdvcmstZW11bGF0aW9uL2tlcm5lbC9zbmlwcGV0cy8xOTMwMzc3DQo+Pg0K
-Pj4gVGhlc2Ugc25pcHBldHMgYXJlIG5vdCBhdmFpbGFibGUuDQo+IA0KPiBBcG9sb2dpZXMsIEkg
-aGFkIHRoZSB3cm9uZyBwZXJtaXNzaW9ucyBzZXQuIFRoZXkgc2hvdWxkIGJlIGF2YWlsYWJsZSBu
-b3cuDQo+IA0KPj4NCj4+Pj4NCj4+Pj4gSSd2ZSBhbHNvIG5vdGljZWQgdGhhdCB3aGVuIHRoZSBm
-b3J3YXJkaW5nIHN0b3BzLCB0aGUgQ1BVIHVzYWdlIGZvciB0aGUgcHJvYw0KPj4+PiBydW5uaW5n
-IHRoZSBwcm9ncmFtIGlzIHBlZ2dlZCwgd2hpY2ggaXMgbm90IHRoZSBub3JtIGZvciB0aGlzIHBy
-b2dyYW0gYXMgaXQgdXNlcw0KPj4+PiBhIHBvbGwgY2FsbCB3aXRoIGEgdGltZW91dCBvbiB0aGUg
-eHNrIGZkLg0KPj4NCj4+IFRoaXMgaW5mb3JtYXRpb24gbGVkIG1lIHRvIGEgZ3Vlc3Mgd2hhdCBt
-YXkgYmUgaGFwcGVuaW5nLiBPbiB0aGUgUlgNCj4+IHNpZGUsIG1seDVlIGFsbG9jYXRlcyBwYWdl
-cyBpbiBidWxrcyBmb3IgcGVyZm9ybWFuY2UgcmVhc29ucyBhbmQgdG8NCj4+IGxldmVyYWdlIGhh
-cmR3YXJlIGZlYXR1cmVzIHRhcmdldGVkIHRvIHBlcmZvcm1hbmNlLiBJbiBBRl9YRFAgbW9kZSwN
-Cj4+IGJ1bGtpbmcgb2YgZnJhbWVzIGlzIGFsc28gdXNlZCAob24geDg2LCB0aGUgYnVsayBzaXpl
-IGlzIDY0IHdpdGgNCj4+IHN0cmlkaW5nIFJRIGVuYWJsZWQsIGFuZCA4IG90aGVyd2lzZSwgaG93
-ZXZlciwgaXQncyBpbXBsZW1lbnRhdGlvbg0KPj4gZGV0YWlscyB0aGF0IG1pZ2h0IGNoYW5nZSBs
-YXRlcikuIElmIHlvdSBkb24ndCBwdXQgZW5vdWdoIGZyYW1lcyB0byBYU0sNCj4+IEZpbGwgUmlu
-ZywgdGhlIGRyaXZlciB3aWxsIGJlIGRlbWFuZGluZyBtb3JlIGZyYW1lcyBhbmQgcmV0dXJuIGZy
-b20NCj4+IHBvbGwoKSBpbW1lZGlhdGVseS4gQmFzaWNhbGx5LCBpbiB0aGUgYXBwbGljYXRpb24s
-IHlvdSBzaG91bGQgcHV0IGFzDQo+PiBtYW55IGZyYW1lcyB0byB0aGUgRmlsbCBSaW5nIGFzIHlv
-dSBjYW4uIFBsZWFzZSBjaGVjayBpZiB0aGF0IGNvdWxkIGJlDQo+PiB0aGUgcm9vdCBjYXVzZSBv
-ZiB5b3VyIGlzc3VlLg0KPiANCj4gVGhlIGNvZGUgaW4gdGhpcyBhcHBsaWNhdGlvbiBtYWtlcyBh
-biBlZmZvcnQgdG8gcmVsZW5pc2ggdGhlIGZpbGwgcmluZyBhcyBmYXN0DQo+IGFzIHBvc3NpYmxl
-LiBUaGUgYmFzaWMgbG9vcCBvZiB0aGUgYXBwbGljYXRpb24gaXMgdG8gZmlyc3QgY2hlY2sgaWYg
-dGhlcmUgYXJlDQo+IGFueSBkZXNjcmlwdG9ycyB0byBiZSBjb25zdW1lZCBmcm9tIHRoZSBjb21w
-bGV0aW9uIHF1ZXVlIG9yIGFueSBkZXNjcmlwdG9ycyB0aGF0DQo+IGNhbiBiZSBhZGRlZCB0byB0
-aGUgZmlsbCBxdWV1ZSwgYW5kIG9ubHkgdGhlbiB0byBtb3ZlIG9uIHRvIG1vdmluZyBwYWNrZXRz
-DQo+IHRocm91Z2ggdGhlIHJ4IGFuZCB0eCByaW5ncy4NCj4gDQo+IGh0dHBzOi8vZ2l0bGFiLmNv
-bS9tZXJnZXRiL3RlY2gvbmV0d29yay1lbXVsYXRpb24va2VybmVsL2Jsb2IvdjUuNS1tb2Evc2Ft
-cGxlcy9icGYveGRwc29ja19tdWx0aWRldi5jI0w0NTItNDc0DQoNCkkgcmVwcm9kdWNlZCB5b3Vy
-IGlzc3VlIGFuZCBkaWQgbXkgaW52ZXN0aWdhdGlvbiwgYW5kIGhlcmUgaXMgd2hhdCBJIGZvdW5k
-Og0KDQoxLiBDb21taXQgZGYwYWU2Zjc4YTQ1ICh0aGF0IHlvdSBmb3VuZCBkdXJpbmcgYmlzZWN0
-KSBpbnRyb2R1Y2VzIGFuIA0KaW1wb3J0YW50IGJlaGF2aW9yYWwgY2hhbmdlICh3aGljaCBJIHRo
-b3VnaHQgd2FzIG5vdCB0aGF0IGltcG9ydGFudCkuIA0KeHNrcV9uYl9hdmFpbCB1c2VkIHRvIHJl
-dHVybiBtaW4oZW50cmllcywgZGNudCksIGJ1dCBhZnRlciB0aGUgY2hhbmdlIGl0IA0KanVzdCBy
-ZXR1cm5zIGVudHJpZXMsIHdoaWNoIG1heSBiZSBhcyBiaWcgYXMgdGhlIHJpbmcgc2l6ZS4NCg0K
-Mi4geHNrcV9wZWVrX2FkZHIgdXBkYXRlcyBxLT5yaW5nLT5jb25zdW1lciBvbmx5IHdoZW4gcS0+
-Y29uc190YWlsIA0KY2F0Y2hlcyB1cCB3aXRoIHEtPmNvbnNfaGVhZC4gU28sIGJlZm9yZSB0aGF0
-IHBhdGNoIGFuZCBvbmUgcHJldmlvdXMgDQpwYXRjaCwgY29uc19oZWFkIC0gY29uc190YWlsIHdh
-cyBub3QgbW9yZSB0aGFuIDE2LCBzbyB0aGUgY29uc3VtZXIgaW5kZXggDQp3YXMgdXBkYXRlZCBw
-ZXJpb2RpY2FsbHkuIE5vdyBjb25zdW1lciBpcyB1cGRhdGVkIG9ubHkgd2hlbiB0aGUgd2hvbGUg
-DQpyaW5nIGlzIGV4aGF1c3RlZC4NCg0KMy4gVGhlIGFwcGxpY2F0aW9uIGNhbid0IHJlcGxlbmlz
-aCB0aGUgZmlsbCByaW5nIGlmIHRoZSBjb25zdW1lciBpbmRleCANCmRvZXNuJ3QgbW92ZS4gQXMg
-YSBjb25zZXF1ZW5jZSwgcmVmaWxsaW5nIHRoZSBkZXNjcmlwdG9ycyBieSB0aGUgDQphcHBsaWNh
-dGlvbiBjYW4ndCBoYXBwZW4gaW4gcGFyYWxsZWwgd2l0aCB1c2luZyB0aGVtIGJ5IHRoZSBkcml2
-ZXIuIEl0IA0Kc2hvdWxkIGhhdmUgc29tZSBwZXJmb3JtYW5jZSBwZW5hbHR5IGFuZCBwb3NzaWJs
-eSBldmVuIGxlYWQgdG8gcGFja2V0IA0KZHJvcHMsIGJlY2F1c2UgdGhlIGRyaXZlciB1c2VzIGFs
-bCB0aGUgZGVzY3JpcHRvcnMgYW5kIG9ubHkgdGhlbiANCmFkdmFuY2VzIHRoZSBjb25zdW1lciBp
-bmRleCwgYW5kIHRoZW4gaXQgaGFzIHRvIHdhaXQgdW50aWwgdGhlIA0KYXBwbGljYXRpb24gcmVm
-aWxscyB0aGUgcmluZywgYnVzeS1sb29waW5nIGFuZCBsb3NpbmcgcGFja2V0cy4NCg0KNC4gQXMg
-bWx4NWUgYWxsb2NhdGVzIGZyYW1lcyBpbiBiYXRjaGVzLCB0aGUgY29uc2VxdWVuY2VzIGFyZSBl
-dmVuIG1vcmUgDQpzZXZlcmU6IGl0J3MgYSBkZWFkbG9jayB3aGVyZSB0aGUgZHJpdmVyIHdhaXRz
-IGZvciB0aGUgYXBwbGljYXRpb24sIGFuZCANCnZpY2UgdmVyc2EuIFRoZSBkcml2ZXIgbmV2ZXIg
-cmVhY2hlcyB0aGUgcG9pbnQgd2hlcmUgY29uc190YWlsIGdldHMgDQplcXVhbCB0byBjb25zX2hl
-YWQuIEUuZy4sIGlmIGNvbnNfdGFpbCArIDMgPT0gY29uc19oZWFkLCBhbmQgdGhlIGJhdGNoIA0K
-c2l6ZSByZXF1ZXN0ZWQgYnkgdGhlIGRyaXZlciBpcyA4LCB0aGUgZHJpdmVyIHdvbid0IHBlZWsg
-YW55dGhpbmcgZnJvbSANCnRoZSBmaWxsIHJpbmcgd2FpdGluZyBmb3IgZGlmZmVyZW5jZSBiZXR3
-ZWVuIGNvbnNfdGFpbCBhbmQgY29uc19oZWFkIHRvIA0KaW5jcmVhc2UgdG8gYmUgYXQgbGVhc3Qg
-OC4gT24gdGhlIG90aGVyIGhhbmQsIHRoZSBhcHBsaWNhdGlvbiBjYW4ndCBwdXQgDQphbnl0aGlu
-ZyB0byB0aGUgcmluZywgYmVjYXVzZSBpdCBzdGlsbCB0aGlua3MgdGhhdCB0aGUgY29uc3VtZXIg
-aW5kZXggaXMgDQowLiBBcyBjb25zX3RhaWwgbmV2ZXIgcmVhY2hlcyBjb25zX2hlYWQsIHRoZSBj
-b25zdW1lciBpbmRleCBkb2Vzbid0IGdldCANCnVwZGF0ZWQsIGhlbmNlIHRoZSBkZWFkbG9jay4N
-Cg0KU28sIGluIG15IHZpc2lvbiwgdGhlIGRlY2lzaW9uIHRvIHJlbW92ZSBSWF9CQVRDSF9TSVpF
-IGFuZCBwZXJpb2RpYyANCnVwZGF0ZXMgb2YgdGhlIGNvbnN1bWVyIGluZGV4IHdhcyB3cm9uZy4g
-SXQgdG90YWxseSBicmVha3MgbWx4NWUsIHRoYXQgDQpkb2VzIGJhdGNoaW5nLCBhbmQgaXQgd2ls
-bCBhZmZlY3QgdGhlIHBlcmZvcm1hbmNlIG9mIGFueSBkcml2ZXIsIGJlY2F1c2UgDQp0aGUgYXBw
-bGljYXRpb24gY2FuJ3QgcmVmaWxsIHRoZSByaW5nIHVudGlsIGl0IGdldHMgY29tcGxldGVseSBl
-bXB0eSBhbmQgDQp0aGUgZHJpdmVyIHN0YXJ0cyB3YWl0aW5nIGZvciBmcmFtZXMuIEkgc3VnZ2Vz
-dCB0aGF0IHBlcmlvZGljIHVwZGF0ZXMgb2YgDQp0aGUgY29uc3VtZXIgaW5kZXggc2hvdWxkIGJl
-IHJlYWRkZWQgdG8geHNrcV9jb25zX3BlZWtfYWRkci4NCg0KTWFnbnVzLCB3aGF0IGRvIHlvdSB0
-aGluayBvZiB0aGUgc3VnZ2VzdGlvbiBhYm92ZT8NCg0KVGhhbmtzLA0KTWF4DQoNCj4+DQo+PiBJ
-IHRyYWNrZWQgdGhpcyBpc3N1ZSBpbiBvdXIgaW50ZXJuYWwgYnVnIHRyYWNrZXIgaW4gY2FzZSB3
-ZSBuZWVkIHRvDQo+PiBwZXJmb3JtIGFjdHVhbCBkZWJ1Z2dpbmcgb2YgbWx4NWUuIEknbSBsb29r
-aW5nIGZvcndhcmQgdG8geW91ciBmZWVkYmFjaw0KPj4gb24gbXkgYXNzdW1wdGlvbiBhYm92ZS4N
-Cj4+DQo+Pj4+IFRoZSBoYXJkd2FyZSBJIGFtIHVzaW5nIGlzIGEgTWVsbGFub3ggQ29ubmVjdFg0
-IDJ4MTAwRyBjYXJkIChNQ1g0MTZBLUNDQVQpDQo+Pj4+IHJ1bm5pbmcgdGhlIG1seDUgZHJpdmVy
-Lg0KPj4NCj4+IFRoaXMgb25lIHNob3VsZCBydW4gd2l0aG91dCBzdHJpZGluZyBSUSwgcGxlYXNl
-IHZlcmlmeSBpdCB3aXRoIGV0aHRvb2wNCj4+IC0tc2hvdy1wcml2LWZsYWdzICh0aGUgZmxhZyBu
-YW1lIGlzIHJ4X3N0cmlkaW5nX3JxKS4NCj4gDQo+IEkgZG8gbm90IHJlbWVtYmVyIGNoYW5naW5n
-IHRoaXMgb3B0aW9uLCBzbyB3aGF0ZXZlciB0aGUgZGVmYXVsdCBpcywgaXMgd2hhdCBpdA0KPiB3
-YXMgcnVubmluZyB3aXRoLiBJIGFtIHRyYXZlbGluZyB0aGlzIHdlZWsgYW5kIGRvIG5vdCBoYXZl
-IGFjY2VzcyB0byB0aGVzZQ0KPiBzeXN0ZW1zLCBidXQgd2lsbCBlbnN1cmUgdGhhdCB0aGlzIGZs
-YWcgaXMgc2V0IHByb3Blcmx5IHdoZW4gSSBnZXQgYmFjay4NCj4gDQoNCg==
+On Mon, Jan 27, 2020 at 3:01 PM Maxim Mikityanskiy <maximmi@mellanox.com> w=
+rote:
+>
+> On 2020-01-22 23:43, Ryan Goodfellow wrote:
+> > On Tue, Jan 21, 2020 at 01:40:50PM +0000, Maxim Mikityanskiy wrote:
+> >>>> I've posted output from the program in debugging mode here
+> >>>>
+> >>>> - https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/=
+1930375
+> >>>>
+> >>>> Yes, you are correct in that forwarding works for a brief period and=
+ then stops.
+> >>>> I've noticed that the number of packets that are forwarded is equal =
+to the size
+> >>>> of the producer/consumer descriptor rings. I've posted two ping trac=
+es from a
+> >>>> client ping that shows this.
+> >>>>
+> >>>> - https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/=
+1930376
+> >>>> - https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/=
+1930377
+> >>
+> >> These snippets are not available.
+> >
+> > Apologies, I had the wrong permissions set. They should be available no=
+w.
+> >
+> >>
+> >>>>
+> >>>> I've also noticed that when the forwarding stops, the CPU usage for =
+the proc
+> >>>> running the program is pegged, which is not the norm for this progra=
+m as it uses
+> >>>> a poll call with a timeout on the xsk fd.
+> >>
+> >> This information led me to a guess what may be happening. On the RX
+> >> side, mlx5e allocates pages in bulks for performance reasons and to
+> >> leverage hardware features targeted to performance. In AF_XDP mode,
+> >> bulking of frames is also used (on x86, the bulk size is 64 with
+> >> striding RQ enabled, and 8 otherwise, however, it's implementation
+> >> details that might change later). If you don't put enough frames to XS=
+K
+> >> Fill Ring, the driver will be demanding more frames and return from
+> >> poll() immediately. Basically, in the application, you should put as
+> >> many frames to the Fill Ring as you can. Please check if that could be
+> >> the root cause of your issue.
+> >
+> > The code in this application makes an effort to relenish the fill ring =
+as fast
+> > as possible. The basic loop of the application is to first check if the=
+re are
+> > any descriptors to be consumed from the completion queue or any descrip=
+tors that
+> > can be added to the fill queue, and only then to move on to moving pack=
+ets
+> > through the rx and tx rings.
+> >
+> > https://gitlab.com/mergetb/tech/network-emulation/kernel/blob/v5.5-moa/=
+samples/bpf/xdpsock_multidev.c#L452-474
+>
+> I reproduced your issue and did my investigation, and here is what I foun=
+d:
+>
+> 1. Commit df0ae6f78a45 (that you found during bisect) introduces an
+> important behavioral change (which I thought was not that important).
+> xskq_nb_avail used to return min(entries, dcnt), but after the change it
+> just returns entries, which may be as big as the ring size.
+>
+> 2. xskq_peek_addr updates q->ring->consumer only when q->cons_tail
+> catches up with q->cons_head. So, before that patch and one previous
+> patch, cons_head - cons_tail was not more than 16, so the consumer index
+> was updated periodically. Now consumer is updated only when the whole
+> ring is exhausted.
+>
+> 3. The application can't replenish the fill ring if the consumer index
+> doesn't move. As a consequence, refilling the descriptors by the
+> application can't happen in parallel with using them by the driver. It
+> should have some performance penalty and possibly even lead to packet
+> drops, because the driver uses all the descriptors and only then
+> advances the consumer index, and then it has to wait until the
+> application refills the ring, busy-looping and losing packets.
+
+This will happen if user space always fills up the whole ring, which
+might or might not happen all depending on the app. With that said, it
+might provide better performance to update it once in a while. It
+might also be the case that we will get better performance with the
+new scheme if we only fill half the fill ring. I will look into this
+and see what I get.
+
+> 4. As mlx5e allocates frames in batches, the consequences are even more
+> severe: it's a deadlock where the driver waits for the application, and
+> vice versa. The driver never reaches the point where cons_tail gets
+> equal to cons_head. E.g., if cons_tail + 3 =3D=3D cons_head, and the batc=
+h
+> size requested by the driver is 8, the driver won't peek anything from
+> the fill ring waiting for difference between cons_tail and cons_head to
+> increase to be at least 8. On the other hand, the application can't put
+> anything to the ring, because it still thinks that the consumer index is
+> 0. As cons_tail never reaches cons_head, the consumer index doesn't get
+> updated, hence the deadlock.
+
+Good thing that you detected this. Maybe I should get a Mellanox card
+:-). This is different from how we implemented Intel's drivers that
+just work on any batch size. If it gets 3 packets back, it will use
+those. How do you deal with the case when the application just puts a
+single buffer in the fill ring and wants to receive a single packet?
+Why does the Mellanox driver need a specific batch size? This is just
+for my understanding so we can find a good solution.
+
+> So, in my vision, the decision to remove RX_BATCH_SIZE and periodic
+> updates of the consumer index was wrong. It totally breaks mlx5e, that
+> does batching, and it will affect the performance of any driver, because
+> the application can't refill the ring until it gets completely empty and
+> the driver starts waiting for frames. I suggest that periodic updates of
+> the consumer index should be readded to xskq_cons_peek_addr.
+
+The reason I wanted to remove RX_BATCH_SIZE is that application
+developers complained about it giving rise to counter intuitive
+behavior in user space. I will try to dig out the complaints and the
+explanations Bj=C3=B6rn and I had to send which it seemed that users really
+should not have to care about. It should just work. I also do not like
+to have arbitrary constants like this. Why 16? Would much prefer not
+having to deal with this, unless of course it horribly breaks
+something or gives rise to worse performance. Might still be the case
+here, but if not, I would like to remove it.
+
+Thanks: Magnus
+
+> Magnus, what do you think of the suggestion above?
+>
+> Thanks,
+> Max
+>
+> >>
+> >> I tracked this issue in our internal bug tracker in case we need to
+> >> perform actual debugging of mlx5e. I'm looking forward to your feedbac=
+k
+> >> on my assumption above.
+> >>
+> >>>> The hardware I am using is a Mellanox ConnectX4 2x100G card (MCX416A=
+-CCAT)
+> >>>> running the mlx5 driver.
+> >>
+> >> This one should run without striding RQ, please verify it with ethtool
+> >> --show-priv-flags (the flag name is rx_striding_rq).
+> >
+> > I do not remember changing this option, so whatever the default is, is =
+what it
+> > was running with. I am traveling this week and do not have access to th=
+ese
+> > systems, but will ensure that this flag is set properly when I get back=
+.
+> >
+>
