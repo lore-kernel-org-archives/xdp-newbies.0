@@ -1,184 +1,181 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-oi1-f193.google.com ([209.85.167.193]:35232 "EHLO
-        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729203AbgA0Py4 (ORCPT
+Received: from qrelay22.mxroute.com ([172.82.139.22]:45615 "EHLO
+        qrelay22.mxroute.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726162AbgA1TBC (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 27 Jan 2020 10:54:56 -0500
-Received: by mail-oi1-f193.google.com with SMTP id b18so3144803oie.2
-        for <xdp-newbies@vger.kernel.org>; Mon, 27 Jan 2020 07:54:56 -0800 (PST)
+        Tue, 28 Jan 2020 14:01:02 -0500
+Received: from filter003.mxroute.com [168.235.111.26] (Authenticated sender: mN4UYu2MZsgR)
+ by qrelay22.mxroute.com (ZoneMTA) with ESMTPA id 16fed829c7c000f036.001
+ for <xdp-newbies@vger.kernel.org>;
+ Tue, 28 Jan 2020 18:55:57 +0000
+Received: from ocean.mxroute.com (ocean.mxroute.com [195.201.59.214])
+        by filter003.mxroute.com (Postfix) with ESMTPS id 8930E60012
+        for <xdp-newbies@vger.kernel.org>; Tue, 28 Jan 2020 18:55:56 +0000 (UTC)
+Subject: Re: Measuring/Debugging XDP Performance
+From: Christian Deacon <gamemann@gflclan.com>
+References: <6c3dc8ff-e2bd-a06e-d9f0-c5be0103d266@gflclan.com>
+ <20200123141122.3783e298@carbon>
+ <23ec64c0-e0d7-a60b-ecc4-6ca401dc4896@gflclan.com>
+ <20200123213808.7a1f200b@carbon>
+ <fdd597bf-7da9-f9bd-d97f-f1bd90f14281@gflclan.com>
+Message-ID: <f5242b7e-6c26-8682-9bc6-61f39497ca8e@gflclan.com>
+Date: Tue, 28 Jan 2020 12:55:51 -0600
 MIME-Version: 1.0
-References: <CAJ8uoz1FcfDYa1PaQuY-Yk+keEX5FT6+q2H2eLTce6DxcQjuiA@mail.gmail.com>
- <20200113151159.GB68570@smtp.ads.isi.edu> <CAJ8uoz1Ax5CAfO4wfo0Pj+jieeRN+gj0s2LpeeJ53uTorFP0ng@mail.gmail.com>
- <20200114205250.GA85903@smtp.ads.isi.edu> <20200115014137.GA105434@smtp.ads.isi.edu>
- <CAJ8uoz2VTXAT9ryF9Ls2JjacEw0Bc23t9w2jDEoMdA0dRc6Aaw@mail.gmail.com>
- <CAJ8uoz1Nf+Fsg40tfdnMenFiCjRBJN9maY9rVo--trt+Uwkqwg@mail.gmail.com>
- <20200116020414.GA46831@smtp.ads.isi.edu> <CAJ8uoz0yqYTq+OOK8p0XRcWyMkfnJ1ZT7hUew9w3FuHr=4K-QQ@mail.gmail.com>
- <4c03813d-5edf-7e9e-8905-31902b5acb71@mellanox.com> <20200122214352.GA13201@smtp.ads.isi.edu>
- <b1b9342b-b9e5-f576-c06c-3a43dcf2b189@mellanox.com>
-In-Reply-To: <b1b9342b-b9e5-f576-c06c-3a43dcf2b189@mellanox.com>
-From: Magnus Karlsson <magnus.karlsson@gmail.com>
-Date: Mon, 27 Jan 2020 16:54:44 +0100
-Message-ID: <CAJ8uoz1wuCmPehXNX2_OddF2YC=2mNaFZC4f+6j9VkmSTSPaQQ@mail.gmail.com>
-Subject: Re: zero-copy between interfaces
+In-Reply-To: <fdd597bf-7da9-f9bd-d97f-f1bd90f14281@gflclan.com>
+Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: quoted-printable
-To: Maxim Mikityanskiy <maximmi@mellanox.com>
-Cc: Ryan Goodfellow <rgoodfel@isi.edu>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Tariq Toukan <tariqt@mellanox.com>, Saeed Mahameed <saeedm@mellanox.com>, Moshe Shemesh <moshe@mellanox.com>
+To: xdp-newbies@vger.kernel.org
 
-On Mon, Jan 27, 2020 at 3:01 PM Maxim Mikityanskiy <maximmi@mellanox.com> w=
-rote:
->
-> On 2020-01-22 23:43, Ryan Goodfellow wrote:
-> > On Tue, Jan 21, 2020 at 01:40:50PM +0000, Maxim Mikityanskiy wrote:
-> >>>> I've posted output from the program in debugging mode here
-> >>>>
-> >>>> - https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/=
-1930375
-> >>>>
-> >>>> Yes, you are correct in that forwarding works for a brief period and=
- then stops.
-> >>>> I've noticed that the number of packets that are forwarded is equal =
-to the size
-> >>>> of the producer/consumer descriptor rings. I've posted two ping trac=
-es from a
-> >>>> client ping that shows this.
-> >>>>
-> >>>> - https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/=
-1930376
-> >>>> - https://gitlab.com/mergetb/tech/network-emulation/kernel/snippets/=
-1930377
-> >>
-> >> These snippets are not available.
-> >
-> > Apologies, I had the wrong permissions set. They should be available no=
-w.
-> >
-> >>
-> >>>>
-> >>>> I've also noticed that when the forwarding stops, the CPU usage for =
-the proc
-> >>>> running the program is pegged, which is not the norm for this progra=
-m as it uses
-> >>>> a poll call with a timeout on the xsk fd.
-> >>
-> >> This information led me to a guess what may be happening. On the RX
-> >> side, mlx5e allocates pages in bulks for performance reasons and to
-> >> leverage hardware features targeted to performance. In AF_XDP mode,
-> >> bulking of frames is also used (on x86, the bulk size is 64 with
-> >> striding RQ enabled, and 8 otherwise, however, it's implementation
-> >> details that might change later). If you don't put enough frames to XS=
-K
-> >> Fill Ring, the driver will be demanding more frames and return from
-> >> poll() immediately. Basically, in the application, you should put as
-> >> many frames to the Fill Ring as you can. Please check if that could be
-> >> the root cause of your issue.
-> >
-> > The code in this application makes an effort to relenish the fill ring =
-as fast
-> > as possible. The basic loop of the application is to first check if the=
-re are
-> > any descriptors to be consumed from the completion queue or any descrip=
-tors that
-> > can be added to the fill queue, and only then to move on to moving pack=
-ets
-> > through the rx and tx rings.
-> >
-> > https://gitlab.com/mergetb/tech/network-emulation/kernel/blob/v5.5-moa/=
-samples/bpf/xdpsock_multidev.c#L452-474
->
-> I reproduced your issue and did my investigation, and here is what I foun=
-d:
->
-> 1. Commit df0ae6f78a45 (that you found during bisect) introduces an
-> important behavioral change (which I thought was not that important).
-> xskq_nb_avail used to return min(entries, dcnt), but after the change it
-> just returns entries, which may be as big as the ring size.
->
-> 2. xskq_peek_addr updates q->ring->consumer only when q->cons_tail
-> catches up with q->cons_head. So, before that patch and one previous
-> patch, cons_head - cons_tail was not more than 16, so the consumer index
-> was updated periodically. Now consumer is updated only when the whole
-> ring is exhausted.
->
-> 3. The application can't replenish the fill ring if the consumer index
-> doesn't move. As a consequence, refilling the descriptors by the
-> application can't happen in parallel with using them by the driver. It
-> should have some performance penalty and possibly even lead to packet
-> drops, because the driver uses all the descriptors and only then
-> advances the consumer index, and then it has to wait until the
-> application refills the ring, busy-looping and losing packets.
+Hey everyone,
 
-This will happen if user space always fills up the whole ring, which
-might or might not happen all depending on the app. With that said, it
-might provide better performance to update it once in a while. It
-might also be the case that we will get better performance with the
-new scheme if we only fill half the fill ring. I will look into this
-and see what I get.
 
-> 4. As mlx5e allocates frames in batches, the consequences are even more
-> severe: it's a deadlock where the driver waits for the application, and
-> vice versa. The driver never reaches the point where cons_tail gets
-> equal to cons_head. E.g., if cons_tail + 3 =3D=3D cons_head, and the batc=
-h
-> size requested by the driver is 8, the driver won't peek anything from
-> the fill ring waiting for difference between cons_tail and cons_head to
-> increase to be at least 8. On the other hand, the application can't put
-> anything to the ring, because it still thinks that the consumer index is
-> 0. As cons_tail never reaches cons_head, the consumer index doesn't get
-> updated, hence the deadlock.
+The only NIC our hosting provider could replace our old NIC with is=20
+using the `e1000e` driver (it's a one gigabit NIC card). I dug through=20
+some older mailing list threads and read XDP isn't very effective with=20
+one gigabit NICs (the preferred minimum is 10 gbps IIRC). These were=20
+threads from 2017 and I'm not sure if this is still the case. However,=20
+if it is, I'm still hoping I can use XDP, but hopefully have the=20
+performance equal to the network stack at the very least.
 
-Good thing that you detected this. Maybe I should get a Mellanox card
-:-). This is different from how we implemented Intel's drivers that
-just work on any batch size. If it gets 3 packets back, it will use
-those. How do you deal with the case when the application just puts a
-single buffer in the fill ring and wants to receive a single packet?
-Why does the Mellanox driver need a specific batch size? This is just
-for my understanding so we can find a good solution.
 
-> So, in my vision, the decision to remove RX_BATCH_SIZE and periodic
-> updates of the consumer index was wrong. It totally breaks mlx5e, that
-> does batching, and it will affect the performance of any driver, because
-> the application can't refill the ring until it gets completely empty and
-> the driver starts waiting for frames. I suggest that periodic updates of
-> the consumer index should be readded to xskq_cons_peek_addr.
+I understand the `e1000e` driver doesn't have XDP support upstream.=20
+Therefore, I tried implementing the driver patch that adds XDP support here=
+:
 
-The reason I wanted to remove RX_BATCH_SIZE is that application
-developers complained about it giving rise to counter intuitive
-behavior in user space. I will try to dig out the complaints and the
-explanations Bj=C3=B6rn and I had to send which it seemed that users really
-should not have to care about. It should just work. I also do not like
-to have arbitrary constants like this. Why 16? Would much prefer not
-having to deal with this, unless of course it horribly breaks
-something or gives rise to worse performance. Might still be the case
-here, but if not, I would like to remove it.
 
-Thanks: Magnus
+https://github.com/adjavon/e1000e_xdp
 
-> Magnus, what do you think of the suggestion above?
->
-> Thanks,
-> Max
->
-> >>
-> >> I tracked this issue in our internal bug tracker in case we need to
-> >> perform actual debugging of mlx5e. I'm looking forward to your feedbac=
-k
-> >> on my assumption above.
-> >>
-> >>>> The hardware I am using is a Mellanox ConnectX4 2x100G card (MCX416A=
--CCAT)
-> >>>> running the mlx5 driver.
-> >>
-> >> This one should run without striding RQ, please verify it with ethtool
-> >> --show-priv-flags (the flag name is rx_striding_rq).
-> >
-> > I do not remember changing this option, so whatever the default is, is =
-what it
-> > was running with. I am traveling this week and do not have access to th=
-ese
-> > systems, but will ensure that this flag is set properly when I get back=
+
+Unfortunately, this patch was based off of kernel 4.10.2 (I'm using=20
+4.19). Therefore, I had to manually implement the patch code (this is my=20
+first time messing with NIC driver code). Sadly, it doesn't seem like=20
+the patch worked based off of the 'perf' results which are linked below.=20
+I still see "do_xdp_generic" calls:
+
+
+```
+
+xxx@xxx/xxxx/xxxx# cat results_2.log | grep "xdp"
+ =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0 do_xdp_generic
+ =C2=A0=C2=A0=C2=A0=C2=A0 0.33%=C2=A0 006=C2=A0 swapper=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 [kernel.kallsyms]=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0 [k]=20
+do_xdp_generic=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0 -=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 -
+ =C2=A0=C2=A0=C2=A0=C2=A0 0.09%=C2=A0 006=C2=A0 swapper=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 [kernel.kallsyms]=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0 [k]=20
+bpf_xdp_adjust_head=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 -=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0 -
+ =C2=A0=C2=A0=C2=A0=C2=A0 0.09%=C2=A0 005=C2=A0 swapper=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 [kernel.kallsyms]=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0 [k]=20
+do_xdp_generic=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0 -=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 -
+ =C2=A0=C2=A0=C2=A0=C2=A0 0.07%=C2=A0 006=C2=A0 swapper=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 [kernel.kallsyms]=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0 [k]=20
+generic_xdp_tx=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0 -=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 -
+ =C2=A0=C2=A0=C2=A0=C2=A0 0.07%=C2=A0 004=C2=A0 swapper=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 [kernel.kallsyms]=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0 [k]=20
+do_xdp_generic=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0 -=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 -
+ =C2=A0=C2=A0=C2=A0=C2=A0 0.05%=C2=A0 003=C2=A0 swapper=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 [kernel.kallsyms]=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0 [k]=20
+do_xdp_generic=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0 -=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 -
+ =C2=A0=C2=A0=C2=A0=C2=A0 0.02%=C2=A0 004=C2=A0 swapper=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 [kernel.kallsyms]=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0 [k]=20
+generic_xdp_tx=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0 -=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 -
+ =C2=A0=C2=A0=C2=A0=C2=A0 0.01%=C2=A0 005=C2=A0 swapper=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 [kernel.kallsyms]=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0 [k]=20
+generic_xdp_tx=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0 -=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 -
+```
+
+
+With that said, it appears my other POP servers that are using the=20
+"virtio_net" NIC driver are using XDP generic according to the 'perf'=20
+results as well (they're similar to the above). They're also on kernel 4.18=
 .
-> >
+
+
+My question is, how would you know if you're using XDP-native or not? Is=20
+it possible you're still using XDP-native, even when there are XDP=20
+generic calls from the 'perf' command?
+
+
+Here's a link to the outputs of the 'perf' command discussed above for=20
+anyone interested:
+
+
+https://g.gflclan.com/6sHmHPlo3W.zip
+
+
+Any help is highly appreciated and thank you for your time!
+
+
+On 1/23/2020 3:38 PM, Christian Deacon wrote:
+> Hey Jesper,
 >
+>
+> Thank you for the information and that makes a lot more sense! I=20
+> didn't realize we had a NIC that doesn't support XDP-native. I will=20
+> see if I can get a better NIC card for this dedicated server (I don't=20
+> believe our current NIC card supports any other drivers besides `igb`).
+>
+>
+> In the meantime, I have stopped announcing my dedicated server to our=20
+> Anycast network and have started announcing the four-core VPS that had=20
+> similar issues before ordering the dedicated server (even though I=20
+> feel this VPS should be able to handle the traffic load). The CPU is=20
+> virtualized and running at 2.5 GHz per core. The VPS's OS is Ubuntu=20
+> 18.10 and the kernel is '4.18.0-20'. The NIC driver is "virtio-pci",=20
+> which I believe is supported (please correct me if I'm wrong, I do see=20
+> 'virtio_net' in the list of supported XDP drivers which I'd assume is=20
+> the same thing).
+>
+>
+> I will execute the 'perf' commands tonight when we have higher traffic=20
+> load and reply with the output.
+>
+>
+> Thank you for your help!
+>
+>
+> On 1/23/2020 2:38 PM, Jesper Dangaard Brouer wrote:
+>> On Thu, 23 Jan 2020 11:22:31 -0600
+>> Christian Deacon <gamemann@gflclan.com> wrote:
+>>
+>>> Thank you for the information and I will try these commands tonight=20
+>>> when
+>>> there is higher traffic load! The 'perf' command seems interesting.
+>> Thanks for the perf output in the private email thread. From the output
+>> I can clearly see the problem (some copy pasted below signature).=C2=A0 =
+You
+>> are using the driver igb which does not support XDP-native, and is thus
+>> using generic-XDP.
+>>
+>> This driver only have 192 bytes headroom, where 256 is needed. Thus,
+>> running XDP-generic will be slower than running the normal network
+>> stack, as every packet will get reallocated and copied.
+>>
