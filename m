@@ -1,59 +1,52 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ot1-f68.google.com ([209.85.210.68]:44706 "EHLO
-        mail-ot1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726671AbgA3BDL (ORCPT
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:58531 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726397AbgA3IC3 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 29 Jan 2020 20:03:11 -0500
-Received: by mail-ot1-f68.google.com with SMTP id h9so1510381otj.11
-        for <xdp-newbies@vger.kernel.org>; Wed, 29 Jan 2020 17:03:11 -0800 (PST)
+        Thu, 30 Jan 2020 03:02:29 -0500
+Date: Thu, 30 Jan 2020 09:02:03 +0100
+From: Jesper Dangaard Brouer <jbrouer@redhat.com>
+Subject: Re: xdpsock ... -N -z and AF_XDP XDP_ZEROCOPY not working:
+ RESOLVED!
+Message-ID: <20200130090203.71b475a0@carbon>
+In-Reply-To: <c45f64a7-ffff-a123-818c-4dc127cd3ff4@gmail.com>
+References: <CAMyc9bVpR9thvVsa-LWNg6BPwkqNcL-W-FuEXdfXgGxCUUn3jA@mail.gmail.com>
+        <c45f64a7-ffff-a123-818c-4dc127cd3ff4@gmail.com>
 MIME-Version: 1.0
-From: Cameron Elliott <cameron@cameronelliott.com>
-Date: Wed, 29 Jan 2020 17:02:59 -0800
-Message-ID: <CAMyc9bVpR9thvVsa-LWNg6BPwkqNcL-W-FuEXdfXgGxCUUn3jA@mail.gmail.com>
-Subject: xdpsock ... -N -z and AF_XDP XDP_ZEROCOPY not working: RESOLVED!
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-To: Xdp <xdp-newbies@vger.kernel.org>, Magnus Karlsson <magnus.karlsson@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: David Ahern <dsahern@gmail.com>
+Cc: Cameron Elliott <cameron@cameronelliott.com>, Xdp <xdp-newbies@vger.kernel.org>, Magnus Karlsson <magnus.karlsson@gmail.com>
 
-My benchmarking with xdpsock was failing whenever I added '-z' to the
-'-N' option.
-Which is basically the XDP_ZEROCOPY flag to the AF_XDP setup call.
+On Wed, 29 Jan 2020 21:41:57 -0700
+David Ahern <dsahern@gmail.com> wrote:
 
+> On 1/29/20 6:02 PM, Cameron Elliott wrote:
+> > With this command:
+> > git clone git://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf-next.git
+> > More info: https://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf-next.git/
+> > 
+> > I built the kernel using these directions:
+> > https://wiki.ubuntu.com/KernelTeam/GitKernelBuild
+> > 
+> > And after rebooting and running on the 5.5 bpf-next kernel, -z and
+> > XDP_ZEROCOPY were working fine!  
+> 
+> since this is literally bleeding edge, is there a wiki/doc/other for
+> kernel versions and supported features? Something similar to what MLX
+> does for switchdev [1] would be really helpful.
+> 
+> [1] https://github.com/Mellanox/mlxsw/wiki
 
-I had the latest x710 firmware, and latest i40e driver on my ubuntu 18.04 b=
-ox.
-I also had th 5.3.0 kernel as installed by:
-"sudo apt-get install --install-recommends linux-generic-hwe-18.04"
+The IOvisor BCC project tries to keep track of kernel version and BPF +
+XDP features, here[2]:
 
-To my surprise, xdpsock ... -N -z was failing with errno 95
+[2] https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md 
 
-
-Turns out the 5.3.0 kernel was the culprit that prevented '-z' working with=
- '-N'
-(prevented XDP_ZEROCOPY working)
-
-I installed the bpf-next kernel found here:
-
-With this command:
-git clone git://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf-next.git
-More info: https://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf-next.git=
-/
-
-I built the kernel using these directions:
-https://wiki.ubuntu.com/KernelTeam/GitKernelBuild
-
-And after rebooting and running on the 5.5 bpf-next kernel, -z and
-XDP_ZEROCOPY were working fine!
-
-
-Many many thanks to Magnus for his help tracking this down.
-
-
-I re-posted this under a better title (IMHO) to help others suffering
-the same fate to find it.
-
-
-
-Cameron Elliott
+-- 
+Best regards,
+  Jesper Dangaard Brouer
+  MSc.CS, Principal Kernel Engineer at Red Hat
+  LinkedIn: http://www.linkedin.com/in/brouer
