@@ -1,60 +1,82 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-1.mimecast.com ([205.139.110.61]:38831 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1727193AbgA3Pcm (ORCPT
+Received: from mail-oi1-f181.google.com ([209.85.167.181]:44512 "EHLO
+        mail-oi1-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727741AbgAaCQJ (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 30 Jan 2020 10:32:42 -0500
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6A3AD1922960
-        for <xdp-newbies@vger.kernel.org>; Thu, 30 Jan 2020 15:32:23 +0000 (UTC)
-Received: from [10.36.116.53] (ovpn-116-53.ams2.redhat.com [10.36.116.53])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id E4FA6859DA
-        for <xdp-newbies@vger.kernel.org>; Thu, 30 Jan 2020 15:32:22 +0000 (UTC)
-From: "Eelco Chaudron" <echaudro@redhat.com>
-Subject: Need a way to modify the section name for a read program object
-Date: Thu, 30 Jan 2020 16:32:20 +0100
-Message-ID: <D0F8E306-ABEE-480E-BDFD-D43E3A98DC5A@redhat.com>
+        Thu, 30 Jan 2020 21:16:09 -0500
+Received: by mail-oi1-f181.google.com with SMTP id d62so5751135oia.11
+        for <xdp-newbies@vger.kernel.org>; Thu, 30 Jan 2020 18:16:08 -0800 (PST)
 MIME-Version: 1.0
+From: Cameron Elliott <cameron@cameronelliott.com>
+Date: Thu, 30 Jan 2020 18:15:55 -0800
+Message-ID: <CAMyc9bXvhK2a-m9KEj34rnc3EBM4mgFicdfvRWay=cwuNVDg8g@mail.gmail.com>
+Subject: Cannot run multiple 'xdpsock' concurrently?
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; format=flowed; charset=WINDOWS-1252
-Content-Transfer-Encoding: quoted-printable
-To: xdp-newbies@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: Xdp <xdp-newbies@vger.kernel.org>
 
-Hi All,
+Hello, I am trying to measure the maximum mpps I can push using AF_XDP
+on a 40G X710
 
-I'm trying to write an xdpdump like utility and have some missing part=20
-in libbpf to change the fentry/FUNCTION section name before loading the=20
-trace program.
-
-In short, I have an eBPF program that has a section name like=20
-"fentry/FUNCTION" where FUNCTION needs to be replaced by the name of the=20
-XDP program loaded in the interfaces its start function.
-
-The code for loading the ftrace part is something like:
-
-=09open_opts.attach_prog_fd =3D bpf_prog_get_fd_by_id(info.id);
-=09trace_obj =3D bpf_object__open_file("xdpdump_bpf.o", &open_opts);
-
-=09trace_prog_fentry =3D bpf_object__find_program_by_title(trace_obj,=20
-"fentry/FUNCTION");
-
-=09/* Here I need to replace the trace_prog_fentry->section_name =3D=20
-"fentry/<INTERFACE PROG NAME> */
-
-=09bpf_object__load(trace_obj);
-=09trace_link_fentry =3D bpf_program__attach_trace(trace_prog_fentry);
+I can do ~22 mpps after resolving a few bumbles I made with drivers,
+etc., (Thanks Magnus!)
+when using a single instance of 'xdpsock'
 
 
-See the above, I would like to change the section_name but there is no=20
-API to do this, and of course, the struct bpf_program is=20
-implementation-specific.
+Apparently the way to upto 50, 60 or 70? mpps is to use multiple cores...
+And apparently the simple way to do that, is multiple instances of
+xdpsock on different queues.
 
-Any idea how I would work around this, or what extension to libbpf can=20
-be suggested to support this?
+But, my attempts with multiple instances fail. :(
 
-Cheers,
 
-Eelco
+
+First, I checked my channel setup:
+
+$ sudo ethtool --set-channels enp1s0f0
+no channel parameters changed.
+current values: rx 0 tx 0 other 1 combined 4
+
+I presume that is okay...
+
+Then I run these two commands in two different windows:
+
+sudo  /home/c/bpf-next/samples/bpf/xdpsock -i enp1s0f0 -t -N -z -q 0
+sudo  /home/c/bpf-next/samples/bpf/xdpsock -i enp1s0f0 -t -N -z -q 1
+
+With the only difference being the queue id.
+
+The first will start and show ~22 mpps tx rate.
+When I start the second, both instances die:
+
+The first instace dies with:
+/home/c/bpf-next/samples/bpf/xdpsock_user.c:kick_tx:794: errno:
+100/"Network is down"
+
+The second instance dies with:
+/home/c/bpf-next/samples/bpf/xdpsock_user.c:kick_tx:794: errno: 6/"No
+such device or address"
+
+
+Do I understand correctly I should be able to run two instances like
+this concurrently?
+
+
+
+Thank you for any ideas, input.
+
+
+
+# ethtool dump / i40e driver from recent bpf-next clone
+c@lumen ~> ethtool -i enp1s0f0
+driver: i40e
+version: 2.8.20-k
+firmware-version: 7.10 0x80006456 1.2527.0
+expansion-rom-version:
+bus-info: 0000:01:00.0
+supports-statistics: yes
+supports-test: yes
+supports-eeprom-access: yes
+supports-register-dump: yes
+supports-priv-flags: yes
