@@ -1,113 +1,114 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-ua1-f68.google.com ([209.85.222.68]:44964 "EHLO
-        mail-ua1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726567AbgBADTK (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 31 Jan 2020 22:19:10 -0500
-Received: by mail-ua1-f68.google.com with SMTP id x16so3348038uao.11
-        for <xdp-newbies@vger.kernel.org>; Fri, 31 Jan 2020 19:19:09 -0800 (PST)
+Received: from mga07.intel.com ([134.134.136.100]:5337 "EHLO mga07.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727023AbgBCKSk (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 3 Feb 2020 05:18:40 -0500
+Date: Mon, 3 Feb 2020 04:11:04 +0100
+From: Maciej Fijalkowski <maciej.fijalkowski@intel.com>
+Subject: Re: Cannot run multiple 'xdpsock' concurrently?
+Message-ID: <20200203031104.GA19512@ranger.igk.intel.com>
+References: <CAMyc9bVixUDEJ-WHLJaCCTF3iV4pFF2j+RPM0hM1XOKh6S2yBw@mail.gmail.com>
+ <CAJ8uoz0btU4L80d2DHv+=ivL3RJmunnAsmetL=2zBo_2xfpgAA@mail.gmail.com>
 MIME-Version: 1.0
-References: <CAMDScm=w_B-tqTaoUCQiYiUEye4WO_sVfAA741XRLzAQEdwxKg@mail.gmail.com>
- <CAMDScmn-fOiwn7i1VsUFvyK==dv_E2WGKTbN9npL9aMeiv8xXw@mail.gmail.com>
-In-Reply-To: <CAMDScmn-fOiwn7i1VsUFvyK==dv_E2WGKTbN9npL9aMeiv8xXw@mail.gmail.com>
-From: Elerion <elerion1000@gmail.com>
-Date: Fri, 31 Jan 2020 19:18:57 -0800
-Message-ID: <CAMDScmntfwY_SJb+zj8kuKv-Pw3CG1HYNBXtO5hy38ycsgspig@mail.gmail.com>
-Subject: Re: Packets randomly dropped with virtio-net with xdp loaded in
- native mode
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <CAJ8uoz0btU4L80d2DHv+=ivL3RJmunnAsmetL=2zBo_2xfpgAA@mail.gmail.com>
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: xdp-newbies@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+To: Magnus Karlsson <magnus.karlsson@gmail.com>
+Cc: Cameron Elliott <cameron@cameronelliott.com>, Xdp <xdp-newbies@vger.kernel.org>, bjorn.topel@intel.com, maximmi@mellanox.com
 
-I figured out how to fix the baremetal server by sending the packet to
-ctx->rx_queue_index.
+On Mon, Feb 03, 2020 at 10:53:40AM +0100, Magnus Karlsson wrote:
+> On Fri, Jan 31, 2020 at 3:14 AM Cameron Elliott
+> <cameron@cameronelliott.com> wrote:
+> >
+> > Hello, I am trying to measure the maximum mpps I can push using AF_XDP on a 40G X710
+> >
+> > I can do 22 mpps  after resolving a few bumbles I made with drivers, etc., (Thanks Magnus!)
+> > when using a single instance of 'xdpsock'
+> >
+> >
+> > Apparently the way to upto 50, 60 or 70? mpps is to use multiple cores...
+> > And apparently the simple way to do that, is multiple instances of xdpsock on different queues.
+> >
+> > But, my attempts with multiple instances fail. :(
+> >
+> >
+> >
+> > First, I checked my channel setup:
+> >
+> > $ sudo ethtool --set-channels enp1s0f0
+> > no channel parameters changed.
+> > current values: rx 0 tx 0 other 1 combined 4
+> >
+> > I presume that is okay...
+> >
+> > Then I run these two commands in two different windows:
+> >
+> > sudo  /home/c/bpf-next/samples/bpf/xdpsock -i enp1s0f0 -t -N -z -q 0
+> > sudo  /home/c/bpf-next/samples/bpf/xdpsock -i enp1s0f0 -t -N -z -q 1
+> >
+> > With the only difference being the queue id.
+> >
+> > The first will start and show ~22 mpps tx rate.
+> > When I start the second, both instances die:
+> >
+> > The first instace dies with:
+> > /home/c/bpf-next/samples/bpf/xdpsock_user.c:kick_tx:794: errno: 100/"Network is down"
+> >
+> > The second instance dies with:
+> > /home/c/bpf-next/samples/bpf/xdpsock_user.c:kick_tx:794: errno: 6/"No such device or address"
+> >
+> >
+> > Do I understand correctly I should be able to run two instances like this concurrently?
+> 
+> This is probably not supported by the current xdpsock application.
+> What is likely happening is that it tries to load the XDP program
+> multiple times. As the XDP program is per netdev, not per queue, it
+> should only be loaded once. When the second process then fails, it
+> probably removes the XDP program (as it think it has loaded it) which
+> crashes the first process you started.
 
-But this change didn't fix the vm using virtio. Maybe because the host
-received a packet in a queue that doesn't exist in the guest? That
-would explain why only some packets are dropped and not all of them.
+Of course it *was* supported. Program is loaded only on the first xdpsock
+instance since libbpf is checking whether xdp resources are there. On the
+removal part you're right, we still haven't figured it out how to properly
+exit the xdpsock when there are other xdpsocks running.
 
-The host probably has >8 cores and my vm only has 1.
+Actually commit b3873a5be757 ("net/i40e: Fix concurrency issues between
+config flow and XSK") (CCing Maxim, Bjorn) broke the xdpsock multiple
+instances support. If we drop the check against busy bit in PF state in
+the i40e_xsk_wakeup, then I can run many xdpsocks on same ifindex.
 
-On Fri, Jan 31, 2020 at 2:51 PM Elerion <elerion1000@gmail.com> wrote:
->
-> I'm also getting the same issues with a 6 core baremetal server.
->
-> if I load the XDP in native mode, it will drop packets, if it is in
-> generic mode, it will not drop packets.
->
-> However if I only create 1 xsk socket instead of 1 per core, it
-> doesn't drop packets in native mode. The strange thing is that I get
-> dropped packets even when I don't send anything to xsk sockets in my
-> xdp filter.
->
-> I try to make xsk sockets with non-shared umem for each cpu core.
->
-> for (int queue_number=0; i< get_nprocs_conf(); queue_number++)
->       xsks[queue_number] = xsk_configure(NULL, queue_number);
->
-> ....
-> xsk_socket__create(&xsk->xsk, opt_if, queue_number, umem->umem, rxr, txr, &cfg);
->
-> So if I just do this instead, it doesn't drop any packets in native mode.
->
-> xsks[0] = xsk_configure(NULL, 0);
-> xsk_socket__create(&xsk->xsk, opt_if, 0, umem->umem, rxr, txr, &cfg);
->
->
-> Any tips on how to fix this?
-> ----
->
-> 5.0.0-37-generic #40~18.04.1-Ubuntu SMP Thu Nov 14 12:06:39 UTC 2019
-> x86_64 x86_64 x86_64 GNU/Linux
->
-> 01:00.0 Ethernet controller: Intel Corporation 82599 10 Gigabit
-> Network Connection (rev 01)
->         Subsystem: Super Micro Computer Inc 82599 10 Gigabit Network Connection
->         Flags: bus master, fast devsel, latency 0, IRQ 16
->         Memory at 91300000 (64-bit, prefetchable) [size=512K]
->         I/O ports at 4000 [size=32]
->         Memory at 91380000 (64-bit, prefetchable) [size=16K]
->         Expansion ROM at 91100000 [disabled] [size=512K]
->         Capabilities: [40] Power Management version 3
->         Capabilities: [50] MSI: Enable- Count=1/1 Maskable+ 64bit+
->         Capabilities: [70] MSI-X: Enable+ Count=64 Masked-
->         Capabilities: [a0] Express Endpoint, MSI 00
->         Capabilities: [e0] Vital Product Data
->         Capabilities: [100] Advanced Error Reporting
->         Capabilities: [140] Device Serial Number ac-1f-6b-ff-ff-a5-1a-6b
->         Capabilities: [150] Alternative Routing-ID Interpretation (ARI)
->         Capabilities: [160] Single Root I/O Virtualization (SR-IOV)
->         Kernel driver in use: ixgbe
->         Kernel modules: ixgbe
->
-> On Fri, Jan 31, 2020 at 1:33 PM Elerion <elerion1000@gmail.com> wrote:
+I'm not really sure that is the right approach since we are explicitly
+setting the __I40E_CONFIG_BUSY bit in i40e_queue_pair_disable which is
+used when ndo_bpf is called with XDP_SETUP_XSK_UMEM command.
+
+> 
+> So, the application needs to get extended to support this. Maybe you
+> want to do this :-)? Could be a good exercise. You could add a new
+> commend line option that takes the number of instances you would like
+> to create. Look at the -M option for some inspiration as it does some
+> of the things you need. Maybe you can reuse that code to support your
+> use case.
+> 
+> /Magnus
+> 
 > >
-> > Not sure if this is a known issue or if I'm doing something wrong, but
-> > when I tried to load an xdp program in native mode, my server starts
-> > randomly dropping packets while there are no issues with generic mode.
+> > Thank you for any ideas, input.
 > >
-> > bpf_set_link_xdp_fd(ifindex, fd, XDP_FLAGS_DRV_MODE); // drops packets
-> > bpf_set_link_xdp_fd(ifindex, fd, XDP_FLAGS_SKB_MODE); // doesn't drop packets
 > >
-> > Guest
-> > 5.0.0-16-generic #17~18.04.1-Ubuntu SMP Mon May 20 14:00:27 UTC 2019
-> > x86_64 x86_64 x86_64 GNU/Linux
 > >
-> > 00:03.0 Ethernet controller: Red Hat, Inc. Virtio network device
-> >         Subsystem: Red Hat, Inc. Virtio network device
-> >         Physical Slot: 3
-> >         Flags: bus master, fast devsel, latency 0, IRQ 10
-> >         I/O ports at c000 [size=64]
-> >         Memory at febf1000 (32-bit, non-prefetchable) [size=4K]
-> >         Memory at fe000000 (64-bit, prefetchable) [size=16K]
-> >         Capabilities: [98] MSI-X: Enable+ Count=18 Masked-
-> >         Capabilities: [84] Vendor Specific Information: VirtIO: <unknown>
-> >         Capabilities: [70] Vendor Specific Information: VirtIO: Notify
-> >         Capabilities: [60] Vendor Specific Information: VirtIO: DeviceCfg
-> >         Capabilities: [50] Vendor Specific Information: VirtIO: ISR
-> >         Capabilities: [40] Vendor Specific Information: VirtIO: CommonCfg
-> >         Kernel driver in use: virtio-pci
+> > # ethtool dump / i40e driver from recent bpf-next clone
+> > c@lumen ~> ethtool -i enp1s0f0
+> > driver: i40e
+> > version: 2.8.20-k
+> > firmware-version: 7.10 0x80006456 1.2527.0
+> > expansion-rom-version:
+> > bus-info: 0000:01:00.0
+> > supports-statistics: yes
+> > supports-test: yes
+> > supports-eeprom-access: yes
+> > supports-register-dump: yes
+> > supports-priv-flags: yes
 > >
-> > Host
-> > Unknown. It is a server from vultr.com
+> >
