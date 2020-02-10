@@ -1,83 +1,62 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-oi1-f193.google.com ([209.85.167.193]:43552 "EHLO
-        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726846AbgBJOCT (ORCPT
+Received: from us-smtp-2.mimecast.com ([207.211.31.81]:25523 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726961AbgBJOl2 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 10 Feb 2020 09:02:19 -0500
-Received: by mail-oi1-f193.google.com with SMTP id p125so9232244oif.10
-        for <xdp-newbies@vger.kernel.org>; Mon, 10 Feb 2020 06:02:19 -0800 (PST)
+        Mon, 10 Feb 2020 09:41:28 -0500
+From: "Eelco Chaudron" <echaudro@redhat.com>
+Subject: Doing a bpf trace of an XDP bpf program using bpf_perf_event_output()
+Date: Mon, 10 Feb 2020 15:41:20 +0100
+Message-ID: <8768549E-2139-4CB0-ACDC-024AF14E2C3C@redhat.com>
 MIME-Version: 1.0
-References: <1581068272-4615-1-git-send-email-magnus.karlsson@intel.com>
- <c5d6fd11-8696-e898-6f05-5fcc087c0065@mellanox.com> <95de5e86-8930-5655-62b9-ec60b9952440@iogearbox.net>
- <CAJ8uoz2Qn496NX2Q49_Ct_r4b_NjouqhM8iz+c2yp8y9=e4wSg@mail.gmail.com> <ad324d2e-c9ab-f2fa-c11a-d26bc8d21284@mellanox.com>
-In-Reply-To: <ad324d2e-c9ab-f2fa-c11a-d26bc8d21284@mellanox.com>
-From: Magnus Karlsson <magnus.karlsson@gmail.com>
-Date: Mon, 10 Feb 2020 15:02:07 +0100
-Message-ID: <CAJ8uoz3fuRsrKcru5KAyt3t_1Zrf-Y3Vx-ZDxJG_NH5J5idA8w@mail.gmail.com>
-Subject: Re: [PATCH bpf] xsk: publish global consumer pointers when NAPI is finsihed
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-To: Maxim Mikityanskiy <maximmi@mellanox.com>
-Cc: Magnus Karlsson <magnus.karlsson@intel.com>, Daniel Borkmann <daniel@iogearbox.net>, Xdp <xdp-newbies@vger.kernel.org>, Ryan Goodfellow <rgoodfel@isi.edu>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Tariq Toukan <tariqt@mellanox.com>, Saeed Mahameed <saeedm@mellanox.com>, Moshe Shemesh <moshe@mellanox.com>
+Content-Type: text/plain; format=flowed
+To: Xdp <xdp-newbies@vger.kernel.org>
+Cc: Alexei Starovoitov <ast@kernel.org>
 
-On Mon, Feb 10, 2020 at 2:43 PM Maxim Mikityanskiy <maximmi@mellanox.com> wrote:
->
-> On 2020-02-09 11:58, Magnus Karlsson wrote:
-> > On Fri, Feb 7, 2020 at 10:41 PM Daniel Borkmann <daniel@iogearbox.net> wrote:
-> >>
-> >> On 2/7/20 1:34 PM, Maxim Mikityanskiy wrote:
-> >>> On 2020-02-07 11:37, Magnus Karlsson wrote:
-> >>>> The commit 4b638f13bab4 ("xsk: Eliminate the RX batch size")
-> >>>> introduced a much more lazy way of updating the global consumer
-> >>>> pointers from the kernel side, by only doing so when running out of
-> >>>> entries in the fill or Tx rings (the rings consumed by the
-> >>>> kernel). This can result in a deadlock with the user application if
-> >>>> the kernel requires more than one entry to proceed and the application
-> >>>> cannot put these entries in the fill ring because the kernel has not
-> >>>> updated the global consumer pointer since the ring is not empty.
-> >> [...]
-> >>>
-> >>> Acked-by: Maxim Mikityanskiy <maximmi@mellanox.com>
-> >>>
-> >>> Is it intentional that you didn't send it to bpf and netdev mailing lists?
-> >>
-> >> Yep, please resend with Maxim's ACK to bpf + netdev in Cc. Thanks!
-> >
-> > It was intentional, but maybe confusing. In the mail just before this
-> > patch I suggested that this patch should be part of a patch set that
-> > we send to bpf and netdev. The purpose of sending it was for you Maxim
-> > to ok it, and you did with your ack :-). But I will repeat the other
-> > questions from that mail here.
->
-> OK, I see. Sorry, I didn't see the previous email (and still can't find
-> it, BTW).
->
-> > Does the Mellanox driver set the need_wakeup flag on Rx when it needs
-> > more buffers in the fill ring to form its stride and the HW Rx ring is
-> > empty? If yes, great. If not, please submit a patch for this.
->
-> Yes, it does (regardless of emptiness of the HW RX ring). If
-> xsk_umem_has_addrs_rq returns false, the driver sets the need_wakeup flag.
+I'm trying to send a packet capture to user space using 
+bpf_perf_event_output(). However, the verifier is not liking the context 
+I pass to it.
 
-Perfect. I will then submit the patch to the netdev mailing list.
-Please ack it again there.
+Code looks something like this (note this is an fentry bpf type trace):
 
-> > I will produce a documentation patch that clarifies that when the
-> > need_wakeup flag is set for the fill ring, the user need to put more
-> > packets on the fill ring and wakeup the kernel. It is already
-> > mentioned in the documentation, but I will make it more explicit.
-> >
->
-> Great, thanks!
->
-> There's still room for optimization here, though: how many is "more"? If
-> the application puts them one by one and wakes up the driver every time,
-> it's not very effective comparing to the case if it knew the exact
-> amount of missing frames. On the other hand, normally the application
-> would put enough frames in advance, and it shouldn't get to this point.
+static inline void trace_to_perf_buffer(struct xdp_buff *xdp)
+{
+...
+...
+     bpf_perf_event_output(xdp, &capture_map, flags,
+                   &metadata, sizeof(metadata));
+}
 
-Yes, there are many ways of messing up performance ;-). Ignoring the
-advice of using batching is one of them.
+SEC("fentry/xdpfilt_blk_all")
+int BPF_PROG(trace_on_entry, struct xdp_buff *xdp)
+{
+     trace_to_perf_buffer(xdp);
+     bpf_debug("fentry: [ifindex = %u, queue =  %u]\n",
+           xdp->rxq->dev->ifindex, xdp->rxq->queue_index);
+     return 0;
+}
 
-Thanks: Magnus
+The verifier does not like the context I pass:
+
+...
+from 9 to 13: R1=ptr_xdp_buff(id=0,off=0,imm=0) R2=inv(id=0) 
+R3=inv(id=0) R4=ptr_xdp_buff(id=0,off=8,imm=0) R10=fp0
+; metadata.pkt_len = (__u16)(data_end - data);
+13: (1f) r2 -= r3
+...
+...
+; bpf_perf_event_output((void *)xdp, &capture_map, flags,
+42: (18) r2 = 0xffff9a55f047c000
+44: (b7) r5 = 12
+45: (85) call bpf_perf_event_output#25
+R1 type=ptr_ expected=ctx
+
+
+What context should I pass, or do I even have it in the bpf trace 
+program?
+
+Thanks,
+
+Eelco
