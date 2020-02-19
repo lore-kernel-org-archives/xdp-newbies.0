@@ -1,127 +1,64 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-1.mimecast.com ([205.139.110.61]:36261 "EHLO
+Received: from us-smtp-1.mimecast.com ([207.211.31.81]:22069 "EHLO
         us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1727264AbgBKOyd (ORCPT
+        by vger.kernel.org with ESMTP id S1726539AbgBSOix (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 11 Feb 2020 09:54:33 -0500
-Received: by mail-lj1-f200.google.com with SMTP id s25so3878343ljm.9
-        for <xdp-newbies@vger.kernel.org>; Tue, 11 Feb 2020 06:54:29 -0800 (PST)
-From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-Subject: Re: Need a way to modify the section name for a read program object
-In-Reply-To: <0D7B2C92-FC75-4167-A973-EB0AD84FC878@redhat.com>
-References: <D0F8E306-ABEE-480E-BDFD-D43E3A98DC5A@redhat.com> <874kw664dy.fsf@toke.dk> <f1fa48b7-8096-b4f2-51cc-bcb4c1da0cd4@fb.com> <87zhdyduho.fsf@toke.dk> <CAEf4BzbWwseeKnGJCPj_VLLcQ-wkbhXWKAPsjQuy4LNDq8fvBg@mail.gmail.com> <0D7B2C92-FC75-4167-A973-EB0AD84FC878@redhat.com>
-Date: Tue, 11 Feb 2020 15:54:26 +0100
-Message-ID: <87wo8ti38d.fsf@toke.dk>
+        Wed, 19 Feb 2020 09:38:53 -0500
+From: "Eelco Chaudron" <echaudro@redhat.com>
+Subject: Capture xdp packets in an fentry BPF hook
+Date: Wed, 19 Feb 2020 15:38:40 +0100
+Message-ID: <F844EC8A-902B-4BF7-95E3-B0D6DC618F1B@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; format=flowed
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
-To: Eelco Chaudron <echaudro@redhat.com>, Andrii Nakryiko <andrii.nakryiko@gmail.com>
-Cc: Andrii Nakryiko <andriin@fb.com>, Xdp <xdp-newbies@vger.kernel.org>, bpf@vger.kernel.org
+To: Alexei Starovoitov <ast@kernel.org>
+Cc: Xdp <xdp-newbies@vger.kernel.org>, bpf <bpf@vger.kernel.org>, Toke =?utf-8?b?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>, Jesper Dangaard Brouer <brouer@redhat.com>
 
-"Eelco Chaudron" <echaudro@redhat.com> writes:
+Hi Alexei at al.,
 
-> On 4 Feb 2020, at 20:32, Andrii Nakryiko wrote:
->
->> On Tue, Feb 4, 2020 at 11:27 AM Toke Høiland-Jørgensen 
->> <toke@redhat.com> wrote:
->>>
->>> Andrii Nakryiko <andriin@fb.com> writes:
->>>
->>>> On 2/4/20 2:19 AM, Toke Høiland-Jørgensen wrote:
->>>>> "Eelco Chaudron" <echaudro@redhat.com> writes:
->>>>>
->>>>>> Hi All,
->>>>>>
->>>>>> I'm trying to write an xdpdump like utility and have some missing 
->>>>>> part
->>>>>> in libbpf to change the fentry/FUNCTION section name before 
->>>>>> loading the
->>>>>> trace program.
->>>>>>
->>>>>> In short, I have an eBPF program that has a section name like
->>>>>> "fentry/FUNCTION" where FUNCTION needs to be replaced by the name 
->>>>>> of the
->>>>>> XDP program loaded in the interfaces its start function.
->>>>>>
->>>>>> The code for loading the ftrace part is something like:
->>>>>>
->>>>>>     open_opts.attach_prog_fd = bpf_prog_get_fd_by_id(info.id);
->>>>>>     trace_obj = bpf_object__open_file("xdpdump_bpf.o", 
->>>>>> &open_opts);
->>>>>>
->>>>>>     trace_prog_fentry = 
->>>>>> bpf_object__find_program_by_title(trace_obj,
->>>>>> "fentry/FUNCTION");
->>>>>>
->>>>>>     /* Here I need to replace the trace_prog_fentry->section_name 
->>>>>> =
->>>>>> "fentry/<INTERFACE PROG NAME> */
->>>>>>
->>>>>>     bpf_object__load(trace_obj);
->>>>>>     trace_link_fentry = 
->>>>>> bpf_program__attach_trace(trace_prog_fentry);
->>>>>>
->>>>>>
->>>>>> See the above, I would like to change the section_name but there 
->>>>>> is no
->>>>>> API to do this, and of course, the struct bpf_program is
->>>>>> implementation-specific.
->>>>>>
->>>>>> Any idea how I would work around this, or what extension to libbpf 
->>>>>> can
->>>>>> be suggested to support this?
->>>>>
->>>>> I think what's missing is a way for the caller to set the 
->>>>> attach_btf_id.
->>>>> Currently, libbpf always tries to discover this based on the 
->>>>> section
->>>>> name (see libbpf_find_attach_btf_id()). I think the right way to 
->>>>> let the
->>>>> caller specify this is not to change the section name, though, but 
->>>>> just
->>>>> to expose a way to explicitly set the btf_id (which the caller can 
->>>>> then
->>>>> go find on its own).
->>>>
->>>> Yes, I agree, section name should be treated as an immutable 
->>>> identifier
->>>> and a (overrideable) hint to libbpf.
->>>>
->>>>>
->>>>> Not sure if it would be better with a new open_opt (to mirror
->>>>> attach_prog_fd), or just a setter 
->>>>> (bpf_program__set_attach_btf_id()?).
->>>>> Or maybe both? Andrii, WDYT?
->>>>
->>>> open_opts is definitely wrong way to do this, because open_opts 
->>>> apply to
->>>> all BPF programs, while this should be per-program.
->>>
->>> Yes, of course; silly me :)
->>>
->>>> I'm also not sure having API that allows to specify BTF type ID is 
->>>> the
->>>> best, probably better to let libbpf perform the search by name. So 
->>>> I'd
->>>> say something like this:
->>>>
->>>> int bpf_program__set_attach_target(int attach_prog_fd, const char
->>>> *attach_func_name)
->>>>
->>>> This should handle customizing all the tp_btf/fentry/fexit/freplace 
->>>> BPF
->>>> programs we have.
->>>
->>> Right, that makes sense; I think that would cover it (apart from your
->>> function signature missing a struct bpf_program argument).
->>
->> great! and, ha-ha, too object-oriented thinking ;)
->
-> Thanks for your feedback, assuming you are not working on it, I’ll 
-> implement/test it and sent out a patch.
+I'm getting closer to finally have an xdpdump tool that uses the bpf 
+fentry/fexit tracepoints, but I ran into a final hurdle...
 
-Please do! :)
+To stuff the packet into a perf ring I'll need to use the 
+bpf_perf_event_output(), but unfortunately, this is a program of trace 
+type, and not XDP so the packet data is not added automatically :(
 
--Toke
+Secondly even trying to pass the actual packet data as a reference to 
+bpf_perf_event_output() will not work as the verifier wants the data to 
+be on the fp.
+
+Even worse, the trace program gets the XDP info not thought the ctx, but 
+trough the fentry/fexit input value, i.e.:
+
+	SEC("fentry/func")
+	int BPF_PROG(trace_on_entry, struct xdp_buff *xdp)...
+
+	struct net_device {
+	    int ifindex;
+	} __attribute__((preserve_access_index));
+
+	struct xdp_rxq_info {
+	    struct net_device *dev;
+	    __u32 queue_index;
+	} __attribute__((preserve_access_index));
+
+	struct xdp_buff {
+	    void *data;
+	    void *data_end;
+	    void *data_meta;
+	    void *data_hard_start;
+	    unsigned long handle;
+	    struct xdp_rxq_info *rxq;
+	} __attribute__((preserve_access_index));
+
+Hence even trying to copy in bytes to a local buffer is not allowed by 
+the verifier, i.e. __u8 *data = (u8 *)(long)xdp->data;
+
+Can you let me know how you envisioned a BPF entry hook to capture 
+packets from XDP. Am I missing something, or is there something missing 
+from the infrastructure?
+
+Thanks,
+
+Eelco
