@@ -1,136 +1,177 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from qrelay122.mxroute.com ([172.82.139.122]:46013 "EHLO
-        qrelay122.mxroute.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726981AbgC3Td1 (ORCPT
+Received: from mail-qt1-f178.google.com ([209.85.160.178]:41309 "EHLO
+        mail-qt1-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387869AbgCLHzg (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 30 Mar 2020 15:33:27 -0400
-Received: from filter003.mxroute.com ([168.235.111.26] 168-235-111-26.cloud.ramnode.com)
- (Authenticated sender: mN4UYu2MZsgR)
- by qrelay122.mxroute.com (ZoneMTA) with ESMTPA id 1712cea8e240000d83.001
- for <xdp-newbies@vger.kernel.org>;
- Mon, 30 Mar 2020 19:28:21 +0000
-Received: from ocean.mxroute.com (ocean.mxroute.com [195.201.59.214])
-        by filter003.mxroute.com (Postfix) with ESMTPS id C534B6002D
-        for <xdp-newbies@vger.kernel.org>; Mon, 30 Mar 2020 19:28:20 +0000 (UTC)
-Subject: Re: Using AF_XDP To Modify Outgoing Packets
-References: <7902d2f1-1c21-f3e8-5035-352bba130d50@gflclan.com>
- <20200330111048.1167e6f4@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
-From: Christian Deacon <gamemann@gflclan.com>
-Message-ID: <dd0d11d8-29ff-18c5-85b2-d566d2bba2ea@gflclan.com>
-Date: Mon, 30 Mar 2020 14:28:18 -0500
+        Thu, 12 Mar 2020 03:55:36 -0400
 MIME-Version: 1.0
-In-Reply-To: <20200330111048.1167e6f4@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
-Content-Language: en-US
+References: <fd5e40efd5c1426cb4a5942682407ea2@hm.edu>
+In-Reply-To: <fd5e40efd5c1426cb4a5942682407ea2@hm.edu>
+From: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
+Date: Thu, 12 Mar 2020 08:55:22 +0100
+Message-ID: <CAJ+HfNghFctg3L=3QdeoWyqDdj4wP4EKWjYyF01=SmCO5+=32g@mail.gmail.com>
+Subject: Re: Shared Umem between processes
+Content-Type: text/plain; charset="UTF-8"
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Jakub Kicinski <kuba@kernel.org>
-Cc: xdp-newbies@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+To: "Gaul, Maximilian" <maximilian.gaul@hm.edu>, Xdp <xdp-newbies@vger.kernel.org>
+Cc: "bpf@vger.kernel.org" <bpf@vger.kernel.org>
 
-Hey David and Jakub,
-
-Thank you for your replies!
-
-David, it's good to know that egress support is being added to XDP and I 
-appreciate all the work you and others are putting into this! Do you 
-know if there is any ETA on when this will be officially 
-available/supported? With that said, will this be faster than most 
-solutions available now for processing/modifying outbound packets such 
-as using standard AF_PACKET sockets, IPTables, or DPDK?
-
-Jakub, thank you for that information! As for my project, I have a 
-program forwarding traffic to a server via IPIP packets. The destination 
-server has multiple network namespaces along with the IPIP tunnel 
-endpoints and the application sitting inside each namespace. As of right 
-now, the destination machine replies back through the IPIP tunnel (to 
-the forwarding server) and the forwarding server has to send the replies 
-back to the client. My goal is to make it so the application sends 
-traffic back to the client directly by spoofing the source address as 
-the forwarding server's IP address. This would result in less load on 
-the forwarding server along with less latency in my case. Currently, the 
-IPIP tunnel endpoints inside the namespaces are set as the default 
-devices and all IPIP packets go out the main interface on the 
-destination machine.
-
-Initially, I tried creating a veth pair and put the peer inside the 
-namespace. I then created a bridge on the main namespace and bridged the 
-veth on the main namespace. I assigned the bridge an IP and had an SNAT 
-rule in the IPTables POSTROUTING chain to source all traffic out as the 
-forwarding server IP. I set the veth pair inside the network namespace 
-as the default device on the network namespace and set the next hop to 
-the bridge IP. The networking part of this worked fine, traffic sent out 
-from the application (through the default route in the network 
-namespace) was reaching the clients directly and the clients were 
-replying back to the forwarding server. However, this still didn't work 
-and I believe the cause is due to the application not supporting two 
-separate interfaces (one for receiving and one for sending). 
-Unfortunately, the application is closed-source and I doubt support for 
-using two separate interfaces will be added.
-
-With the above said, I've been trying to look into creating a program 
-that would receive all outgoing packets on the main interface. It would 
-check the outer IP header's protocol to ensure it's IPPROTO_IPIP. If 
-this is the case, it would then check if the outer IP header's source 
-address is the same as the main interface's IP address. If this matches, 
-it would save the outer IP header's destination address and remove the 
-outer IP header. It would then replace the inner IP header's source 
-address with the saved address (outer IP header's destination address) 
-which should be the IP of the forwarding server. Afterwards, it would 
-recalculate the IP and transport header's checksums and continue sending 
-the packet. I believe in theory this should work.
-
-I am trying to find the best way to achieve the above. I don't believe 
-IPTables supports changing the packet's contents to the same extent as 
-the above.
-
-I made an XDP program yesterday that would do this, but later found out 
-XDP doesn't support egress at the moment. I still plan to use the code 
-for when TX path/egress support is added. I'd like to come up with 
-another solution in the meantime to achieve the above, though.
-
-I hope this helps clear up the situation and thank you again!
-
-
-On 3/30/2020 1:10 PM, Jakub Kicinski wrote:
-> On Mon, 30 Mar 2020 11:11:49 -0500 Christian Deacon wrote:
->> Hey everyone,
->>
->>
->> I am fairly new to XDP and AF_XDP programming. Therefore, I apologize if
->> this question sounds silly.
->>
->>
->> To my understanding, an XDP program cannot process outgoing packets
->> since it doesn't support the TX path. However, I read that AF_XDP
->> sockets support both receiving and transmitting packets inside the user
->> space while achieving zero-copy. I am trying to create a C program that
->> modifies outgoing packets on an interface and trying to do this the
->> fastest way possible. Unfortunately, I cannot use IPTables for this.
->>
->>
->> I wanted to know if there is any way to use AF_XDP sockets to modify
->> outgoing packets on an interface. I wasn't sure if the AF_XDP sockets
->> only support receiving traffic from the XDP program when using the
->> redirect function or not.
->>
->>
->> If this isn't possible, are there any plans to add TX path support into
->> XDP in the future? I'm also not sure what else I can do to achieve fast
->> packet processing for this. I looked into using standard AF_PACKET
->> sockets. However, since that makes a copy of the packet from the kernel,
->> I'd assume that's pretty slow and I'd have to find a way to block the
->> original packets (probably doing something with IPTables). I might also
->> look into DPDK, but I want to see if using AF_XDP sockets for outgoing
->> packet processing is possible first because it looks like it's going to
->> take a while to learn DPDK.
->>
->>
->> Any help is highly appreciated and thank you for your time!
-> Could you give us some more info on the use case? Where do the packets
-> originate? The main advantage of XDP is that it processes packets
-> before the metadata needed by the networking stack is allocated (skb).
-> This is only possible for RX or when packets are redirected from
-> another interface with XDP. All packets which pass through the stack
-> anyway can be efficiently modified using cls_bpf.
+On Wed, 11 Mar 2020 at 16:59, Gaul, Maximilian <maximilian.gaul@hm.edu> wrote:
 >
+> Hello everyone,
+>
+
+Hi! I'm moving this to the XDP newbies list, which is a more proper
+place for these kind of discussions!
+
+>
+> I am not sure if this is the correct address for my question / problem but I was forwarded to this e-mail from the libbpf github-issue section, so this is my excuse.
+>
+>
+> Just a few information at the start of this e-mail: My program is largely based on: https://github.com/xdp-project/xdp-tutorial/tree/master/advanced03-AF_XDP and I am using libbpf: https://github.com/libbpf/libbpf
+>
+>
+> I am currently trying to build an application that enables me to process multiple udp-multicast streams at once in parallel (each with up to several ten-thousands of packets per second).
+>
+>
+> My first solution was to steer each multicast-stream on a separate RX-Queue on my NIC via `ethtool -N <if> flow-type udp4 ...` and to spawn as much user-space processes (each with a separate AF-XDP socket connected to one of the RX-Queues) as there are streams to process.
+>
+>
+> But because this solution is limited to the amount of RX-Queues the NIC has and I wanted to build something hardware-independent, I looked around a bit and found a feature called `XDP_SHARED_UMEM`.
+>
+
+Let's start with defining what shared-umem is: The idea is to share
+the same umem, fill ring, and completion ring for multiple
+sockets. The sockets sharing that umem/fr/cr are tied (bound) to one
+hardware ring. It's a mechanism to load-balance a HW queue over
+multiple sockets.
+
+If I'm reading you correctly, you'd like a solution:
+
+           hw_q0,
+xsk_q0_0, xsk_q0_1, xsk_q0_2,
+
+instead of:
+
+hw_q0,    hw_q1,    hw_q2,
+xsk_q0_0, xsk_q1_0, xsk_q2_0,
+
+In the first case you'll need to mux the flows in the XDP program
+using an XSKMAP.
+
+Is this what you're trying to do?
+
+>
+>
+> As far as I understand (please correct me if I am wrong), at the moment libbpf only supports shared umem between threads of a process but not between processes - right?
+>
+
+Yes, that is correct, and for a reason! :-) Note that if you'd like to
+do a multi-*process* setup with shared umem, you: need to have a
+control process that manages the fill/completion rings, and
+synchronize between the processes, OR re-mmap the fill/completetion
+ring from the socket owning the umem in multiple processes *and*
+synchronize the access to them. Neither is pleasant.
+
+Honestly, not a setup I'd recommend.
+
+> I ran unto the problem, that `struct xsk_umem` is hidden in `xsk.c`. This prevents me from copying the content from the original socket / umem into shared memory. I am not sure, what information the sub-process (the one which is using the umem from another process) needs so I figured the simplest solution would be to just copy the whole umem struct.
+>
+
+Just for completeness; To setup shared umem:
+
+1. create socket 0 and register the umem to this.
+2. mmap the fr/cr using socket 0
+3. create socket 1, 2, n and refer to socket 0 for the umem.
+
+So, in a multiprocess solution step 3 would be done in separate
+processes, and step 2 depending on your application. You'd need to
+pass socket 0 to the other processes *and* share the umem memory from
+the process where socket 0 was created. This is pretty much a threaded
+solution, given all the shared state.
+
+I advice not taking this path.
+
+>
+>
+> So I went with the "quick-fix" to just move the definition of `struct xsk_umem` into `xsk.h` and to copy the umem-information from the original process into a shared memory. This process then calls `fork()` thus spawning a sub-process. This sub-process then reads the previously written umem-information from shared memory and passes it into `xsk_configure_socket` (af_xdp_user.c) which then eventually calls `xsk_socket__create` in `xsk.c`. This function then checks for `umem->refcount` and sets the flags for shared umem accordingly.
+>
+>
+>
+> After returning from `xsk_socket__create` (we are still in `xsk_configure_socket` in af_xdp_user.c), `bpf_get_link_xdp_id` is called (I don't know if that's necessary). But after that call I exit the function `xsk_socket__create` in the sub-process because I figured it is probably bad to configure the umem a second time by calling `xsk_ring_prod__reserve` after that:
+>
+>
+>
+>
+> static struct xsk_socket_info *xsk_configure_socket(struct config *cfg, struct xsk_umem_info *umem) {
+>
+> struct xsk_socket_config xsk_cfg;
+> struct xsk_socket_info *xsk_info;
+> uint32_t idx;
+> uint32_t prog_id = 0;
+> int i;
+> int ret;
+>
+> xsk_info = calloc(1, sizeof(*xsk_info));
+> if (!xsk_info)
+> return NULL;
+>
+> xsk_info->umem = umem;
+> xsk_cfg.rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS;
+> xsk_cfg.tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS;
+> xsk_cfg.libbpf_flags = 0;
+> xsk_cfg.xdp_flags = cfg->xdp_flags;
+> xsk_cfg.bind_flags = cfg->xsk_bind_flags;
+> ret = xsk_socket__create(&xsk_info->xsk, cfg->ifname, cfg->xsk_if_queue, umem->umem, &xsk_info->rx, &xsk_info->tx, &xsk_cfg);
+>
+> if (ret) {
+> fprintf(stderr, "FAIL 1\n");
+> goto error_exit;
+> }
+>
+> ret = bpf_get_link_xdp_id(cfg->ifindex, &prog_id, cfg->xdp_flags);
+> if (ret) {
+> fprintf(stderr, "FAIL 2\n");
+> goto error_exit;
+> }
+>
+> /* Initialize umem frame allocation */
+> for (i = 0; i < NUM_FRAMES; i++)
+> xsk_info->umem_frame_addr[i] = i * FRAME_SIZE;
+>
+> xsk_info->umem_frame_free = NUM_FRAMES;
+>
+> if(cfg->use_shrd_umem) {
+> return xsk_info;
+> }
+>         ...
+> }
+>
+> Somehow what I am doing doesn't work because my sub-process dies in `xsk_configure_socket`. I am not able to debug it properly with GDB though. Another point I don't understand is the statement:
+>
+> However, note that you need to supply the XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD libbpf_flag with the xsk_socket__create calls and load your own XDP program as there is no built in one in libbpf that will route the traffic for you.
+>
+> from https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-shared-umem-bind-flag
+>
+> I didn't know that libbpf loads a XDP-program? Why would it do that? I am using my own af-xdp program which filters for udp-packets. If I set `xsk_cfg.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;` in `xsk_configure_socket`, the af-xdp-socket fd is not put into the kernel `xsks-map` which basically means that I don't receive any packets.
+>
+> As you probably already noticed, I am overstrained with the concept of Shared Umem and I have to say, there is no documentation about it besides the two sentences in https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-shared-umem-bind-flag and a mail in a linux mailbox from Nov. 2019 stating that this feature is now implemented.
+>
+> Can you please help?
+>
+
+XDP sockets always use an XDP program, it just that a default one is
+provided if the use doesn't explicitly add one. Have a look at
+tools/lib/bpf/xsk.c:xsk_load_xdp_prog. So, for shared umem you need to
+explicitly have a program that muxes over the sockets. A naïve variant
+can be found in samples/bpf/xdpsock_kern.c
+
+
+Cheers,
+Björn
+
+> Best regards
+>
+> Max
