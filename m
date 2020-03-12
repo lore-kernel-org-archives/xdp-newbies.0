@@ -1,115 +1,201 @@
-Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from qrelay116.mxroute.com ([172.82.139.116]:39481 "EHLO
-        qrelay116.mxroute.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729647AbgCaXW6 (ORCPT
+Return-path: <xdp-newbies-owner@vger.kernel.org>
+Received: from postout1.mail.lrz.de ([129.187.255.137]:49365 "EHLO
+        postout1.mail.lrz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727240AbgCLPsi (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 31 Mar 2020 19:22:58 -0400
-Received: from filter003.mxroute.com ([168.235.111.26] 168-235-111-26.cloud.ramnode.com)
- (Authenticated sender: mN4UYu2MZsgR)
- by qrelay116.mxroute.com (ZoneMTA) with ESMTPA id 17132e7a16b0000d83.001
- for <xdp-newbies@vger.kernel.org>;
- Tue, 31 Mar 2020 23:22:53 +0000
-Received: from ocean.mxroute.com (ocean.mxroute.com [195.201.59.214])
-        by filter003.mxroute.com (Postfix) with ESMTPS id D3DBB60016
-        for <xdp-newbies@vger.kernel.org>; Tue, 31 Mar 2020 23:22:51 +0000 (UTC)
-Subject: Re: Using AF_XDP To Modify Outgoing Packets
-References: <7902d2f1-1c21-f3e8-5035-352bba130d50@gflclan.com>
- <20200330111048.1167e6f4@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
- <dd0d11d8-29ff-18c5-85b2-d566d2bba2ea@gflclan.com> <87sghoj2jf.fsf@toke.dk>
-From: Christian Deacon <gamemann@gflclan.com>
-Message-ID: <8013b38c-696c-cadd-a4cd-756eca658215@gflclan.com>
-Date: Tue, 31 Mar 2020 18:22:53 -0500
+        Thu, 12 Mar 2020 11:48:38 -0400
+From: "Gaul, Maximilian" <maximilian.gaul@hm.edu>
+Subject: AW: Shared Umem between processes
+Date: Thu, 12 Mar 2020 15:48:33 +0000
+Message-ID: <1f9eeee0897f4cf9951374ae605b03a4@hm.edu>
+References: <fd5e40efd5c1426cb4a5942682407ea2@hm.edu>
+ <CAJ+HfNghFctg3L=3QdeoWyqDdj4wP4EKWjYyF01=SmCO5+=32g@mail.gmail.com>
+ <a80ec2c07cb9493eafabb9decf479c60@hm.edu>
+ <CAJ+HfNjiDCdaQm_PocHXC+gHABAO67b6H+f2pf+ZdHRu2uhMVA@mail.gmail.com>
+ <69569dcbc4ce450eb5b2c1905bf11208@hm.edu>
+ <CAJ+HfNi5sstcz20EGq2sak0RpYdBwVO5P+NLX8cALBuG_xsnHw@mail.gmail.com>
+ <046ac5d67f6a447f98266eacaa2c25e5@hm.edu>
+ <CAJ+HfNjNMhxzXTrwKjOZALO5=3UTgQz0ytyAMs5zoGB0HX29DA@mail.gmail.com>
+ <87sgidon13.fsf@toke.dk>,<CAJ+HfNgRahagXKiiUCwZMO46cPL--OxXcE3HwpbWAyph9Cjy3Q@mail.gmail.com>
+In-Reply-To: <CAJ+HfNgRahagXKiiUCwZMO46cPL--OxXcE3HwpbWAyph9Cjy3Q@mail.gmail.com>
+Content-Language: de-DE
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-In-Reply-To: <87sghoj2jf.fsf@toke.dk>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8bit
-Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>
-Cc: xdp-newbies@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+To: =?iso-8859-1?Q?Bj=F6rn_T=F6pel?= <bjorn.topel@gmail.com>, =?iso-8859-1?Q?Toke_H=F8iland-J=F8rgensen?= <toke@redhat.com>
+Cc: Xdp <xdp-newbies@vger.kernel.org>
 
-Hey Toke,
+I don't know if it is appropriate to ask a new question on the same topic in the same thread? In case it is not I will start a new one but I thought it would fit "my story on how to get shared umem working".
 
+I followed https://github.com/xdp-project/bpf-next/blob/master/samples/bpf/xdpsock_user.c on how to implement shared umem and I think I got it working to some extend.
 
-Thank you for your reply and information!
+There are some problems though:
 
+I am processing two multicast streams arriving on the same RX-Queue on two sockets (using shared umem) - each socket is running in its own thread (same process).
+What I noticed: Everything seems to work fine for about 1min or so (even though I am noticing some packet-loss for 530.000 pps) but after that, datarate drops to only half and after one more minute to a fourth.
 
-After looking into the TC Hook, it looks like this will work for my 
-case. I'll try to get a program made in the next few days or so.
+My first thought on this was that the reserved umem frames by calling `xsk_ring_prod__reserve` are not freed properly (similiar to a memory leak) because of that I decreased the size of the umem to a tenth hoping to see a decrease in packet rate even sooner - and indeed I did!
 
+Basically what I do is to create a new thread for each socket and pass the `xsk_socket_info`-struct accordingly. I then call `nanosleep` for 2.5ms in a while-loop and process every frame that arrived:
 
-Thank you for the help!
+static void* rx_and_process(void *a) {
 
+	struct pthread_arg *arg = (struct pthread_arg*)a;
+	struct config *cfg = arg->cfg;
+	struct pckt_idntfy_stats *pckt = arg->pckt_idntfy;
+	struct xsk_socket_info *xsk_socket = arg->xsk_socket;
 
-On 3/31/2020 4:29 AM, Toke Høiland-Jørgensen wrote:
-> Christian Deacon <gamemann@gflclan.com> writes:
->
->> Hey David and Jakub,
->>
->> Thank you for your replies!
->>
->> David, it's good to know that egress support is being added to XDP and I
->> appreciate all the work you and others are putting into this! Do you
->> know if there is any ETA on when this will be officially
->> available/supported? With that said, will this be faster than most
->> solutions available now for processing/modifying outbound packets such
->> as using standard AF_PACKET sockets, IPTables, or DPDK?
->>
->> Jakub, thank you for that information! As for my project, I have a
->> program forwarding traffic to a server via IPIP packets. The destination
->> server has multiple network namespaces along with the IPIP tunnel
->> endpoints and the application sitting inside each namespace. As of right
->> now, the destination machine replies back through the IPIP tunnel (to
->> the forwarding server) and the forwarding server has to send the replies
->> back to the client. My goal is to make it so the application sends
->> traffic back to the client directly by spoofing the source address as
->> the forwarding server's IP address. This would result in less load on
->> the forwarding server along with less latency in my case. Currently, the
->> IPIP tunnel endpoints inside the namespaces are set as the default
->> devices and all IPIP packets go out the main interface on the
->> destination machine.
->>
->> Initially, I tried creating a veth pair and put the peer inside the
->> namespace. I then created a bridge on the main namespace and bridged the
->> veth on the main namespace. I assigned the bridge an IP and had an SNAT
->> rule in the IPTables POSTROUTING chain to source all traffic out as the
->> forwarding server IP. I set the veth pair inside the network namespace
->> as the default device on the network namespace and set the next hop to
->> the bridge IP. The networking part of this worked fine, traffic sent out
->> from the application (through the default route in the network
->> namespace) was reaching the clients directly and the clients were
->> replying back to the forwarding server. However, this still didn't work
->> and I believe the cause is due to the application not supporting two
->> separate interfaces (one for receiving and one for sending).
->> Unfortunately, the application is closed-source and I doubt support for
->> using two separate interfaces will be added.
->>
->> With the above said, I've been trying to look into creating a program
->> that would receive all outgoing packets on the main interface. It would
->> check the outer IP header's protocol to ensure it's IPPROTO_IPIP. If
->> this is the case, it would then check if the outer IP header's source
->> address is the same as the main interface's IP address. If this matches,
->> it would save the outer IP header's destination address and remove the
->> outer IP header. It would then replace the inner IP header's source
->> address with the saved address (outer IP header's destination address)
->> which should be the IP of the forwarding server. Afterwards, it would
->> recalculate the IP and transport header's checksums and continue sending
->> the packet. I believe in theory this should work.
->>
->> I am trying to find the best way to achieve the above. I don't believe
->> IPTables supports changing the packet's contents to the same extent as
->> the above.
->>
->> I made an XDP program yesterday that would do this, but later found out
->> XDP doesn't support egress at the moment. I still plan to use the code
->> for when TX path/egress support is added. I'd like to come up with
->> another solution in the meantime to achieve the above, though.
-> I think you could do this with the TC hook? You can install BPF programs
-> there that have then same ability to modify the program as XDP does. And
-> since the packets are coming from an application, you don't gain any
-> speedup from XDP anyway (since the kernel has already built its packet
-> data structures).
->
-> -Toke
->
+	struct timespec spec;
+	spec.tv_sec = 0;
+	spec.tv_nsec = 2500 * 1000;
+
+	struct timespec remaining;
+
+	while(!global_exit) {
+		if(nanosleep(&spec, &remaining) < 0) {
+			nanosleep(&spec, &remaining);
+		}
+		handle_receive_packets(xsk_socket, fds);
+	}
+
+	return NULL;
+}
+
+`pckt_idntfy_stats` contains information about where the statistics about this multicast-stream should be placed in shared memory.
+
+Processing then happens like this:
+
+static void handle_receive_packets(struct xsk_socket_info *xsk_socket, struct pollfd *fds) {
+	unsigned int rcvd, i;
+	uint32_t idx_rx = 0, idx_fq = 0;
+	int ret;
+
+	rcvd = xsk_ring_cons__peek(&xsk_socket->rx, INT32_MAX, &idx_rx);
+	if (!rcvd) {
+        /* no packets received, go to sleep */
+		return;
+	}
+
+	ret = xsk_ring_prod__reserve(&xsk_socket->umem->fq, rcvd, &idx_fq);
+	if (ret < 0) {
+		fprintf(stderr, "Error: %s\n", strerror(-ret));
+		return;
+	} else if(ret == 0) {
+		printf("NO SPACE LEFT!\n");
+		return;
+	} else if(ret != rcvd) {
+		printf("RET != RCVD\n");
+		return;
+	}
+
+	for (i = 0; i < rcvd; i++) {
+		uint64_t addr = xsk_ring_cons__rx_desc(&xsk_socket->rx, idx_rx)->addr;
+		uint32_t len = xsk_ring_cons__rx_desc(&xsk_socket->rx, idx_rx++)->len;
+		uint64_t orig = xsk_umem__extract_addr(addr);
+
+		addr = xsk_umem__add_offset_to_addr(addr);
+
+		process_packet(xsk_socket, addr, len);
+		*xsk_ring_prod__fill_addr(&xsk_socket->umem->fq, idx_fq++) = orig;
+		
+		xsk_socket->stats.rx_bytes += len;
+	}
+
+	xsk_ring_prod__submit(&xsk_socket->umem->fq, rcvd);
+	xsk_ring_cons__release(&xsk_socket->rx, rcvd);
+	xsk_socket->stats.rx_packets += rcvd;
+}
+
+I am sorry to post all this code here but maybe it helps?
+
+This is how I configured the umem (basically a 1:1 copy from `xdpsock_user.c`:
+
+static struct xsk_umem_info *configure_xsk_umem(void *buffer, uint64_t size) {
+
+	struct xsk_umem_info *umem;
+	struct xsk_umem_config cfg = {
+		.fill_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
+		.comp_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
+		.frame_size = FRAME_SIZE,
+		.frame_headroom = XSK_UMEM__DEFAULT_FRAME_HEADROOM,
+		.flags = 0
+	};
+	int ret;
+
+	umem = calloc(1, sizeof(*umem));
+	if (!umem) {
+		fprintf(stderr, "Error while allocating umem: %s\n", strerror(errno));
+		exit(1);
+	}
+
+	ret = xsk_umem__create(&umem->umem, buffer, size, &umem->fq, &umem->cq, &cfg);
+	if (ret) {
+		fprintf(stderr, "`xsk_umem__create` returned: %s\n", strerror(-ret));
+		exit(1);
+	}
+
+	umem->buffer = buffer;
+	return umem;
+}
+
+and after that I call:
+
+static void xsk_populate_fill_ring(struct xsk_umem_info *umem) {
+	int ret, i;
+	uint32_t idx;
+
+	ret = xsk_ring_prod__reserve(&umem->fq, XSK_RING_PROD__DEFAULT_NUM_DESCS, &idx);
+	if (ret != XSK_RING_PROD__DEFAULT_NUM_DESCS) {
+		fprintf(stderr, "Failed to reserve prod ring: %s\n", strerror(errno));
+		exit(1);
+	}
+	for (i = 0; i < XSK_RING_PROD__DEFAULT_NUM_DESCS; i++) {
+		*xsk_ring_prod__fill_addr(&umem->fq, idx++) = i * FRAME_SIZE;
+	}
+	xsk_ring_prod__submit(&umem->fq, XSK_RING_PROD__DEFAULT_NUM_DESCS);
+}
+
+And sockets are created this way:
+
+static struct xsk_socket_info *xsk_configure_socket(struct xsk_umem_info *umem, struct config *cfg, bool rx, bool tx) {
+	struct xsk_socket_config xsk_socket_cfg;
+ 	struct xsk_socket_info *xsk;
+	struct xsk_ring_cons *rxr;
+	struct xsk_ring_prod *txr;
+	int ret;
+
+	xsk = calloc(1, sizeof(*xsk));
+	if (!xsk) {
+		fprintf(stderr, "xsk `calloc` failed: %s\n", strerror(errno));
+		exit(1);
+	}
+
+	xsk->umem = umem;
+	xsk_socket_cfg.rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS;
+	xsk_socket_cfg.tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS;
+	if (cfg->ip_addrs_len > 1) {
+		xsk_socket_cfg.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
+	} else {
+		xsk_socket_cfg.libbpf_flags = 0;
+	}
+	xsk_socket_cfg.xdp_flags = cfg->xdp_flags;
+	xsk_socket_cfg.bind_flags = cfg->xsk_bind_flags;
+
+	rxr = rx ? &xsk->rx : NULL;
+	txr = tx ? &xsk->tx : NULL;
+	ret = xsk_socket__create(&xsk->xsk, cfg->ifname_buf, cfg->xsk_if_queue, umem->umem, rxr, txr, &xsk_socket_cfg);
+	if (ret) {
+		fprintf(stderr, "`xsk_socket__create` returned error: %s\n", strerror(errno));
+		exit(-ret);
+	}
+
+	return xsk;
+}
+
+As far as I've seen from `xdpsock_user.c` there is no special handling required by the sockets who are using shared umem? What am I missing?
+
+Best regards
+
+Max
