@@ -1,35 +1,26 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from postout2.mail.lrz.de ([129.187.255.138]:51585 "EHLO
+Received: from postout2.mail.lrz.de ([129.187.255.138]:49077 "EHLO
         postout2.mail.lrz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728681AbgCOP3y (ORCPT
+        with ESMTP id S1726501AbgCOPgR (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Sun, 15 Mar 2020 11:29:54 -0400
+        Sun, 15 Mar 2020 11:36:17 -0400
 Received: from lxmhs52.srv.lrz.de (localhost [127.0.0.1])
-        by postout2.mail.lrz.de (Postfix) with ESMTP id 48gNf65gvWzyY6
-        for <xdp-newbies@vger.kernel.org>; Sun, 15 Mar 2020 16:29:50 +0100 (CET)
+        by postout2.mail.lrz.de (Postfix) with ESMTP id 48gNnV2x0VzyTR
+        for <xdp-newbies@vger.kernel.org>; Sun, 15 Mar 2020 16:36:14 +0100 (CET)
 Received: from postout2.mail.lrz.de ([127.0.0.1])
         by lxmhs52.srv.lrz.de (lxmhs52.srv.lrz.de [127.0.0.1]) (amavisd-new, port 20024)
-        with LMTP id 4kl8mXh4Q5fL for <xdp-newbies@vger.kernel.org>;
-        Sun, 15 Mar 2020 16:29:50 +0100 (CET)
-Received: from BADWLRZ-SWMBB04.ads.mwn.de (BADWLRZ-SWMBB04.ads.mwn.de [IPv6:2001:4ca0:0:108::155])
+        with LMTP id pYDze45UKane for <xdp-newbies@vger.kernel.org>;
+        Sun, 15 Mar 2020 16:36:13 +0100 (CET)
+Received: from BADWLRZ-SWMBX03.ads.mwn.de (BADWLRZ-SWMBX03.ads.mwn.de [IPv6:2001:4ca0:0:108::159])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
-        (Client CN "BADWLRZ-SWMBB04", Issuer "BADWLRZ-SWMBB04" (not verified))
-        by postout2.mail.lrz.de (Postfix) with ESMTPS id 48gNf62CVzzyXm
-        for <xdp-newbies@vger.kernel.org>; Sun, 15 Mar 2020 16:29:50 +0100 (CET)
+        (Client CN "BADWLRZ-SWMBX03", Issuer "BADWLRZ-SWMBX03" (not verified))
+        by postout2.mail.lrz.de (Postfix) with ESMTPS id 48gNnT6yLjzyTN
+        for <xdp-newbies@vger.kernel.org>; Sun, 15 Mar 2020 16:36:13 +0100 (CET)
 From: "Gaul, Maximilian" <maximilian.gaul@hm.edu>
-Subject: AW: Shared Umem between processes
-Date: Sun, 15 Mar 2020 15:29:49 +0000
-Message-ID: <918ba455fdd2445a93fbec3b92bcc204@hm.edu>
-References: <fd5e40efd5c1426cb4a5942682407ea2@hm.edu>
- <CAJ+HfNghFctg3L=3QdeoWyqDdj4wP4EKWjYyF01=SmCO5+=32g@mail.gmail.com>
- <a80ec2c07cb9493eafabb9decf479c60@hm.edu>
- <CAJ+HfNjiDCdaQm_PocHXC+gHABAO67b6H+f2pf+ZdHRu2uhMVA@mail.gmail.com>
- <69569dcbc4ce450eb5b2c1905bf11208@hm.edu>
- <CAJ+HfNi5sstcz20EGq2sak0RpYdBwVO5P+NLX8cALBuG_xsnHw@mail.gmail.com>
- <046ac5d67f6a447f98266eacaa2c25e5@hm.edu>
- <CAJ+HfNjNMhxzXTrwKjOZALO5=3UTgQz0ytyAMs5zoGB0HX29DA@mail.gmail.com>
- <87sgidon13.fsf@toke.dk>,<CAJ+HfNgRahagXKiiUCwZMO46cPL--OxXcE3HwpbWAyph9Cjy3Q@mail.gmail.com>,<1f9eeee0897f4cf9951374ae605b03a4@hm.edu>
-In-Reply-To: <1f9eeee0897f4cf9951374ae605b03a4@hm.edu>
+Subject: Why does my AF-XDP Socket lose packets whereas a generic linux socket
+ doesn't?
+Date: Sun, 15 Mar 2020 15:36:13 +0000
+Message-ID: <27adfa9b069242a3a0d8e9ccd64e308a@hm.edu>
 Content-Language: de-DE
 MIME-Version: 1.0
 Sender: xdp-newbies-owner@vger.kernel.org
@@ -38,234 +29,190 @@ Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 To: Xdp <xdp-newbies@vger.kernel.org>
 
-I figured out that this was because I didn't synchronize the access to the =
-umem between the AF-XDP sockets.
-I am doing that now in a Round-Robin like fashion as described in `xdpsock_=
-user.c`.
+I am comparing AF-XDP sockets vs Linux Sockets in terms of how many packets=
+ they can process without packet-loss (packet-loss is defined as the RTP-se=
+quence number of the current packet is not equal to the RTP-sequence number=
+ of the previous packet `+ 1`).
 
->On Thu, 12 Mar 2020 at 16:48, Gaul, Maximilian <maximilian.gaul@hm.edu>  w=
-rote:
+I noticed that my AF-XDP socket program (I can't determine if this problem =
+is related to the kernel program or the user-space program) is losing aroun=
+d `~25` packets per second at around `390.000` packets per second whereas a=
+n equivalent program with generic linux sockets doesn't lose any packets.
 
->I don't know if it is appropriate to ask a new question on the same topic =
-in the same thread? In case it is not I will start a new one but I thought =
-it would fit "my story on how to get shared umem working".
->
->I followed  https://github.com/xdp-project/bpf-next/blob/master/samples/bp=
-f/xdpsock_user.c on how to implement shared umem and I think I got it worki=
-ng to some extend.
->
->There are some problems though:
->
->I am processing two multicast streams arriving on the same RX-Queue on two=
- sockets (using shared umem) - each socket is running in its own thread (sa=
-me process).
->What I noticed: Everything seems to work fine for about 1min or so (even t=
-hough I am noticing some packet-loss for 530.000 pps) but after that, datar=
-ate drops to only half and after one more minute to a fourth.
->
->My first thought on this was that the reserved umem frames by calling `xsk=
-_ring_prod__reserve` are not freed properly (similiar to a memory leak) bec=
-ause of that I decreased the size of the umem to a tenth hoping to see a de=
-crease in packet rate even sooner  - and indeed I did!
->
->Basically what I do is to create a new thread for each socket and pass the=
- `xsk_socket_info`-struct accordingly. I then call `nanosleep` for 2.5ms in=
- a while-loop and process every frame that arrived:
->
->static void* rx_and_process(void *a) {
->
->=A0=A0=A0=A0=A0=A0=A0 struct pthread_arg *arg =3D (struct pthread_arg*)a;
->=A0=A0=A0=A0=A0=A0=A0 struct config *cfg =3D arg->cfg;
->=A0=A0=A0=A0=A0=A0=A0 struct pckt_idntfy_stats *pckt =3D arg->pckt_idntfy;
->=A0=A0=A0=A0=A0=A0=A0 struct xsk_socket_info *xsk_socket =3D arg->xsk_sock=
-et;
->
->=A0=A0=A0=A0=A0=A0=A0 struct timespec spec;
->=A0=A0=A0=A0=A0=A0=A0 spec.tv_sec =3D 0;
->=A0=A0=A0=A0=A0=A0=A0 spec.tv_nsec =3D 2500 * 1000;
->
->=A0=A0=A0=A0=A0=A0=A0 struct timespec remaining;
->
->=A0=A0=A0=A0=A0=A0=A0 while(!global_exit) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 if(nanosleep(&spec, &remaini=
-ng) < 0) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 nano=
-sleep(&spec, &remaining);
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 }
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 handle_receive_packets(xsk_s=
-ocket, fds);
->=A0=A0=A0=A0=A0=A0=A0 }
->
->=A0=A0=A0=A0=A0=A0=A0 return NULL;
->}
->
->`pckt_idntfy_stats` contains information about where the statistics about =
-this multicast-stream should be placed in shared memory.
->
->Processing then happens like this:
->
->static void handle_receive_packets(struct xsk_socket_info *xsk_socket, str=
-uct pollfd *fds) {
->=A0=A0=A0=A0=A0=A0=A0 unsigned int rcvd, i;
->=A0=A0=A0=A0=A0=A0=A0 uint32_t idx_rx =3D 0, idx_fq =3D 0;
->=A0=A0=A0=A0=A0=A0=A0 int ret;
->
->=A0=A0=A0=A0=A0=A0=A0 rcvd =3D xsk_ring_cons__peek(&xsk_socket->rx, INT32_=
-MAX, &idx_rx);
->=A0=A0=A0=A0=A0=A0=A0 if (!rcvd) {
->=A0=A0=A0=A0=A0=A0=A0 /* no packets received, go to sleep */
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 return;
->=A0=A0=A0=A0=A0=A0=A0 }
->
->=A0=A0=A0=A0=A0=A0=A0 ret =3D xsk_ring_prod__reserve(&xsk_socket->umem->fq=
-, rcvd, &idx_fq);
->=A0=A0=A0=A0=A0=A0=A0 if (ret < 0) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 fprintf(stderr, "Error: %s\n=
-", strerror(-ret));
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 return;
->=A0=A0=A0=A0=A0=A0=A0 } else if(ret =3D=3D 0) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 printf("NO SPACE LEFT!\n");
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 return;
->=A0=A0=A0=A0=A0=A0=A0 } else if(ret !=3D rcvd) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 printf("RET !=3D RCVD\n");
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 return;
->=A0=A0=A0=A0=A0=A0=A0 }
->
->=A0=A0=A0=A0=A0=A0=A0 for (i =3D 0; i < rcvd; i++) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 uint64_t addr =3D xsk_ring_c=
-ons__rx_desc(&xsk_socket->rx, idx_rx)->addr;
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 uint32_t len =3D xsk_ring_co=
-ns__rx_desc(&xsk_socket->rx, idx_rx++)->len;
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 uint64_t orig =3D xsk_umem__=
-extract_addr(addr);
->
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 addr =3D xsk_umem__add_offse=
-t_to_addr(addr);
->
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 process_packet(xsk_socket, a=
-ddr, len);
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 *xsk_ring_prod__fill_addr(&x=
-sk_socket->umem->fq, idx_fq++) =3D orig;
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=20
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 xsk_socket->stats.rx_bytes +=
-=3D len;
->=A0=A0=A0=A0=A0=A0=A0 }
->
->=A0=A0=A0=A0=A0=A0=A0 xsk_ring_prod__submit(&xsk_socket->umem->fq, rcvd);
->=A0=A0=A0=A0=A0=A0=A0 xsk_ring_cons__release(&xsk_socket->rx, rcvd);
->=A0=A0=A0=A0=A0=A0=A0 xsk_socket->stats.rx_packets +=3D rcvd;
->}
->
->I am sorry to post all this code here but maybe it helps?
->
->This is how I configured the umem (basically a 1:1 copy from `xdpsock_user=
-.c`:
->
->static struct xsk_umem_info *configure_xsk_umem(void *buffer, uint64_t siz=
-e) {
->
->=A0=A0=A0=A0=A0=A0=A0 struct xsk_umem_info *umem;
->=A0=A0=A0=A0=A0=A0=A0 struct xsk_umem_config cfg =3D {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 .fill_size =3D XSK_RING_PROD=
-__DEFAULT_NUM_DESCS,
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 .comp_size =3D XSK_RING_CONS=
-__DEFAULT_NUM_DESCS,
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 .frame_size =3D FRAME_SIZE,
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 .frame_headroom =3D XSK_UMEM=
-__DEFAULT_FRAME_HEADROOM,
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 .flags =3D 0
->=A0=A0=A0=A0=A0=A0=A0 };
->=A0=A0=A0=A0=A0=A0=A0 int ret;
->
->=A0=A0=A0=A0=A0=A0=A0 umem =3D calloc(1, sizeof(*umem));
->=A0=A0=A0=A0=A0=A0=A0 if (!umem) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 fprintf(stderr, "Error while=
- allocating umem: %s\n", strerror(errno));
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 exit(1);
->=A0=A0=A0=A0=A0=A0=A0 }
->
->=A0=A0=A0=A0=A0=A0=A0 ret =3D xsk_umem__create(&umem->umem, buffer, size, =
-&umem->fq, &umem->cq, &cfg);
->=A0=A0=A0=A0=A0=A0=A0 if (ret) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 fprintf(stderr, "`xsk_umem__=
-create` returned: %s\n", strerror(-ret));
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 exit(1);
->=A0=A0=A0=A0=A0=A0=A0 }
->
->=A0=A0=A0=A0=A0=A0=A0 umem->buffer =3D buffer;
->=A0=A0=A0=A0=A0=A0=A0 return umem;
->}
->
->and after that I call:
->
->static void xsk_populate_fill_ring(struct xsk_umem_info *umem) {
->=A0=A0=A0=A0=A0=A0=A0 int ret, i;
->=A0=A0=A0=A0=A0=A0=A0 uint32_t idx;
->
->=A0=A0=A0=A0=A0=A0=A0 ret =3D xsk_ring_prod__reserve(&umem->fq, XSK_RING_P=
-ROD__DEFAULT_NUM_DESCS, &idx);
->=A0=A0=A0=A0=A0=A0=A0 if (ret !=3D XSK_RING_PROD__DEFAULT_NUM_DESCS) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 fprintf(stderr, "Failed to r=
-eserve prod ring: %s\n", strerror(errno));
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 exit(1);
->=A0=A0=A0=A0=A0=A0=A0 }
->=A0=A0=A0=A0=A0=A0=A0 for (i =3D 0; i < XSK_RING_PROD__DEFAULT_NUM_DESCS; =
-i++) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 *xsk_ring_prod__fill_addr(&u=
-mem->fq, idx++) =3D i * FRAME_SIZE;
->=A0=A0=A0=A0=A0=A0=A0 }
->=A0=A0=A0=A0=A0=A0=A0 xsk_ring_prod__submit(&umem->fq, XSK_RING_PROD__DEFA=
-ULT_NUM_DESCS);
->}
->
->And sockets are created this way:
->
->static struct xsk_socket_info *xsk_configure_socket(struct xsk_umem_info *=
-umem, struct config *cfg, bool rx, bool tx) {
->=A0=A0=A0=A0=A0=A0=A0 struct xsk_socket_config xsk_socket_cfg;
->=A0=A0=A0=A0=A0=A0=A0=A0 struct xsk_socket_info *xsk;
->=A0=A0=A0=A0=A0=A0=A0 struct xsk_ring_cons *rxr;
->=A0=A0=A0=A0=A0=A0=A0 struct xsk_ring_prod *txr;
->=A0=A0=A0=A0=A0=A0=A0 int ret;
->
->=A0=A0=A0=A0=A0=A0=A0 xsk =3D calloc(1, sizeof(*xsk));
->=A0=A0=A0=A0=A0=A0=A0 if (!xsk) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 fprintf(stderr, "xsk `calloc=
-` failed: %s\n", strerror(errno));
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 exit(1);
->=A0=A0=A0=A0=A0=A0=A0 }
->
->=A0=A0=A0=A0=A0=A0=A0 xsk->umem =3D umem;
->=A0=A0=A0=A0=A0=A0=A0 xsk_socket_cfg.rx_size =3D XSK_RING_CONS__DEFAULT_NU=
-M_DESCS;
->=A0=A0=A0=A0=A0=A0=A0 xsk_socket_cfg.tx_size =3D XSK_RING_PROD__DEFAULT_NU=
-M_DESCS;
->=A0=A0=A0=A0=A0=A0=A0 if (cfg->ip_addrs_len > 1) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 xsk_socket_cfg.libbpf_flags =
-=3D XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
->=A0=A0=A0=A0=A0=A0=A0 } else {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 xsk_socket_cfg.libbpf_flags =
-=3D 0;
->=A0=A0=A0=A0=A0=A0=A0 }
->=A0=A0=A0=A0=A0=A0=A0 xsk_socket_cfg.xdp_flags =3D cfg->xdp_flags;
->=A0=A0=A0=A0=A0=A0=A0 xsk_socket_cfg.bind_flags =3D cfg->xsk_bind_flags;
->
->=A0=A0=A0=A0=A0=A0=A0 rxr =3D rx ? &xsk->rx : NULL;
->=A0=A0=A0=A0=A0=A0=A0 txr =3D tx ? &xsk->tx : NULL;
->=A0=A0=A0=A0=A0=A0=A0 ret =3D xsk_socket__create(&xsk->xsk, cfg->ifname_bu=
-f, cfg->xsk_if_queue, umem->umem, rxr, txr, &xsk_socket_cfg);
->=A0=A0=A0=A0=A0=A0=A0 if (ret) {
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 fprintf(stderr, "`xsk_socket=
-__create` returned error: %s\n", strerror(errno));
->=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 exit(-ret);
->=A0=A0=A0=A0=A0=A0=A0 }
->
->=A0=A0=A0=A0=A0=A0=A0 return xsk;
->}
->
->As far as I've seen from `xdpsock_user.c` there is no special handling req=
-uired by the sockets who are using shared umem? What am I missing?
->
->Best regards
->
->Max   =20
+I implemented a so-called `distributor`-program which loads the XDP-kernel =
+program once, sets up a generic linux socket and adds `setsockopt(IP_ADD_ME=
+MBERSHIP)` to this generic socket for every multicast-address I pass to the=
+ program via command line.
+After this, the `distributor` loads the filedescriptor of a `BPF_MAP_TYPE_H=
+ASH` placed in the XDP-kernel program and inserts routes for the traffic in=
+ case a single AF-XDP socket needs to share its umem later on.
+
+The XDP-kernel program then checks for each IPv4/UDP packet if there is an =
+entry in that hash-map. This basically looks like this:
+
+    const struct pckt_idntfy_raw raw =3D {
+        .src_ip =3D 0, /* not used at the moment */
+        .dst_ip =3D iph->daddr,
+        .dst_port =3D udh->dest,
+        .pad =3D 0
+    };
+   =20
+    const int *idx =3D bpf_map_lookup_elem(&xdp_packet_mapping, &raw);
+
+    if(idx !=3D NULL) {
+        if (bpf_map_lookup_elem(&xsks_map, idx)) {
+            bpf_printk("Found socket @ index: %d!\n", *idx);
+            return bpf_redirect_map(&xsks_map, *idx, 0);
+        } else {
+            bpf_printk("Didn't find connected socket for index %d!\n", *idx=
+);
+        }
+    }
+
+In case `idx` exists this means that there is a socket sitting behind that =
+index in the `BPF_MAP_TYPE_XSKMAP`.
+
+After doing all that the `distributor` spawns a new process via `fork()` pa=
+ssing all multicast-addresses (including destination port) which should be =
+processed by that process (one process handles one RX-Queue). In case there=
+ are not enough RX-Queues, some processes may receive multiple multicast-ad=
+dresses. This then means that they are going to use `SHARED UMEM`.
+
+I basically oriented my AF-XDP user-space program on this example code: htt=
+ps://github.com/torvalds/linux/blob/master/samples/bpf/xdpsock_user.c
+
+I am using the same `xsk_configure_umem`, `xsk_populate_fill_ring` and `xsk=
+_configure_socket` functions.
+
+Because I figured I don't need maximum latency for this application, I send=
+ the process to sleep for a specified time (around `1 - 2ms`) after which i=
+t loops through every AF-XDP socket (most of the time it is only one socket=
+) and processes every received packet for that socket, verifying that no pa=
+ckets have been missed:
+
+=09while(!global_exit) {
+=09    nanosleep(&spec, &remaining);
+
+=09=09for(int i =3D 0; i < cfg.ip_addrs_len; i++) {
+=09=09=09struct xsk_socket_info *socket =3D xsk_sockets[i];
+=09=09=09if(atomic_exchange(&socket->stats_sync.lock, 1) =3D=3D 0) {
+=09=09=09=09handle_receive_packets(socket);
+=09=09=09=09atomic_fetch_xor(&socket->stats_sync.lock, 1); /* release socke=
+t-lock */
+=09=09=09}
+=09=09}
+=09}
+
+In my opinion there is nothing too fancy about this but somehow I lose `~25=
+` packets at around `390.000` packets even though my UMEM is close to 1GB o=
+f RAM.
+
+In comparison, my generic linux socket program looks like this (in short):
+
+    int fd =3D socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+
+    /* setting some socket options */
+
+    struct sockaddr_in sin;
+    memset(&sin, 0, sizeof(struct sockaddr_in));
+    sin.sin_family =3D AF_INET;
+    sin.sin_port =3D cfg->ip_addrs[0]->pckt.dst_port;
+    inet_aton(cfg->ip_addrs[0]->pckt.dst_ip, &sin.sin_addr);
+   =20
+    if(bind(fd, (struct sockaddr*)&sin, sizeof(struct sockaddr)) < 0) {
+        fprintf(stderr, "Error on binding socket: %s\n", strerror(errno));
+        return - 1;
+    }
+   =20
+    ioctl(fd, SIOCGIFADDR, &intf);
+
+The `distributor`-program creates a new process for every given multicast-i=
+p in case generic linux sockets are used (because there are no sophisticate=
+d methods such as SHARED-UMEM in generic sockets I don't bother with multip=
+le multicast-streams per process).
+Later on I of course join the multicast membership:
+
+    struct ip_mreqn mreq;
+    memset(&mreq, 0, sizeof(struct ip_mreqn));
+   =20
+    const char *multicast_ip =3D cfg->ip_addrs[0]->pckt.dst_ip;
+
+    if(inet_pton(AF_INET, multicast_ip, &mreq.imr_multiaddr.s_addr)) {
+        /* Local interface address */
+        memcpy(&mreq.imr_address, &cfg->ifaddr, sizeof(struct in_addr));
+        mreq.imr_ifindex =3D cfg->ifindex;
+       =20
+        if(setsockopt(igmp_socket_fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,=
+ sizeof(struct ip_mreqn)) < 0) {
+            fprintf(stderr, "Failed to set `IP_ADD_MEMBERSHIP`: %s\n", stre=
+rror(errno));
+            return;
+        } else {
+            printf("Successfully added Membership for IP: %s\n", multicast_=
+ip);
+        }
+    }
+
+and start processing packets (not sleeping but in a `busy-loop` like fashio=
+n):
+
+    void read_packets_recvmsg_with_latency(struct config *cfg, struct stati=
+stic *st, void *buff, const int igmp_socket_fd) {
+        char ctrl[CMSG_SPACE(sizeof(struct timeval))];
+   =20
+        struct msghdr msg;
+        struct iovec iov;
+        msg.msg_control =3D (char*)ctrl;
+        msg.msg_controllen =3D sizeof(ctrl);
+        msg.msg_name =3D &cfg->ifaddr;
+        msg.msg_namelen =3D sizeof(cfg->ifaddr);
+   =20
+        msg.msg_iov =3D &iov;
+        msg.msg_iovlen =3D 1;
+        iov.iov_base =3D buff;
+        iov.iov_len =3D BUFFER_SIZE;
+       =20
+        struct timeval time_user, time_kernel;
+        struct cmsghdr *cmsg =3D (struct cmsghdr*)&ctrl;
+   =20
+        const int64_t read_bytes =3D recvmsg(igmp_socket_fd, &msg, 0);
+        if(read_bytes =3D=3D -1) {
+            return;
+        }
+       =20
+        gettimeofday(&time_user, NULL);
+       =20
+        if(cmsg->cmsg_level =3D=3D SOL_SOCKET && cmsg->cmsg_type =3D=3D SCM=
+_TIMESTAMP) {
+            memcpy(&time_kernel, CMSG_DATA(cmsg), sizeof(struct timeval));
+        }
+       =20
+        if(verify_rtp(cfg, st, read_bytes, buff)) {
+            const double timediff =3D (time_user.tv_sec - time_kernel.tv_se=
+c) * 1000000 + (time_user.tv_usec - time_kernel.tv_usec);
+            if(timediff > st->stats.latency_us) {
+                st->stats.latency_us =3D timediff;
+            }
+        }
+    }
+
+
+
+    int main(...) {
+        ....
+        while(!is_global_exit) {
+            read_packets_recvmsg_with_latency(&cfg, &st, buffer, igmp_socke=
+t_fd);
+        }
+    }
+
+That's pretty much it.
+
+Please note that in the described use case where I start to lose packets I =
+don't use `SHARED UMEM`, it's just a single RX-Queue receiving a single mul=
+ticast-stream. In case I process a smaller multicast-stream of around `150.=
+000 pps` - the AF-XDP solution doesn't lose any packets. But it is also the=
+ other way around - for around `520.000 pps` on the same RX-Queue (using `S=
+HARED UMEM`) I get a loss of `12.000 pps`.
+
+Any ideas what I am missing?
