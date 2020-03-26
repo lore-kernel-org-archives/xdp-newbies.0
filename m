@@ -1,246 +1,261 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from postout2.mail.lrz.de ([129.187.255.138]:46041 "EHLO
-        postout2.mail.lrz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727781AbgCZMav (ORCPT
+Received: from mail-ua1-f50.google.com ([209.85.222.50]:41793 "EHLO
+        mail-ua1-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728120AbgCZMsc (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 26 Mar 2020 08:30:51 -0400
-From: "Gaul, Maximilian" <maximilian.gaul@hm.edu>
-Subject: AW: Shared Umem and reducing ksoftirqd-Load
-Date: Thu, 26 Mar 2020 12:30:46 +0000
-Message-ID: <b4e8bdfd96d8484d904b6b91ece81324@hm.edu>
-References: <018e8071725b48399141cc46b63641e1@hm.edu>
- <CAJ8uoz1Vh+zj6msumTNWgtZY6jdOeYgoyDBoizfna1dzhC465A@mail.gmail.com>
- <9616cd5986c74058b51ffd1eb3311b85@hm.edu>
- <CAJ8uoz1-Nub4RKembg5maQ4Cj1J+O90eR_PcP41yNHuq7pShaQ@mail.gmail.com>
- <35eed7a7481a44bc93e8e5f7e59d9e5a@hm.edu>
- <CAJ8uoz3D=nw_aD0+Kj9Mh_DivRBvse0+G0Mtfw+eR8UJdDT0jw@mail.gmail.com>
- <883111619d9e429fb5f1fb239afdb478@hm.edu>,<CAJ8uoz2OZOrERz3D+L9fe-WhYAHOZOd_ZOzYjUTKwyZ1ic7AaA@mail.gmail.com>
-In-Reply-To: <CAJ8uoz2OZOrERz3D+L9fe-WhYAHOZOd_ZOzYjUTKwyZ1ic7AaA@mail.gmail.com>
-Content-Language: de-DE
+        Thu, 26 Mar 2020 08:48:32 -0400
+Received: by mail-ua1-f50.google.com with SMTP id f9so2046622uaq.8
+        for <xdp-newbies@vger.kernel.org>; Thu, 26 Mar 2020 05:48:31 -0700 (PDT)
 MIME-Version: 1.0
+References: <018e8071725b48399141cc46b63641e1@hm.edu> <CAJ8uoz1Vh+zj6msumTNWgtZY6jdOeYgoyDBoizfna1dzhC465A@mail.gmail.com>
+ <9616cd5986c74058b51ffd1eb3311b85@hm.edu> <CAJ8uoz1-Nub4RKembg5maQ4Cj1J+O90eR_PcP41yNHuq7pShaQ@mail.gmail.com>
+ <35eed7a7481a44bc93e8e5f7e59d9e5a@hm.edu> <CAJ8uoz3D=nw_aD0+Kj9Mh_DivRBvse0+G0Mtfw+eR8UJdDT0jw@mail.gmail.com>
+ <883111619d9e429fb5f1fb239afdb478@hm.edu> <CAJ8uoz2OZOrERz3D+L9fe-WhYAHOZOd_ZOzYjUTKwyZ1ic7AaA@mail.gmail.com>
+ <b4e8bdfd96d8484d904b6b91ece81324@hm.edu>
+In-Reply-To: <b4e8bdfd96d8484d904b6b91ece81324@hm.edu>
+From: Magnus Karlsson <magnus.karlsson@gmail.com>
+Date: Thu, 26 Mar 2020 13:48:19 +0100
+Message-ID: <CAJ8uoz2bPr6=2-amO209kuRU7o=JuzfXspn2WtCQ6NmRUYKh8w@mail.gmail.com>
+Subject: Re: Shared Umem and reducing ksoftirqd-Load
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
-To: Magnus Karlsson <magnus.karlsson@gmail.com>
+To: "Gaul, Maximilian" <maximilian.gaul@hm.edu>
 Cc: Xdp <xdp-newbies@vger.kernel.org>
 
-On Wed, Mar 25, 2020 at 14:36 AM Karlsson, Magnus
-magnus.karlsson@gmail.com> wrote:
-
-> On Wed, Mar 25, 2020 at 1:40 PM Gaul, Maximilian <maximilian.gaul@hm.edu>=
- wrote:
-> >
-> > On Wed, Mar 25, 2020 at 12:04 AM Karlsson, Magnus
-> > magnus.karlsson@gmail.com> wrote:
-> >
-> > > On Wed, Mar 25, 2020 at 11:45 AM Gaul, Maximilian
-> > > <maximilian.gaul@hm.edu> wrote:
-> > > >
-> > > > On Wed, Mar 25, 2020 at 11:24 AM Karlsson, Magnus
-> > > > <magnus.karlsson@gmail.com> wrote:
-> > > >
-> > > > > On Wed, Mar 25, 2020 at 11:02 AM Gaul, Maximilian
-> > > > > <maximilian.gaul@hm.edu> wrote:
-> > > > > >
-> > > > > > On Wed, Mar 25, 2020 at 10:41 AM Karlsson, Magnus
-> > > > > > <magnus.karlsson@gmail.com> wrote:
-> > > > > >
-> > > > > > > On Wed, Mar 25, 2020 at 10:04 AM Gaul, Maximilian
-> > > > > > > <maximilian.gaul@hm.edu> wrote:
+On Thu, Mar 26, 2020 at 1:30 PM Gaul, Maximilian <maximilian.gaul@hm.edu> w=
+rote:
+>
+> On Wed, Mar 25, 2020 at 14:36 AM Karlsson, Magnus
+> magnus.karlsson@gmail.com> wrote:
+>
+> > On Wed, Mar 25, 2020 at 1:40 PM Gaul, Maximilian <maximilian.gaul@hm.ed=
+u> wrote:
+> > >
+> > > On Wed, Mar 25, 2020 at 12:04 AM Karlsson, Magnus
+> > > magnus.karlsson@gmail.com> wrote:
+> > >
+> > > > On Wed, Mar 25, 2020 at 11:45 AM Gaul, Maximilian
+> > > > <maximilian.gaul@hm.edu> wrote:
+> > > > >
+> > > > > On Wed, Mar 25, 2020 at 11:24 AM Karlsson, Magnus
+> > > > > <magnus.karlsson@gmail.com> wrote:
+> > > > >
+> > > > > > On Wed, Mar 25, 2020 at 11:02 AM Gaul, Maximilian
+> > > > > > <maximilian.gaul@hm.edu> wrote:
+> > > > > > >
+> > > > > > > On Wed, Mar 25, 2020 at 10:41 AM Karlsson, Magnus
+> > > > > > > <magnus.karlsson@gmail.com> wrote:
+> > > > > > >
+> > > > > > > > On Wed, Mar 25, 2020 at 10:04 AM Gaul, Maximilian
+> > > > > > > > <maximilian.gaul@hm.edu> wrote:
+> > > > > > > > >
+> > > > > > > > > I am running a Multi-AF-XDP-Socket approach per RX-Queue =
+(using Shared Umem).
+> > > > > > > > >
+> > > > > > > > > Unfortunately I am noticing, that at around 650k pps, the=
+ *ksoftirqd*-thread of that RX-Queue ramps up to 100% thus leading to packe=
+t loss.
+> > > > > > > > > I tried setting *XDP_USE_NEED_WAKEUP* on *xsk_socket_cfg.=
+bind_flags* but those bind_flags are only taken into account if *umem->refc=
+ount > 1* (libbpf/xsk.c - xsk_socket__create()).
+> > > > > > > > > As far as I understand this correctly, only the first soc=
+ket is able to set *XDP_USE_NEED_WAKEUP* because for all sockets after, *um=
+em->refcount* is going to be at least 2.
 > > > > > > > >
-> > > > > > > > I am running a Multi-AF-XDP-Socket approach per RX-Queue (u=
-sing Shared Umem).
+> > > > > > > > Yes, the other sockets just inherit the settings of the fir=
+st one.
 > > > > > > > >
-> > > > > > > > Unfortunately I am noticing, that at around 650k pps, the *=
-ksoftirqd*-thread of that RX-Queue ramps up to 100% thus leading to packet =
-loss.
-> > > > > > > > I tried setting *XDP_USE_NEED_WAKEUP* on *xsk_socket_cfg.bi=
-nd_flags* but those bind_flags are only taken into account if *umem->refcou=
-nt > 1* (libbpf/xsk.c - xsk_socket__create()).
-> > > > > > > > As far as I understand this correctly, only the first socke=
-t is able to set *XDP_USE_NEED_WAKEUP* because for all sockets after, *umem=
-->refcount* is going to be at least 2.
+> > > > > > > > Are you using the SKB mode? What is your packet size? Sound=
+s like a
+> > > > > > > > low number unless you have large packets and are using the =
+SKB mode.
+> > > > > > > >
 > > > > > > >
-> > > > > > > Yes, the other sockets just inherit the settings of the first=
- one.
+> > > > > > > These are the flags I set right before calling `xsk_socket__c=
+reate`:
 > > > > > > >
-> > > > > > > Are you using the SKB mode? What is your packet size? Sounds =
-like a
-> > > > > > > low number unless you have large packets and are using the SK=
-B mode.
-> > > > > > >
+> > > > > > >         xsk_socket_cfg.xdp_flags =3D cfg->xdp_flags | XDP_FLA=
+GS_DRV_MODE | XDP_ZEROCOPY;
+> > > > > > >         xsk_socket_cfg.bind_flags =3D cfg->xsk_bind_flags | X=
+DP_USE_NEED_WAKEUP;
 > > > > > >
-> > > > > > These are the flags I set right before calling `xsk_socket__cre=
-ate`:
+> > > > > > XDP_ZEROCOPY is a bind flag not an XDP flag, so please move it =
+there.
+> > > > > > If you get an error when you have it set, it means that your se=
+tup
+> > > > > > does not support zero-copy for some reason. Check what kernel v=
+ersion
+> > > > > > you are using and the the driver you are using supports zero-co=
+py. I
+> > > > > > believe you need to use a queue id>=3D32 in the Mellanox driver=
+ for it
+> > > > > > to work in zero-copy mode. Below 32, you will get copy mode.
 > > > > > >
-> > > > > >=A0=A0=A0=A0=A0=A0=A0=A0 xsk_socket_cfg.xdp_flags =3D cfg->xdp_f=
-lags | XDP_FLAGS_DRV_MODE | XDP_ZEROCOPY;
-> > > > > >=A0=A0=A0=A0=A0=A0=A0=A0 xsk_socket_cfg.bind_flags =3D cfg->xsk_=
-bind_flags | XDP_USE_NEED_WAKEUP;
+> > > > > > > Packet size is around 1492 bytes.
+> > > > > >
+> > > > > > Seems that you are using SKB mode then, not zero-copy.
+> > > > > >
+> > > > > > /Magnus
+> > > > > >
 > > > > >
-> > > > > XDP_ZEROCOPY is a bind flag not an XDP flag, so please move it th=
-ere.
-> > > > > If you get an error when you have it set, it means that your setu=
-p
-> > > > > does not support zero-copy for some reason. Check what kernel ver=
-sion
-> > > > > you are using and the the driver you are using supports zero-copy=
-. I
-> > > > > believe you need to use a queue id>=3D32 in the Mellanox driver f=
-or it
-> > > > > to work in zero-copy mode. Below 32, you will get copy mode.
-> > > > >
-> > > > > > Packet size is around 1492 bytes.
-> > > > >
-> > > > > Seems that you are using SKB mode then, not zero-copy.
-> > > > >
-> > > > > /Magnus
-> > > > >
+> > > > > Thank you for the hint. As you correctly said, I get an error if =
+I use *XDP_ZEROCOPY*. But as far as I understand, packet rates should be hi=
+gher in Driver-Mode even without zero-copy?
 > > > >
-> > > > Thank you for the hint. As you correctly said, I get an error if I =
-use *XDP_ZEROCOPY*. But as far as I understand, packet rates should be high=
-er in Driver-Mode even without zero-copy?
-> > >
-> > > Yes, I would expect that too.
-> > >
-> > > > I just updated to the latest driver- and firmware version:
+> > > > Yes, I would expect that too.
 > > > >
-> > > >=A0=A0=A0=A0=A0=A0=A0=A0 $ sudo ethtool -i <if>
-> > > >=A0=A0=A0=A0=A0=A0=A0=A0 driver: mlx5_core
-> > > >=A0=A0=A0=A0=A0=A0=A0=A0 version: 5.0-0
-> > > >=A0=A0=A0=A0=A0=A0=A0=A0 firmware-version: 16.27.1016 (MT_0000000012=
-)
+> > > > > I just updated to the latest driver- and firmware version:
+> > > > >
+> > > > >         $ sudo ethtool -i <if>
+> > > > >         driver: mlx5_core
+> > > > >         version: 5.0-0
+> > > > >         firmware-version: 16.27.1016 (MT_0000000012)
+> > > >
+> > > > What kernel version are you using? And you should use the driver fr=
+om
+> > > > that same kernel.
+> > > >
 > > >
-> > > What kernel version are you using? And you should use the driver from
-> > > that same kernel.
+> > > I am using
 > > >
-> >
-> > I am using
-> >
-> >=A0=A0=A0=A0=A0=A0=A0=A0 $ uname -a
-> >=A0=A0=A0=A0=A0=A0=A0=A0 Linux 5.4.0-4-amd64 #1 SMP Debian 5.4.19-1 (202=
-0-02-13) x86_64 GNU/Linux
-> >
-> > At the moment, Mellanox only supports Debian until version 10.0 (https:=
-//www.mellanox.com/products/infiniband-drivers/linux/mlnx_ofed) which is Ke=
-rnel 4.19.
-> > But because in Kernel 4.19, not all AF-XDP features are available, I ha=
-d to upgrade. I was not sure which Kernel-Version would be the minimum in o=
-rder to be able to use AF-XDP completely so I went with 5.4.
-> > Installation was successfull=A0 (with *--skip-distro-check*) so I thoug=
+> > >         $ uname -a
+> > >         Linux 5.4.0-4-amd64 #1 SMP Debian 5.4.19-1 (2020-02-13) x86_6=
+4 GNU/Linux
+> > >
+> > > At the moment, Mellanox only supports Debian until version 10.0 (http=
+s://www.mellanox.com/products/infiniband-drivers/linux/mlnx_ofed) which is =
+Kernel 4.19.
+> > > But because in Kernel 4.19, not all AF-XDP features are available, I =
+had to upgrade. I was not sure which Kernel-Version would be the minimum in=
+ order to be able to use AF-XDP completely so I went with 5.4.
+> > > Installation was successfull  (with *--skip-distro-check*) so I thoug=
 ht this should work?
->=20
-> You better contact somebody from Mellanox for this info. I do not
-> know. But Mellanox has zero-copy support in kernel 5.4.
->=20
-> > > > I actually have to correct myself: Incomming packets are 1442 bytes=
-.
-> > > > Can you give me the link between packet size and whether the NIC is=
- running in SKB or DRV mode?
-> > >
-> > > Sorry, do not understand this. Could you please elaborate?
-> > >
 > >
-> > You answered to my reply that packets are 1492 bytes "Seems that you ar=
-e using SKB mode then, not zero-copy." so because of this I thought there i=
-s a relation between packet size and SKB mode?
->=20
-> There is no relationship between SKB mode and packet size. They are
-> orthogonal. Though there is a relationship between packet size and
-> performance and of course SKB mode vs zero-copy mode and performance.
->=20
-> > > > Mr. Brouer held a talk about (https://people.netfilter.org/hawk/pre=
-sentations/driving-IT2017/driving-IT-2017_XDP_eBPF_technology_Jesper_Brouer=
-.pdf)=A0  about XDP, mentioning in slide 11/27 that *mlx5 (v4.9)* has nativ=
+> > You better contact somebody from Mellanox for this info. I do not
+> > know. But Mellanox has zero-copy support in kernel 5.4.
+> >
+> > > > > I actually have to correct myself: Incomming packets are 1442 byt=
+es.
+> > > > > Can you give me the link between packet size and whether the NIC =
+is running in SKB or DRV mode?
+> > > >
+> > > > Sorry, do not understand this. Could you please elaborate?
+> > > >
+> > >
+> > > You answered to my reply that packets are 1492 bytes "Seems that you =
+are using SKB mode then, not zero-copy." so because of this I thought there=
+ is a relation between packet size and SKB mode?
+> >
+> > There is no relationship between SKB mode and packet size. They are
+> > orthogonal. Though there is a relationship between packet size and
+> > performance and of course SKB mode vs zero-copy mode and performance.
+> >
+> > > > > Mr. Brouer held a talk about (https://people.netfilter.org/hawk/p=
+resentations/driving-IT2017/driving-IT-2017_XDP_eBPF_technology_Jesper_Brou=
+er.pdf)   about XDP, mentioning in slide 11/27 that *mlx5 (v4.9)* has nativ=
 e XDP support.
+> > > >
+> > > > Yes, but only if you use queue id>=3D 32. What queue id are you bin=
+ding to?
+> > > >
 > > >
-> > > Yes, but only if you use queue id>=3D 32. What queue id are you bindi=
-ng to?
-> > >
+> > > Usually it is queue 0 but I also tried queue 32 and queue 36 - but th=
+at didn't change anything on the behavior.
 > >
-> > Usually it is queue 0 but I also tried queue 32 and queue 36 - but that=
- didn't change anything on the behavior.
->=20
-> It should make a difference, if I remember correctly, but somebody
-> from Mellanox certainly knows better. Try sending a mail to Maxim who
-> wrote the Mellanox driver support. Maxim Mikityanskiy
-> <maximmi@mellanox.com>.
->=20
-> /Magnus
->=20
+> > It should make a difference, if I remember correctly, but somebody
+> > from Mellanox certainly knows better. Try sending a mail to Maxim who
+> > wrote the Mellanox driver support. Maxim Mikityanskiy
+> > <maximmi@mellanox.com>.
+> >
+> > /Magnus
+> >
+>
+> Thank you!
+> Just one more question regarding *ksoftirqd*-load. This paper seems to ta=
+lk about the mentioned issue: http://vger.kernel.org/lpc_net2018_talks/lpc1=
+8_paper_af_xdp_perf-v2.pdf that *ksoftirqd* is producing high load. A state=
+d solution to this problem would be *busy polling*. I am not sure if *busy =
+polling* is something I have to assign via *setsockopt* in my userspace pro=
+gram or if this already taken care of by libbpf?
+> Nevertheless, I tried it like this:
+>
+>                 $ cat /boot/config-5.4.0-4-amd64 | grep "CONFIG_NET_RX_BU=
+SY_POLL"
+>                 CONFIG_NET_RX_BUSY_POLL=3Dy
+>
+>                 $ sysctl net.core.busy_poll=3D50
+>
+> and in my user-space program:
+>
+>                 int busy_poll_usec =3D 50;
+>                 if(setsockopt(xsk_socket__fd(xsk_sockets[i]->xsk), SOL_SO=
+CKET, SO_BUSY_POLL, (char *)&busy_poll_usec, sizeof(busy_poll_usec)) < 0) {
+>                         fprintf(stderr, "Failed to set `SO_BUSY_POLL`: %s=
+\n", strerror(errno));
+>                         break;
+>                 }
+>
+>                 /* some code inbetween */
+>
+>                 while(!global_exit) {
+>                         const int ret =3D poll(fds, fd_count, 2);
+>                         if (ret <=3D 0) {
+>                                 continue;
+>                         }
+>
+>                         for(int i =3D 0; i < fd_count; i++) {
+>                                 struct xsk_socket_info *socket =3D xsk_so=
+ckets[i];
+>                                 if(atomic_exchange(&socket->stats_sync.lo=
+ck, 1) =3D=3D 0) {
+>                                         handle_receive_packets(socket);
+>                                         atomic_fetch_xor(&socket->stats_s=
+ync.lock, 1); /* release socket-lock */
+>                                 }
+>                         }
+>                 }
+>
+> but this only has the effect that my userspace program is now at 50% load=
+ (previously around 13%) with *ksoftirqd* still running at 100% (and even w=
+orse pps).
+> Is this the expected effect on what I did?
 
-Thank you!
-Just one more question regarding *ksoftirqd*-load. This paper seems to talk=
- about the mentioned issue: http://vger.kernel.org/lpc_net2018_talks/lpc18_=
-paper_af_xdp_perf-v2.pdf that *ksoftirqd* is producing high load. A stated =
-solution to this problem would be *busy polling*. I am not sure if *busy po=
-lling* is something I have to assign via *setsockopt* in my userspace progr=
-am or if this already taken care of by libbpf?
-Nevertheless, I tried it like this:
+Busy-polling will improve your latency (throughput might go either
+way) at the cost of higher CPU load. Note that busy-polling is NOT
+supported with AF_XDP. I sent out an RFC for this a year ago but ended
+up implementing something else (the need_wakeup flag) that solved the
+problem I had in in a better way. But it would still be beneficial to
+support busy-poll for AF_XDP, but I am not working on it or planning
+on doing it.
 
-=09=09$ cat /boot/config-5.4.0-4-amd64 | grep "CONFIG_NET_RX_BUSY_POLL"
-=09=09CONFIG_NET_RX_BUSY_POLL=3Dy
+/Magnus
 
-=09=09$ sysctl net.core.busy_poll=3D50
-=09=09
-and in my user-space program:
-
-=09=09int busy_poll_usec =3D 50;
-=09=09if(setsockopt(xsk_socket__fd(xsk_sockets[i]->xsk), SOL_SOCKET, SO_BUS=
-Y_POLL, (char *)&busy_poll_usec, sizeof(busy_poll_usec)) < 0) {
-=09=09=09fprintf(stderr, "Failed to set `SO_BUSY_POLL`: %s\n", strerror(err=
-no));
-=09=09=09break;
-=09=09}
-=09=09
-=09=09/* some code inbetween */
-
-=09=09while(!global_exit) {
-=09=09=09const int ret =3D poll(fds, fd_count, 2);
-=09=09=09if (ret <=3D 0) {
-=09=09=09=09continue;
-=09=09=09}
-
-=09=09=09for(int i =3D 0; i < fd_count; i++) {
-=09=09=09=09struct xsk_socket_info *socket =3D xsk_sockets[i];
-=09=09=09=09if(atomic_exchange(&socket->stats_sync.lock, 1) =3D=3D 0) {
-=09=09=09=09=09handle_receive_packets(socket);
-=09=09=09=09=09atomic_fetch_xor(&socket->stats_sync.lock, 1); /* release so=
-cket-lock */
-=09=09=09=09}
-=09=09=09}
-=09=09}
-
-but this only has the effect that my userspace program is now at 50% load (=
-previously around 13%) with *ksoftirqd* still running at 100% (and even wor=
-se pps).
-Is this the expected effect on what I did?
-
-> > > /Magnus
-> > >
+> > > > /Magnus
 > > > >
-> > > > > > Just to make sure: Those 650k packets are arriving on the same =
-RX-Queue (even though this NIC has multiple RX-Queues I want to test maximu=
-m bandwith for a single RX-Queue).
-> > > > > >
-> > > > > > > > I didn't observe a dramatic change as I've hoped to. Are th=
-ere some other ways to reduce interrupt load (user-space application and ks=
-oftirq are already running on different CPUs)?
+> > > > >
+> > > > > > > Just to make sure: Those 650k packets are arriving on the sam=
+e RX-Queue (even though this NIC has multiple RX-Queues I want to test maxi=
+mum bandwith for a single RX-Queue).
 > > > > > > >
-> > > > > > > The need_wakeup flag has a big impact when you run the softir=
-q and the
-> > > > > > > application thread on the same core. When using two cores for=
- this, it
-> > > > > > > has less of an impact.
+> > > > > > > > > I didn't observe a dramatic change as I've hoped to. Are =
+there some other ways to reduce interrupt load (user-space application and =
+ksoftirq are already running on different CPUs)?
+> > > > > > > >
+> > > > > > > > The need_wakeup flag has a big impact when you run the soft=
+irq and the
+> > > > > > > > application thread on the same core. When using two cores f=
+or this, it
+> > > > > > > > has less of an impact.
+> > > > > > > >
+> > > > > > > > /Magnus
+> > > > > > > >
+> > > > > > > > > NIC: Mellanox Technologies MT27800
+> > > > > > > > >
+> > > > > > > > > Best regards
+> > > > > > > > >
+> > > > > > > > > Max
+> > > > > > > > >
 > > > > > > >
-> > > > > > > /Magnus
-> > > > > > >
-> > > > > > > > NIC: Mellanox Technologies MT27800
-> > > > > > > >
-> > > > > > > > Best regards
-> > > > > > > >
-> > > > > > > > Max
-> > > > > > > >
-> > > > > >
-> > > >
+> > > > >
