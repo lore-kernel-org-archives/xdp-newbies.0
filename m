@@ -1,133 +1,60 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from postout2.mail.lrz.de ([129.187.255.138]:39891 "EHLO
-        postout2.mail.lrz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727444AbgCZNfu (ORCPT
+Received: from relay0141.mxlogin.com ([199.181.239.141]:44643 "EHLO
+        relay0141.mxlogin.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729431AbgC3QQ4 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 26 Mar 2020 09:35:50 -0400
-Received: from lxmhs52.srv.lrz.de (localhost [127.0.0.1])
-        by postout2.mail.lrz.de (Postfix) with ESMTP id 48p5bR4BWpzymG
-        for <xdp-newbies@vger.kernel.org>; Thu, 26 Mar 2020 14:35:47 +0100 (CET)
-Received: from postout2.mail.lrz.de ([127.0.0.1])
-        by lxmhs52.srv.lrz.de (lxmhs52.srv.lrz.de [127.0.0.1]) (amavisd-new, port 20024)
-        with LMTP id 6cCxscgbxzIg for <xdp-newbies@vger.kernel.org>;
-        Thu, 26 Mar 2020 14:35:47 +0100 (CET)
-Received: from BADWLRZ-SWMBX03.ads.mwn.de (BADWLRZ-SWMBX03.ads.mwn.de [IPv6:2001:4ca0:0:108::159])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
-        (Client CN "BADWLRZ-SWMBX03", Issuer "BADWLRZ-SWMBX03" (not verified))
-        by postout2.mail.lrz.de (Postfix) with ESMTPS id 48p5bR2V6Vzyft
-        for <xdp-newbies@vger.kernel.org>; Thu, 26 Mar 2020 14:35:47 +0100 (CET)
-From: "Gaul, Maximilian" <maximilian.gaul@hm.edu>
-Subject: Is there a way to process multiple shared umem sockets on same
- RX-queue in parallel?
-Date: Thu, 26 Mar 2020 13:35:47 +0000
-Message-ID: <c442671a3c7145a7b76b1f871e2b01cf@hm.edu>
-Content-Language: de-DE
+        Mon, 30 Mar 2020 12:16:56 -0400
+Received: from filter004.mxroute.com ([149.28.56.236] 149.28.56.236.vultr.com)
+ (Authenticated sender: mN4UYu2MZsgR)
+ by relay0141.mxlogin.com (ZoneMTA) with ESMTPSA id 1712c36a4a40000766.001
+ for <xdp-newbies@vger.kernel.org>
+ (version=TLSv1/SSLv3 cipher=ECDHE-RSA-AES128-GCM-SHA256);
+ Mon, 30 Mar 2020 16:11:50 +0000
+Received: from ocean.mxroute.com (ocean.mxroute.com [195.201.59.214])
+        by filter004.mxroute.com (Postfix) with ESMTPS id A816F3EDAB
+        for <xdp-newbies@vger.kernel.org>; Mon, 30 Mar 2020 16:11:49 +0000 (UTC)
+From: Christian Deacon <gamemann@gflclan.com>
+Subject: Using AF_XDP To Modify Outgoing Packets
+Message-ID: <7902d2f1-1c21-f3e8-5035-352bba130d50@gflclan.com>
+Date: Mon, 30 Mar 2020 11:11:49 -0500
 MIME-Version: 1.0
+Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Xdp <xdp-newbies@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+To: xdp-newbies@vger.kernel.org
 
-*xdpsock_user.c* (https://github.com/torvalds/linux/blob/master/samples/bpf=
-/xdpsock_user.c) implements multiple AF-XDP sockets on the same RX-Queue us=
-ing shared Umem.
-The sockets are then processed in a for-loop like this (1:1 copy):
+Hey everyone,
 
-=09=09struct pollfd fds[MAX_SOCKS] =3D {};
-=09=09int i, ret;
 
-=09=09for (i =3D 0; i < num_socks; i++) {
-=09=09=09fds[i].fd =3D xsk_socket__fd(xsks[i]->xsk);
-=09=09=09fds[i].events =3D POLLIN;
-=09=09}
+I am fairly new to XDP and AF_XDP programming. Therefore, I apologize if 
+this question sounds silly.
 
-=09=09for (;;) {
-=09=09=09if (opt_poll) {
-=09=09=09=09ret =3D poll(fds, num_socks, opt_timeout);
-=09=09=09=09if (ret <=3D 0)
-=09=09=09=09=09continue;
-=09=09=09}
 
-=09=09=09for (i =3D 0; i < num_socks; i++)
-=09=09=09=09rx_drop(xsks[i], fds);
+To my understanding, an XDP program cannot process outgoing packets 
+since it doesn't support the TX path. However, I read that AF_XDP 
+sockets support both receiving and transmitting packets inside the user 
+space while achieving zero-copy. I am trying to create a C program that 
+modifies outgoing packets on an interface and trying to do this the 
+fastest way possible. Unfortunately, I cannot use IPTables for this.
 
-=09=09=09if (benchmark_done)
-=09=09=09=09break;
-=09=09}
 
-This approach works fine in my implementation as well but I was wondering i=
-f it is possible to spawn a thread for every socket and let those threads p=
-rocess receiving packets in a parallel fashion.
-After processing is done (right before they go to sleep to wait for the nex=
-t batch of packets), those threads are adding an entry to a message queue, =
-instructing another thread (which is processing the queue) to free Umem-Fil=
-l-Queue and RX-Ring memory of that socket.
-I know that Umem is only single producer / single consumer so I went into t=
-he implementation with the mindset that it probably wouldn't work out - and=
- it didn't. But now I am wondering whether this is not possible by design (=
-this means that indeed every socket of a RX-Queue using shared umem has to =
-be processed sequentially) or if I did something wrong.
-So this is how a thread processes incoming packets:
+I wanted to know if there is any way to use AF_XDP sockets to modify 
+outgoing packets on an interface. I wasn't sure if the AF_XDP sockets 
+only support receiving traffic from the XDP program when using the 
+redirect function or not.
 
-=09=09uint32_t idx_rx =3D 0;
-=09=09const int rcvd =3D xsk_ring_cons__peek(&xsk_socket->rx, INT32_MAX, &i=
-dx_rx);
-=09=09if (rcvd =3D=3D 0) {
-=09=09=09continue;
-=09=09}
 
-=09=09uint32_t idx_fq =3D 0;
-=09=09const int ret =3D xsk_ring_prod__reserve(&xsk_socket->umem->fq, rcvd,=
- &idx_fq);
-                /* continue checking if ret !=3D rcvd ... */
-=09=09if(ret =3D=3D rcvd) {
-=09=09=09for (uint32_t i =3D idx_rx; i < (idx_rx + rcvd); i++) {
-=09=09=09=09const struct xdp_desc *desc =3D xsk_ring_cons__rx_desc(&xsk_soc=
-ket->rx, i);
-=09=09=09=09uint64_t addr =3D desc->addr;
-=09=09=09=09const uint32_t len =3D desc->len;
-=09=09=09=09const uint64_t orig =3D xsk_umem__extract_addr(addr);
+If this isn't possible, are there any plans to add TX path support into 
+XDP in the future? I'm also not sure what else I can do to achieve fast 
+packet processing for this. I looked into using standard AF_PACKET 
+sockets. However, since that makes a copy of the packet from the kernel, 
+I'd assume that's pretty slow and I'd have to find a way to block the 
+original packets (probably doing something with IPTables). I might also 
+look into DPDK, but I want to see if using AF_XDP sockets for outgoing 
+packet processing is possible first because it looks like it's going to 
+take a while to learn DPDK.
 
-=09=09=09=09addr =3D xsk_umem__add_offset_to_addr(addr);
 
-=09=09=09=09const int hdr_size =3D process_packet(xsk_socket, addr, len);
-=09=09=09=09*xsk_ring_prod__fill_addr(&xsk_socket->umem->fq, idx_fq++) =3D =
-orig;
-=09=09=09=09
-=09=09=09=09xsk_socket->stats.rx_bytes +=3D (len - hdr_size);
-=09=09=09}
-
-=09=09=09xsk_socket->stats.rx_packets +=3D rcvd;
-
-=09=09=09struct xsk_thread_msg msg;
-=09=09=09msg.xsk_rx =3D &xsk_socket->rx;
-=09=09=09msg.xsk_rx_rcvd =3D rcvd;
-=09=09=09msg.xsk_prod_reserve_amnt =3D ret;
-=09=09=09if(msgsnd(msg_queue_id, (void*)(&msg), sizeof(struct xsk_thread_ms=
-g), 0) < 0) {
-=09=09=09=09fprintf(stderr, "Failed to add msg from xsk-socket: %s\n", stre=
-rror(errno));
-=09=09=09}
-=09=09
-=09=09}
-
-and those messages are then received by another thread:
-
-=09=09struct xsk_thread_msg msg;
-=09=09while(!global_exit) {
-=09=09=09memset(&msg, 0, sizeof(struct xsk_thread_msg));
-=09=09=09if(msgrcv(msg_queue_id, (void*)(&msg), sizeof(struct xsk_thread_ms=
-g), 0, 0) =3D=3D -1) {
-=09=09=09=09fprintf(stderr, "Failed to receive message: %s\n", strerror(err=
-no));
-=09=09=09} else {
-=09=09=09=09xsk_ring_cons__release(msg.xsk_rx, msg.xsk_rx_rcvd);
-=09=09=09=09xsk_ring_prod__submit(&umem_info->fq, msg.xsk_prod_reserve_amnt=
-);
-=09=09=09}
-=09=09}
-
-What I am observing is that it works for a few seconds or so and then packe=
-t loss gradually increases to 100% (e.g. sequence numbers don't match up) b=
-ut the amount of received packets stays the same.
+Any help is highly appreciated and thank you for your time!
