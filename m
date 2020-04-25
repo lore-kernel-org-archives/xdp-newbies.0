@@ -1,57 +1,36 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-2.mimecast.com ([207.211.31.81]:55518 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726060AbgDYM4c (ORCPT
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57340 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726076AbgDYQQk (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Sat, 25 Apr 2020 08:56:32 -0400
-Date: Sat, 25 Apr 2020 14:56:19 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+        Sat, 25 Apr 2020 12:16:40 -0400
+Received: from mail-io1-xd31.google.com (mail-io1-xd31.google.com [IPv6:2607:f8b0:4864:20::d31])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 87A8BC09B04D
+        for <xdp-newbies@vger.kernel.org>; Sat, 25 Apr 2020 09:16:40 -0700 (PDT)
+Received: by mail-io1-xd31.google.com with SMTP id e9so13971496iok.9
+        for <xdp-newbies@vger.kernel.org>; Sat, 25 Apr 2020 09:16:40 -0700 (PDT)
 Subject: Re: building eBPF
-Message-ID: <20200425145619.4405a50d@carbon>
-In-Reply-To: <20200425122225.GA455@gmail.com>
-References: <20200425122225.GA455@gmail.com>
+References: <20200425122225.GA455@gmail.com> <20200425145619.4405a50d@carbon>
+From: David Ahern <dsahern@gmail.com>
+Message-ID: <aedacef2-25ee-7a46-cd5c-4aba448db68b@gmail.com>
+Date: Sat, 25 Apr 2020 10:16:37 -0600
 MIME-Version: 1.0
+In-Reply-To: <20200425145619.4405a50d@carbon>
+Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-To: Sowmini Varadhan <sowmini05@gmail.com>
-Cc: brouer@redhat.com, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+To: Jesper Dangaard Brouer <brouer@redhat.com>, Sowmini Varadhan <sowmini05@gmail.com>
+Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-
-Cc XDP-newbies, as I cannot scale by doing individual "support".
-
-On Sat, 25 Apr 2020 08:22:25 -0400 Sowmini Varadhan <sowmini05@gmail.com> wrote:
-
-> Hi Jesper, 
+On 4/25/20 6:56 AM, Jesper Dangaard Brouer wrote:
+>> I am trying to get some basic eBPF examples up and running and I ran
+>> into the problem you describe at https://lkml.org/lkml/2020/2/19/433
 > 
-> I am trying to get some basic eBPF examples up and running and I ran
-> into the problem you describe at https://lkml.org/lkml/2020/2/19/433
+> Yes, building kernel bpf selftests requires latest LLVM, currently
+> works with LLVM-10.
+> 
 
-Yes, building kernel bpf selftests requires latest LLVM, currently
-works with LLVM-10.
-
-> I dont want to deal with building my own llvm (looks like it needs
-> more disk space than is available in my test mmachine, and I dont
-> want to go hunting for space just yet) so do you have some suggestions
-> on how I can work around this (maybe skip some of the advanced
-> tests?
-
-The kernel's samples/bpf/ should still builds with LLVM-9 (and lower).
-Follow instructions in the README.rst file[1].
-
-There are pre-build Debian and Ubuntu packages for LLVM-10 here:
- https://apt.llvm.org/
-
-> I am just trying to play with basic examples at this point)
-
-I suggest you start with the XDP-tutorial[2], it (still) works with older
-LLVM versions: [2] https://github.com/xdp-project/xdp-tutorial
-
-
-[1] https://github.com/torvalds/linux/blob/master/samples/bpf/README.rst
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+ubuntu 20.04 was just released, and it has llvm-10. I have been using it
+to build and run the bpf selftests.
