@@ -1,55 +1,65 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-2.mimecast.com ([205.139.110.61]:41762 "EHLO
+Received: from us-smtp-2.mimecast.com ([205.139.110.61]:22614 "EHLO
         us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726335AbgDAJz2 (ORCPT
+        by vger.kernel.org with ESMTP id S1726243AbgD0KDs (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 1 Apr 2020 05:55:28 -0400
-Date: Wed, 1 Apr 2020 11:55:12 +0200
+        Mon, 27 Apr 2020 06:03:48 -0400
+Date: Mon, 27 Apr 2020 12:03:33 +0200
 From: Jesper Dangaard Brouer <brouer@redhat.com>
-Subject: Re: Using AF_XDP To Modify Outgoing Packets
-Message-ID: <20200401115512.4b28f975@carbon>
-In-Reply-To: <8013b38c-696c-cadd-a4cd-756eca658215@gflclan.com>
-References: <7902d2f1-1c21-f3e8-5035-352bba130d50@gflclan.com>
-        <20200330111048.1167e6f4@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
-        <dd0d11d8-29ff-18c5-85b2-d566d2bba2ea@gflclan.com>
-        <87sghoj2jf.fsf@toke.dk>
-        <8013b38c-696c-cadd-a4cd-756eca658215@gflclan.com>
+Subject: Re: building eBPF
+Message-ID: <20200427120333.7e6cedfc@carbon>
+In-Reply-To: <20200427002027.GE488@gmail.com>
+References: <20200425122225.GA455@gmail.com>
+        <20200425145619.4405a50d@carbon>
+        <20200427002027.GE488@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Christian Deacon <gamemann@gflclan.com>
-Cc: brouer@redhat.com, Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>, xdp-newbies@vger.kernel.org
+To: Sowmini Varadhan <sowmini05@gmail.com>
+Cc: brouer@redhat.com, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Stephen Hemminger <stephen@networkplumber.org>, Toke =?UTF-8?B?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>
 
-On Tue, 31 Mar 2020 18:22:53 -0500
-Christian Deacon <gamemann@gflclan.com> wrote:
+On Sun, 26 Apr 2020 20:20:27 -0400
+Sowmini Varadhan <sowmini05@gmail.com> wrote:
 
-> After looking into the TC Hook, it looks like this will work for my 
-> case. I'll try to get a program made in the next few days or so.
+> With the latest iproute2 (built from master, 'ip -V' reports
+> iproute2-ss200330) when I try to run tc_l2_redirect.sh
+> I get errors like the following. What am I missing?
 
-If you want code examples of TC egress hook with BPF look at[1]:
- [1] https://github.com/xdp-project/xdp-cpumap-tc/
+The iproute2 BPF-loader does not support BTF.  I think upstream agrees
+that it would be too much work to add (and maintain) it, so the current
+plan[1] is to convert iproute2 to use libbpf instead.
 
-Notice that map pinning with libbpf have gotten easier (thanks to
-Toke). This example does work (runs in production), it shares and reuse
-maps between XDP and TC-bpf.  The example uses the old way to define
-maps, and I recommend switching to the new BTF-based syntax instead
-(requires LLVM 10), which defines ".maps" SEC, see example[2], and
-notice "pinning" option, which obsoletes a lot of the map code in[1].
+Also notice that BPF-map layout is not compatible with libbpf.  Thus,
+yet another hint not to use iproute2 to load XDP programs. (Toke have
+done some initial work with libbpf maps, that will allow us AFAIK to be
+backward compatible when converting iproute2 to libbpf).
 
-Attaching TC-bpf progs are different that XDP.  I've hidden the detail
-in C-code function tc_egress_attach_bpf() (see[3]), which actually just
-calls the "tc" command.  I was hoping that this would be replaced with a
-libbpf call, like we have for XDP, but that have not happened.
+Why do you want to use 'tc' to load XDP?
 
 
-[2] https://github.com/xdp-project/xdp-tools/blob/master/xdp-filter/xdpfilt_prog.h#L124-L131
-[3] https://github.com/xdp-project/xdp-cpumap-tc/blob/master/src/common_user.c#L386
+The XDP-tutorial[2] shows how to use libbpf from your C-programs, and
+XDP-tools[3] contains a xdp-loader that you can use instead.
+
+[1] https://xdp-project.net/#Port-iproute2-to-libbpf
+[2] https://github.com/xdp-project/xdp-tutorial
+[3] https://github.com/xdp-project/xdp-tools/tree/master/xdp-loader
+
+
+> (full transcript of output from run is in the run.out attachment)
+> 
+>   :
+> + tc filter add dev ve2 ingress bpf da obj ./tc_l2_redirect_kern.o sec l2_to_iptun_ingress_forward
+> 
+> BTF debug data section '.BTF' rejected: Invalid argument (22)!
+>  - Length:       3554
+
+I actually think this is only a warning, and the program is actually
+loaded...
+
 -- 
 Best regards,
   Jesper Dangaard Brouer
   MSc.CS, Principal Kernel Engineer at Red Hat
   LinkedIn: http://www.linkedin.com/in/brouer
-
-google keywords: tc qdisc clsact cls_bpf egress filter
