@@ -1,107 +1,50 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50984 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1728156AbgD0QQm (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 27 Apr 2020 12:16:42 -0400
-Received: from mail-ot1-x333.google.com (mail-ot1-x333.google.com [IPv6:2607:f8b0:4864:20::333])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 70938C0610D5
-        for <xdp-newbies@vger.kernel.org>; Mon, 27 Apr 2020 09:16:42 -0700 (PDT)
-Received: by mail-ot1-x333.google.com with SMTP id e20so27128408otk.12
-        for <xdp-newbies@vger.kernel.org>; Mon, 27 Apr 2020 09:16:42 -0700 (PDT)
+Received: from mail-dm6nam10on2095.outbound.protection.outlook.com ([40.107.93.95]:28848
+        "EHLO NAM10-DM6-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726259AbgD0Xx6 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 27 Apr 2020 19:53:58 -0400
+From: Phu Tran <phu.tran@futurewei.com>
+Subject: Difference in TCP throughput in comparison to OVS
+Date: Mon, 27 Apr 2020 23:53:56 +0000
+Message-ID: <BF562847-15D5-471F-8A50-FC38BE92D505@futurewei.com>
+Content-Language: en-US
+Content-ID: <0FB4F1432187334492254FA30FD6D96A@namprd13.prod.outlook.com>
 MIME-Version: 1.0
-References: <CAJEJvEW31-O9x-0WsipVqSf-kPy8HnWnB6gG2jeQTH5WWm2iqw@mail.gmail.com>
- <CAJ8uoz0mcu=6_Czw-Y=v-MgRcCRxspkPfFJ4SaQamE-6jCwfkQ@mail.gmail.com> <20200427065029.GA19189@ranger.igk.intel.com>
-In-Reply-To: <20200427065029.GA19189@ranger.igk.intel.com>
-From: Jesse DuMond <suttonshiredev@gmail.com>
-Date: Mon, 27 Apr 2020 12:16:29 -0400
-Message-ID: <CAJEJvEXPo8fuPurax-ur=XhVhTuNJUC2atfieqUVnpc4qFG=vQ@mail.gmail.com>
-Subject: Re: Error creating a AF_XDP socket after deleting
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: multipart/mixed; boundary="0000000000005641cd05a4480a02"
-To: Maciej Fijalkowski <maciej.fijalkowski@intel.com>
-Cc: Magnus Karlsson <magnus.karlsson@gmail.com>, Xdp <xdp-newbies@vger.kernel.org>
-
---0000000000005641cd05a4480a02
-Content-Type: text/plain; charset="UTF-8"
-
-Hmm in the attached example the first retry after an EBUSY returns EINVAL.
-
-On Mon, Apr 27, 2020 at 2:53 AM Maciej Fijalkowski
-<maciej.fijalkowski@intel.com> wrote:
->
-> On Sun, Apr 26, 2020 at 08:38:03PM +0200, Magnus Karlsson wrote:
-> > On Sun, Apr 26, 2020 at 6:08 PM Jesse DuMond <suttonshiredev@gmail.com> wrote:
-> > >
-> > > Hi there,
-> > >
-> > > I am writing some test code that tries  repeatedly to create a umem
-> > > and socket and then deletes them both. I'm using the libbpf function
-> > > xsk_umem__create/delete and xsk_socket__create/xsk_socket__delete. I
-> > > am getting an EBUSY from xsk_socket__create when trying to create a
-> > > socket after deleting a socket on the same interface and queue number.
-> > > The attached program reproduces the error.
-> > >
-> > > I've traced the EBUSY error to this call to xdp_umem_assign_dev in the
-> > > kernel: https://github.com/torvalds/linux/blob/v5.3/net/xdp/xsk.c#L500
-> > > That call is made during the bind call in xsk_socket__create. As far
-> > > as I can tell this error is because the work of xdp_umem_clear_dev is
-> > > actually called asynchronously after xsk_socket__delete. Putting a
-> > > sleep between xsk_socket__delete and xsk_socket__create makes this
-> > > code succeed.
-> > >
-> > > Am I trying to do something that is not supposed to be supported?
-> >
-> > No, you are doing everything correctly. The tear down of a socket is
-> > unfortunately asynchronous due to legacy reasons that are not true
-> > anymore. We do have a item in the backlog to make this synchronous,
-> > but have not gotten around to it yet. So sorry, we have to live with
-> > this for a while more.
->
-> For now I guess that in case of EBUSY the application can just repeat the
-> call to xsk_socket__create?
->
-> >
-> > /Magnus
-
---0000000000005641cd05a4480a02
-Content-Type: text/x-csrc; charset="US-ASCII"; name="test.c"
-Content-Disposition: attachment; filename="test.c"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: base64
-Content-ID: <f_k9ioofss0>
-X-Attachment-Id: f_k9ioofss0
+To: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-I2luY2x1ZGUgPGVycm5vLmg+CiNpbmNsdWRlIDxzdGRsaWIuaD4KI2luY2x1ZGUgPHN0ZGlvLmg+
-CiNpbmNsdWRlIDxzdHJpbmcuaD4KI2luY2x1ZGUgPHN5cy9tbWFuLmg+CiNpbmNsdWRlIDx1bmlz
-dGQuaD4KCiNpbmNsdWRlIDxicGYvbGliYnBmLmg+CiNpbmNsdWRlIDxicGYveHNrLmg+CiNpbmNs
-dWRlIDxicGYvYnBmLmg+CgppbnQgbWFpbihpbnQgYXJnYywgY2hhciAqKmFyZ3YpCnsKCXZvaWQg
-KmJ1ZnM7CglzdHJ1Y3QgeHNrX3VtZW0gKnVtZW07CglzdHJ1Y3QgeHNrX3NvY2tldCAqc29ja2V0
-OwoJc3RydWN0IHhza19yaW5nX3Byb2QgZnE7CglzdHJ1Y3QgeHNrX3JpbmdfY29ucyBjcTsKCXN0
-cnVjdCB4c2tfcmluZ19wcm9kIHR4OwoJc3RydWN0IHhza19yaW5nX2NvbnMgcng7CglzdHJ1Y3Qg
-eHNrX3VtZW1fY29uZmlnIHVjZmcgPSB7CgkJLmZpbGxfc2l6ZSA9IDQsCgkJLmNvbXBfc2l6ZSA9
-IDQsCgkJLmZyYW1lX3NpemUgPSAyMDQ4LAoJCS5mcmFtZV9oZWFkcm9vbSA9IDAsCgkJLmZsYWdz
-ID0gMAoJfTsKCXN0cnVjdCB4c2tfc29ja2V0X2NvbmZpZyBzY2ZnID0gewoJCS5yeF9zaXplID0g
-NCwKCQkudHhfc2l6ZSA9IDQsCgkJLmxpYmJwZl9mbGFncyA9IFhTS19MSUJCUEZfRkxBR1NfX0lO
-SElCSVRfUFJPR19MT0FELAoJCS5iaW5kX2ZsYWdzID0gMCwKCQkueGRwX2ZsYWdzID0gMAoJfTsK
-CWludCByZXQ7CgoJYnVmcyA9IG1tYXAoTlVMTCwgNCAqIDIwNDgsCgkJICAgIFBST1RfUkVBRCB8
-IFBST1RfV1JJVEUsCgkJICAgIE1BUF9QUklWQVRFIHwgTUFQX0FOT05ZTU9VUywgLTEsIDApOwoJ
-aWYgKGJ1ZnMgPT0gTUFQX0ZBSUxFRCkgewoJCXByaW50ZigiRVJST1I6IG1tYXAgZmFpbGVkXG4i
-KTsKCQlleGl0KEVYSVRfRkFJTFVSRSk7Cgl9CgoJcmV0ID0geHNrX3VtZW1fX2NyZWF0ZSgmdW1l
-bSwgYnVmcywgNCoyMDQ4LCAmZnEsICZjcSwgJnVjZmcpOwoJaWYgKHJldCkgewoJCXByaW50Zigi
-RVJST1I6IHhza191bWVtX19jcmVhdGUgZmFpbGVkOiAlZCAoJXMpXG4iLCAtcmV0LCBzdHJlcnJv
-cigtcmV0KSk7CgkJZXhpdCgxKTsKCX0KCgoJcmV0ID0geHNrX3NvY2tldF9fY3JlYXRlKCZzb2Nr
-ZXQsICJ0ZXN0IiwgMCwgdW1lbSwgJnJ4LCAmdHgsICZzY2ZnKTsKCWlmIChyZXQpIHsKCQlwcmlu
-dGYoIkVSUk9SOiB4c2tfc29ja2V0X19jcmVhdGUgZmFpbGVkOiAlZCAoJXMpXG4iLCByZXQsIHN0
-cmVycm9yKC1yZXQpKTsKCQlleGl0KDEpOwoJfQoKCXhza19zb2NrZXRfX2RlbGV0ZShzb2NrZXQp
-OwoJeHNrX3VtZW1fX2RlbGV0ZSh1bWVtKTsKCS8vc2xlZXAoMSk7CglyZXQgPSB4c2tfdW1lbV9f
-Y3JlYXRlKCZ1bWVtLCBidWZzLCA0KjIwNDgsICZmcSwgJmNxLCAmdWNmZyk7CglpZiAocmV0KSB7
-CgkJcHJpbnRmKCJFUlJPUjogc2Vjb25kIHhza191bWVtX19jcmVhdGUgZmFpbGVkOiAlZCAoJXMp
-XG4iLCAtcmV0LCBzdHJlcnJvcigtcmV0KSk7CgkJZXhpdCgxKTsKCX0KCgoJLy9UaGlzIHdpbGwg
-ZmFpbAoJcmV0ID0geHNrX3NvY2tldF9fY3JlYXRlKCZzb2NrZXQsICJ0ZXN0IiwgMCwgdW1lbSwg
-JnJ4LCAmdHgsICZzY2ZnKTsKCWlmIChyZXQgPT0gLUVCVVNZKSB7CgkJcmV0ID0geHNrX3NvY2tl
-dF9fY3JlYXRlKCZzb2NrZXQsICJ0ZXN0IiwgMCwgdW1lbSwgJnJ4LCAmdHgsICZzY2ZnKTsKCQlp
-ZiAocmV0KSB7CgkJCXByaW50ZigiRVJST1I6IHJldHJ5IHhza19zb2NrZXRfX2NyZWF0ZSBmYWls
-ZWQ6ICVkICglcylcbiIsIHJldCwgc3RyZXJyb3IoLXJldCkpOwoJCQlleGl0KDEpOwoJCX0KCX0K
-CglyZXR1cm4gMDsKfQo=
---0000000000005641cd05a4480a02--
+SGksDQoNCkZvbGxvd2luZyB0aGUgWERQIHR1dG9yaWFsIG9uIEdpdEh1Yiwgd2UgcmFuIHNvbWUg
+dGVzdHMgY29tcGFyaW5nIHRoZSBzZXR1cCBmcm9tDQp0aGUg4oCccmVkaXJlY3RpbmcgcGFja2V0
+c+KAnSBzZWN0aW9uIGFuZCBhIGJhc2ljIE9WUyBzZXR1cC4NCihTcGVjaWZpY2FsbHkgcGFja2V0
+MDMtcmVkaXJlY3RpbmcvQXNzaWdubWVudDM6IEV4dGVuZCB0byBhIGJpZGlyZWN0aW9uYWwgcm91
+dGVyKQ0KDQpJbiBvdXIgdGVzdCwgd2UgY29sbGVjdGVkIHRoZSBudW1iZXJzIGJlbG93Lg0KRm9y
+IHRoZSBPVlMgc2V0dXAuIHdlIHNhdyBUQ1AgdGhyb3VnaHB1dCBhdCBhcm91bmQgOTAgR2JpdHMv
+c2VjLg0KRm9yIHRoZSBYRFAgc2V0dXAsIHdlIHNhdyBUQ1AgdGhyb3VnaHB1dCBhdCBhcm91bmQg
+OSBHYml0cy9zZWMuDQoNCk9uIHRoZSBPVlMgc2lkZSB3ZSBoYWQgdGhlIGZvbGxvd2luZw0KLSBU
+d28gdmV0aCBkZXZpY2VzIGVhY2ggYXNzaWduZWQgdG8gdGhlaXIgb3duIHVuaXF1ZSBuZXR3b3Jr
+IG5hbWVzcGFjZS4NCi0gQm90aCB2ZXRoIGRldmljZXMgYWRkZWQgdG8gYW4gb3ZzLWJyaWRnZS4N
+Ci0gaXBlcmYyIGJldHdlZW4gdGhlIHR3byB2ZXRoIGRldmljZXMuDQoNClNpbWlsYXJseSwgZm9y
+IHRoZSBYRFAgc2V0dXAsIHdlIGZvbGxvd2VkIHRoZSBpbnN0cnVjdGlvbnMgZnJvbSBwYWNrZXQw
+My1yZWRpcmVjdGluZy9Bc3NpZ25tZW50My4NCkRpZmZlcmVuY2VzIGhpZ2hsaWdodGVkIGJlbG93
+Og0KLSBXZSBoYWQgdG8gZGlzYWJsZSByeCBhbmQgdHggY2hlY2tzdW1taW5nIHRvIGdldCBUQ1Ag
+dG8gd29yay4NCi0gZXRodG9vbCAtLW9mZmxvYWQgdmV0aDAgcnggb2ZmIHR4IG9mZg0KLSBXZSBk
+aXNhYmxlZCBCUEYgdHJhY2luZy4NCi0gaXBlcmYyIGJldHdlZW4gdGhlIHR3byB2ZXRoIGRldmlj
+ZXMuDQoNClF1ZXN0aW9uczoNCjEuIFdoeSBpcyB0aGVyZSBhIFRDUCB0aHJvdWdocHV0IGRpZmZl
+cmVuY2UgYmV0d2VlbiB0aGVzZSB0d28gc2V0dXBzPw0KMi4gV2h5IGRvIHdlIG5lZWQgdG8gZGlz
+YWJsZSByeCBhbmQgdHggY2hlY2tzdW1taW5nPw0KYS4gRGlzYWJsaW5nIHJ4IGFuZCB0eCBjaGVj
+a3N1bW1pbmcgYnJvdWdodCBPVlMgdGhyb3VnaHB1dCBkb3duIHRvIDIyIEdiaXRzL3NlYy4NCmIu
+IElzIHRoZXJlIGFueXRoaW5nIGluIHRoZSB2ZXRoIGRyaXZlciB0aGF0IG5lZWRzIHRvIGJlIGlt
+cHJvdmVkIHRvIGVuYWJsZSB0aGlzPw0KDQpTZXR1cDoNCkJvdGggdGVzdHMgd2VyZSByYW4gb24g
+YSBzaW5nbGUgQVdTIGluc3RhbmNlLg0KQVdTIGluc3RhbmNlOiB0Mi4yeGxhcmdlLg0KT1M6IFVi
+dW50dSAxOC4wNCwga2VybmVsIHZlcnNpb24gNS42LXJjMg0KDQpDb2RlDQpXZSBoYXZlIGluY2x1
+ZGVkIHRoZSBzY3JpcHRzIHdlIHVzZWQgZm9yIG91ciBzZXR1cCBpbiB0aGUgR2l0SHViIGZvcmsg
+YmVsb3cuDQotIHNldHVwX3hkcC5zaA0KLSBzZXR1cF9vdnMuc2gNCkNoYW5nZXM6DQotIERpc2Fi
+bGUgQlBGIHRyYWNpbmcuDQotIEFkZGVkIHNvbHV0aW9uIGZvciBwYWNrZXQwMy1yZWRpcmVjdGlu
+Zy9Bc3NpZ25tZW50My4NCi0gQWRkZWQgc2NyaXB0cyB0byBydW4gT1ZTLCBhbmQgWERQIHJlZGly
+ZWN0IG1hcCBiZW5jaG1hcmtzIHdpdGggaXBlcmYuDQpodHRwczovL2dpdGh1Yi5jb20vemFzaGVy
+aWYveGRwLXR1dG9yaWFsL3RyZWUvcmVkaXJlY3QtYmVuY2gvcGFja2V0MDMtcmVkaXJlY3RpbmcN
+Cg0KVGhhbmsgeW91LCBQaHU=
