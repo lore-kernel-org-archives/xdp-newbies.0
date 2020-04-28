@@ -1,66 +1,62 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:34494 "EHLO
-        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726504AbgD0MIf (ORCPT
+Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:38684 "EHLO
+        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727105AbgD1KY0 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 27 Apr 2020 08:08:35 -0400
-Subject: Re: building eBPF
-References: <20200425122225.GA455@gmail.com> <20200425145619.4405a50d@carbon>
- <20200427002027.GE488@gmail.com> <20200427120333.7e6cedfc@carbon>
- <20200427104938.GF488@gmail.com>
-From: Daniel Borkmann <daniel@iogearbox.net>
-Message-ID: <20d8acad-c8d4-a67b-5bc8-03e9c5b729ed@iogearbox.net>
-Date: Mon, 27 Apr 2020 14:08:31 +0200
+        Tue, 28 Apr 2020 06:24:26 -0400
+Received: by mail-lf1-f71.google.com with SMTP id g5so8746614lfh.9
+        for <xdp-newbies@vger.kernel.org>; Tue, 28 Apr 2020 03:24:18 -0700 (PDT)
+From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Subject: Re: Difference in TCP throughput in comparison to OVS
+In-Reply-To: <BF562847-15D5-471F-8A50-FC38BE92D505@futurewei.com>
+References: <BF562847-15D5-471F-8A50-FC38BE92D505@futurewei.com>
+Date: Tue, 28 Apr 2020 12:24:14 +0200
+Message-ID: <87ees7x60h.fsf@toke.dk>
 MIME-Version: 1.0
-In-Reply-To: <20200427104938.GF488@gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Sowmini Varadhan <sowmini05@gmail.com>, Jesper Dangaard Brouer <brouer@redhat.com>
-Cc: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Stephen Hemminger <stephen@networkplumber.org>, =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>
+Content-Transfer-Encoding: 8bit
+To: Phu Tran <phu.tran@futurewei.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-On 4/27/20 12:49 PM, Sowmini Varadhan wrote:
-> 
->> The iproute2 BPF-loader does not support BTF.  I think upstream agrees
->> that it would be too much work to add (and maintain) it, so the current
->> plan[1] is to convert iproute2 to use libbpf instead.
+Phu Tran <phu.tran@futurewei.com> writes:
 
-Not true, iproute2 does(did) support BTF, but afaik later versions of clang/
-llvm broke it so it would need to be fixed again [0]. Emission of BTF can be
-removed as a workaround w/ omitting -g.
+> Hi,
+>
+> Following the XDP tutorial on GitHub, we ran some tests comparing the setup from
+> the “redirecting packets” section and a basic OVS setup.
+> (Specifically packet03-redirecting/Assignment3: Extend to a bidirectional router)
+>
+> In our test, we collected the numbers below.
+> For the OVS setup. we saw TCP throughput at around 90 Gbits/sec.
+> For the XDP setup, we saw TCP throughput at around 9 Gbits/sec.
+>
+> On the OVS side we had the following
+> - Two veth devices each assigned to their own unique network namespace.
+> - Both veth devices added to an ovs-bridge.
+> - iperf2 between the two veth devices.
+>
+> Similarly, for the XDP setup, we followed the instructions from packet03-redirecting/Assignment3.
+> Differences highlighted below:
+> - We had to disable rx and tx checksumming to get TCP to work.
+> - ethtool --offload veth0 rx off tx off
+> - We disabled BPF tracing.
+> - iperf2 between the two veth devices.
+>
+> Questions:
+> 1. Why is there a TCP throughput difference between these two setups?
 
-   [0] https://git.kernel.org/pub/scm/network/iproute2/iproute2.git/commit/?id=f823f36012fb5ab4ddfca6ed4ff56188730f281e
+Likely because of the lack of HW checksumming (as you've already
+noticed), and TSO (XDP doesn't support superpackets). There's ongoing
+work to fix this, though. For large packets, the first step is this
+series: https://lore.kernel.org/bpf/87eesd3rvu.fsf@toke.dk/T/ - but a
+few more bits are needed before we get all the way to TSO.
 
-> So I updated my iproute2 because I was initially getting an error like
-> 
-> " Error fixing up map structure, incompatible struct bpf_elf_map used?
->    Error fetching ELF ancillary data!
->    Unable to load program
-> "
-> with the native iproute2 binaries, and thought it may be due to
-> a header mismatch.
-> 
->> Why do you want to use 'tc' to load XDP?
-> 
-> I was merely using the exsiting example in samples to try to understand
-> this. If the existing example is misleading, it should be removed.
-> 
->> I actually think this is only a warning, and the program is actually
->> loaded...
-> 
-> no I dont believe it is. if you insert a break in the script before
-> it gets to cleanup, and try
-> 
->     # ip netns exec ns2 bash
->     # tc filter show dev vens2
-> 
-> it will not show any loaded filters.
+> 2. Why do we need to disable rx and tx checksumming?
 
-Check out https://cilium.readthedocs.io/en/latest/bpf/#iproute2 for XDP + iproute2
-examples examples for where to check; but agree you might rather want to go with
-libbpf's feature set overall.
+Because XDP doesn't support it :)
 
-> --Sowmini
-> 
+Again, 'yet'. We do want to support this eventually; it's noted here:
+https://xdp-project.net/#Metadata-from-hardware
+
+-Toke
