@@ -1,50 +1,45 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mail-dm6nam10on2095.outbound.protection.outlook.com ([40.107.93.95]:28848
-        "EHLO NAM10-DM6-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726259AbgD0Xx6 (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 27 Apr 2020 19:53:58 -0400
-From: Phu Tran <phu.tran@futurewei.com>
-Subject: Difference in TCP throughput in comparison to OVS
-Date: Mon, 27 Apr 2020 23:53:56 +0000
-Message-ID: <BF562847-15D5-471F-8A50-FC38BE92D505@futurewei.com>
-Content-Language: en-US
-Content-ID: <0FB4F1432187334492254FA30FD6D96A@namprd13.prod.outlook.com>
+Received: from mx0a-00169c01.pphosted.com ([67.231.148.124]:37684 "EHLO
+        mx0b-00169c01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1728191AbgD1RMI (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Tue, 28 Apr 2020 13:12:08 -0400
+Received: from pps.filterd (m0048493.ppops.net [127.0.0.1])
+        by mx0a-00169c01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 03SHBWtd018094
+        for <xdp-newbies@vger.kernel.org>; Tue, 28 Apr 2020 10:12:08 -0700
+Received: from mail-vk1-f197.google.com (mail-vk1-f197.google.com [209.85.221.197])
+        by mx0a-00169c01.pphosted.com with ESMTP id 30mm8q305p-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT)
+        for <xdp-newbies@vger.kernel.org>; Tue, 28 Apr 2020 10:12:08 -0700
+Received: by mail-vk1-f197.google.com with SMTP id j206so5230589vke.11
+        for <xdp-newbies@vger.kernel.org>; Tue, 28 Apr 2020 10:12:06 -0700 (PDT)
 MIME-Version: 1.0
+From: John McDowall <jmcdowall@paloaltonetworks.com>
+Date: Tue, 28 Apr 2020 10:11:53 -0700
+Message-ID: <CAHQoOTZGdLYZ=qjF8+Rwi+E5y_st1u1CwMPiP65UHWpvRXvhZA@mail.gmail.com>
+Subject: XDP Native mode with public cloud (GCP)
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset="UTF-8"
 To: "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
 
-SGksDQoNCkZvbGxvd2luZyB0aGUgWERQIHR1dG9yaWFsIG9uIEdpdEh1Yiwgd2UgcmFuIHNvbWUg
-dGVzdHMgY29tcGFyaW5nIHRoZSBzZXR1cCBmcm9tDQp0aGUg4oCccmVkaXJlY3RpbmcgcGFja2V0
-c+KAnSBzZWN0aW9uIGFuZCBhIGJhc2ljIE9WUyBzZXR1cC4NCihTcGVjaWZpY2FsbHkgcGFja2V0
-MDMtcmVkaXJlY3RpbmcvQXNzaWdubWVudDM6IEV4dGVuZCB0byBhIGJpZGlyZWN0aW9uYWwgcm91
-dGVyKQ0KDQpJbiBvdXIgdGVzdCwgd2UgY29sbGVjdGVkIHRoZSBudW1iZXJzIGJlbG93Lg0KRm9y
-IHRoZSBPVlMgc2V0dXAuIHdlIHNhdyBUQ1AgdGhyb3VnaHB1dCBhdCBhcm91bmQgOTAgR2JpdHMv
-c2VjLg0KRm9yIHRoZSBYRFAgc2V0dXAsIHdlIHNhdyBUQ1AgdGhyb3VnaHB1dCBhdCBhcm91bmQg
-OSBHYml0cy9zZWMuDQoNCk9uIHRoZSBPVlMgc2lkZSB3ZSBoYWQgdGhlIGZvbGxvd2luZw0KLSBU
-d28gdmV0aCBkZXZpY2VzIGVhY2ggYXNzaWduZWQgdG8gdGhlaXIgb3duIHVuaXF1ZSBuZXR3b3Jr
-IG5hbWVzcGFjZS4NCi0gQm90aCB2ZXRoIGRldmljZXMgYWRkZWQgdG8gYW4gb3ZzLWJyaWRnZS4N
-Ci0gaXBlcmYyIGJldHdlZW4gdGhlIHR3byB2ZXRoIGRldmljZXMuDQoNClNpbWlsYXJseSwgZm9y
-IHRoZSBYRFAgc2V0dXAsIHdlIGZvbGxvd2VkIHRoZSBpbnN0cnVjdGlvbnMgZnJvbSBwYWNrZXQw
-My1yZWRpcmVjdGluZy9Bc3NpZ25tZW50My4NCkRpZmZlcmVuY2VzIGhpZ2hsaWdodGVkIGJlbG93
-Og0KLSBXZSBoYWQgdG8gZGlzYWJsZSByeCBhbmQgdHggY2hlY2tzdW1taW5nIHRvIGdldCBUQ1Ag
-dG8gd29yay4NCi0gZXRodG9vbCAtLW9mZmxvYWQgdmV0aDAgcnggb2ZmIHR4IG9mZg0KLSBXZSBk
-aXNhYmxlZCBCUEYgdHJhY2luZy4NCi0gaXBlcmYyIGJldHdlZW4gdGhlIHR3byB2ZXRoIGRldmlj
-ZXMuDQoNClF1ZXN0aW9uczoNCjEuIFdoeSBpcyB0aGVyZSBhIFRDUCB0aHJvdWdocHV0IGRpZmZl
-cmVuY2UgYmV0d2VlbiB0aGVzZSB0d28gc2V0dXBzPw0KMi4gV2h5IGRvIHdlIG5lZWQgdG8gZGlz
-YWJsZSByeCBhbmQgdHggY2hlY2tzdW1taW5nPw0KYS4gRGlzYWJsaW5nIHJ4IGFuZCB0eCBjaGVj
-a3N1bW1pbmcgYnJvdWdodCBPVlMgdGhyb3VnaHB1dCBkb3duIHRvIDIyIEdiaXRzL3NlYy4NCmIu
-IElzIHRoZXJlIGFueXRoaW5nIGluIHRoZSB2ZXRoIGRyaXZlciB0aGF0IG5lZWRzIHRvIGJlIGlt
-cHJvdmVkIHRvIGVuYWJsZSB0aGlzPw0KDQpTZXR1cDoNCkJvdGggdGVzdHMgd2VyZSByYW4gb24g
-YSBzaW5nbGUgQVdTIGluc3RhbmNlLg0KQVdTIGluc3RhbmNlOiB0Mi4yeGxhcmdlLg0KT1M6IFVi
-dW50dSAxOC4wNCwga2VybmVsIHZlcnNpb24gNS42LXJjMg0KDQpDb2RlDQpXZSBoYXZlIGluY2x1
-ZGVkIHRoZSBzY3JpcHRzIHdlIHVzZWQgZm9yIG91ciBzZXR1cCBpbiB0aGUgR2l0SHViIGZvcmsg
-YmVsb3cuDQotIHNldHVwX3hkcC5zaA0KLSBzZXR1cF9vdnMuc2gNCkNoYW5nZXM6DQotIERpc2Fi
-bGUgQlBGIHRyYWNpbmcuDQotIEFkZGVkIHNvbHV0aW9uIGZvciBwYWNrZXQwMy1yZWRpcmVjdGlu
-Zy9Bc3NpZ25tZW50My4NCi0gQWRkZWQgc2NyaXB0cyB0byBydW4gT1ZTLCBhbmQgWERQIHJlZGly
-ZWN0IG1hcCBiZW5jaG1hcmtzIHdpdGggaXBlcmYuDQpodHRwczovL2dpdGh1Yi5jb20vemFzaGVy
-aWYveGRwLXR1dG9yaWFsL3RyZWUvcmVkaXJlY3QtYmVuY2gvcGFja2V0MDMtcmVkaXJlY3RpbmcN
-Cg0KVGhhbmsgeW91LCBQaHU=
+Hi,
+
+I am running the XDP redirect example on Google Cloud Platform using
+the GCP provided Ubuntu 20.04 image as my host. The code works fine in
+SKB_MODE (xdpgeneric). When I go to DRV_MODE I get the following error
+message:   "libbpf: Kernel error message: virtio_net: XDP expects
+header/data in single page, any_header_sg required".
+
+For all images on GCP that I have looked at the number of RX and TX
+channels are set to 0 and the combined is the number of cores (ethtool
+-l dev). My question is then, is there any way to run XDP native on
+GCP images or do I need to try and create a custom image with re and
+tx queues set?
+
+Second question, does anyone have experience running native XDP on AWS
+and Azure?
+
+Regards
+
+John
