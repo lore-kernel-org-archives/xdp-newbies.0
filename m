@@ -1,62 +1,80 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:38684 "EHLO
-        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727105AbgD1KY0 (ORCPT
+Received: from us-smtp-1.mimecast.com ([207.211.31.81]:31809 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726511AbgD2LvY (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 28 Apr 2020 06:24:26 -0400
-Received: by mail-lf1-f71.google.com with SMTP id g5so8746614lfh.9
-        for <xdp-newbies@vger.kernel.org>; Tue, 28 Apr 2020 03:24:18 -0700 (PDT)
-From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-Subject: Re: Difference in TCP throughput in comparison to OVS
-In-Reply-To: <BF562847-15D5-471F-8A50-FC38BE92D505@futurewei.com>
-References: <BF562847-15D5-471F-8A50-FC38BE92D505@futurewei.com>
-Date: Tue, 28 Apr 2020 12:24:14 +0200
-Message-ID: <87ees7x60h.fsf@toke.dk>
+        Wed, 29 Apr 2020 07:51:24 -0400
+From: "Eelco Chaudron" <echaudro@redhat.com>
+Subject: fentry/fexit trace to BPF_PROG_TYPE_EXT BPF program not working
+Date: Wed, 29 Apr 2020 13:51:15 +0200
+Message-ID: <666CF27B-18B4-420B-A0FC-29947DB1682D@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; format=flowed
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
-To: Phu Tran <phu.tran@futurewei.com>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+To: Alexei Starovoitov <ast@kernel.org>, Xdp <xdp-newbies@vger.kernel.org>
+Cc: Toke =?utf-8?b?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>
 
-Phu Tran <phu.tran@futurewei.com> writes:
+Hi Alexie at al.
 
-> Hi,
->
-> Following the XDP tutorial on GitHub, we ran some tests comparing the setup from
-> the “redirecting packets” section and a basic OVS setup.
-> (Specifically packet03-redirecting/Assignment3: Extend to a bidirectional router)
->
-> In our test, we collected the numbers below.
-> For the OVS setup. we saw TCP throughput at around 90 Gbits/sec.
-> For the XDP setup, we saw TCP throughput at around 9 Gbits/sec.
->
-> On the OVS side we had the following
-> - Two veth devices each assigned to their own unique network namespace.
-> - Both veth devices added to an ovs-bridge.
-> - iperf2 between the two veth devices.
->
-> Similarly, for the XDP setup, we followed the instructions from packet03-redirecting/Assignment3.
-> Differences highlighted below:
-> - We had to disable rx and tx checksumming to get TCP to work.
-> - ethtool --offload veth0 rx off tx off
-> - We disabled BPF tracing.
-> - iperf2 between the two veth devices.
->
-> Questions:
-> 1. Why is there a TCP throughput difference between these two setups?
+I was trying to attach a fentry/fexit trace to BPF_PROG_TYPE_EXT BPF 
+program but I'm getting a verifier error, and not sure why. Is this 
+supported?
 
-Likely because of the lack of HW checksumming (as you've already
-noticed), and TSO (XDP doesn't support superpackets). There's ongoing
-work to fix this, though. For large packets, the first step is this
-series: https://lore.kernel.org/bpf/87eesd3rvu.fsf@toke.dk/T/ - but a
-few more bits are needed before we get all the way to TSO.
+This is the error:
 
-> 2. Why do we need to disable rx and tx checksumming?
+libbpf: -- BEGIN DUMP LOG ---
+libbpf:
+arg#0 type is not a struct
+Unrecognized arg#0 type PTR
+; int BPF_PROG(trace_on_entry, struct xdp_md *xdp)
+0: (79) r1 = *(u64 *)(r1 +0)
+invalid bpf_context access off=0 size=8
+processed 1 insns (limit 1000000) max_states_per_insn 0 total_states 0 
+peak_states 0 mark_read 0
+libbpf: -- END LOG --
 
-Because XDP doesn't support it :)
+This is the actual fentry code using the BPF_PROG macro from 
+tools/lib/bpf/bpf_tracing.h:
 
-Again, 'yet'. We do want to support this eventually; it's noted here:
-https://xdp-project.net/#Metadata-from-hardware
+SEC("fentry/func")
+int BPF_PROG(trace_on_entry, struct xdp_md *xdp)
+{
+     trace_to_perf_buffer(xdp, false, 0);
+     return 0;
+}
 
--Toke
+And some more details from bpftool on the program I try to attach to:
+
+# bpftool prog show id 165
+165: ext  name xdp_test_I  tag b5a46c6e9935298c  gpl
+     loaded_at 2020-04-28T13:41:00+0000  uid 0
+     xlated 136B  jited 108B  memlock 4096B
+     btf_id 432
+
+# bpftool prog dump xlated id 165
+int xdp_test_I(struct xdp_md * ctx):
+; int xdp_test_I(struct xdp_md *ctx)
+    0: (b7) r2 = 10
+; bpf_debug("PASS[1]: prog %u\n", ctx->ingress_ifindex);
+    1: (6b) *(u16 *)(r10 -8) = r2
+    2: (18) r2 = 0x752520676f727020
+    4: (7b) *(u64 *)(r10 -16) = r2
+    5: (18) r2 = 0x3a5d315b53534150
+    7: (7b) *(u64 *)(r10 -24) = r2
+    8: (79) r3 = *(u64 *)(r1 +40)
+    9: (79) r3 = *(u64 *)(r3 +0)
+   10: (61) r3 = *(u32 *)(r3 +256)
+   11: (bf) r1 = r10
+;
+   12: (07) r1 += -24
+; bpf_debug("PASS[1]: prog %u\n", ctx->ingress_ifindex);
+   13: (b7) r2 = 18
+   14: (85) call bpf_trace_printk#-54752
+; return XDP_PASS;
+   15: (b7) r0 = 2
+   16: (95) exit
+
+Thanks in advance...
+
+//Eelco
