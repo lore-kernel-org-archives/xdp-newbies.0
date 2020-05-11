@@ -1,69 +1,104 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from www62.your-server.de ([213.133.104.62]:48428 "EHLO
-        www62.your-server.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728663AbgEFJ26 (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Wed, 6 May 2020 05:28:58 -0400
-Subject: Re: Fighting BPF verifier to reach end-of-packet with XDP
-References: <20200501174132.4388983e@carbon> <20200506110825.2079224f@carbon>
-From: Daniel Borkmann <daniel@iogearbox.net>
-Message-ID: <9d7f422d-8d52-df5d-c1a5-8fd871aa6499@iogearbox.net>
-Date: Wed, 6 May 2020 11:28:56 +0200
+Received: from us-smtp-delivery-1.mimecast.com ([207.211.31.120]:53526 "EHLO
+        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1728209AbgEKKl2 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 11 May 2020 06:41:28 -0400
+Received: by mail-lf1-f71.google.com with SMTP id 74so3392458lfn.4
+        for <xdp-newbies@vger.kernel.org>; Mon, 11 May 2020 03:41:22 -0700 (PDT)
+From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Subject: Re: XDP Software Issue - Payload Matching
+In-Reply-To: <9f91026d-e3da-ff7c-b2dd-a4a795e6975b@gflclan.com>
+References: <9f91026d-e3da-ff7c-b2dd-a4a795e6975b@gflclan.com>
+Date: Mon, 11 May 2020 12:41:18 +0200
+Message-ID: <878shyg3e9.fsf@toke.dk>
 MIME-Version: 1.0
-In-Reply-To: <20200506110825.2079224f@carbon>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Jesper Dangaard Brouer <brouer@redhat.com>, Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Cc: BPF-dev-list <bpf@vger.kernel.org>, =?UTF-8?Q?Toke_H=c3=b8iland-J=c3=b8rgensen?= <toke@redhat.com>, Matteo Croce <mcroce@redhat.com>, Lorenzo Bianconi <lorenzo.bianconi@redhat.com>, Ilias Apalodimas <ilias.apalodimas@linaro.org>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+To: Christian Deacon <gamemann@gflclan.com>, xdp-newbies@vger.kernel.org
 
-On 5/6/20 11:08 AM, Jesper Dangaard Brouer wrote:
-> On Fri, 1 May 2020 17:41:32 +0200
-> Jesper Dangaard Brouer <brouer@redhat.com> wrote:
-> 
->> Hi Daniel,
->>
->> One use-case for tail grow patchset, is to add a kernel timestamp at
->> XDP time in the extended tailroom of packet and return XDP_PASS to let
->> packet travel were it needs to go, and then via tcpdump we can extract
->> this timestamp. (E.g. this could improve on Ilias TSN measurements[2]).
->>
->> I have implemented it here[3]. It works, but it is really a hassle to
->> convince the BPF verifier, that my program was safe.  I use the
->> IP-headers total length to find the end-of-packet.
-> 
-> I moved the code example here experiment01-tailgrow[4]:
->   [4] https://github.com/xdp-project/xdp-tutorial/blob/master/experiment01-tailgrow/xdp_prog_kern.c
-> 
-> People can follow the changes via PR# [123].
->   [123] https://github.com/xdp-project/xdp-tutorial/pull/123
-> 
->> Is there an easier BPF way to move a data pointer to data_end?
-> 
-> I've also added some "fail" examples[5]:
->   [5] https://github.com/xdp-project/xdp-tutorial/tree/master/experiment01-tailgrow
-> 
-> That I will appreciate someone to review my explaining comments, on why
-> verifier chooses to fail these programs... as they might be wrong.
->   
->> Any suggestion on how I could extend the kernel (or verifier) to
->> provide easier access to the tailroom I grow?
-> 
-> Is it possible to use the cls_bpf older style load_byte() helpers?
+Christian Deacon <gamemann@gflclan.com> writes:
 
-In cls_bpf we use the tailroom grow for slow-path icmp [0], which may be the
-primary use-case from my PoV for the tailroom grow. We haven't had a case where
-we need it for crafting custom DNS replies though (it looks like you have one in
-XDP (?), so may be good to add a sample code w/ your XDP series on this).
+> Hey everyone,
+>
+> I apologize if this isn't the correct place to discuss an issue with XDP 
+> software I'm attempting to create. I'm not sure where else I can request 
+> help on this since it may be related to BPF/XDP itself.
+>
+> I've made an XDP Firewall project on GitHub here:
+>
+> https://github.com/gamemann/XDP-Firewall
+>
+> I am still fairly new to C and XDP. Therefore, I'm sure many 
+> improvements could be made to the software. However, everything besides 
+> the payload matching is working correctly from what I've tested.
+>
+> Basically, this program transfers filtering rules from a config file in 
+> the user space to the XDP program via BPF maps. The XDP program then 
+> performs checks against each filter specified. I'm trying to implement 
+> payload matching into this project and I got the user-space side working 
+> properly. However, when I attempt to check the payload within the XDP 
+> program, I keep receiving errors either when compiling (stating the BPF 
+> stack has been exhausted) or the following error when attaching the XDP 
+> program:
+>
+> ```
+> The sequence of 8193 jumps is too complex.
+> processed 100132 insns (limit 1000000) max_states_per_insn 4 
+> total_states 1279 peak_states 1279 mark_read 97
+> ```
+>
+> There is a very long BPF stack trace that I can attach if need to be. 
+> The following is the part of code causing this issue (it's not commented 
+> out on my development VM):
+>
+> https://github.com/gamemann/XDP-Firewall/blob/master/src/xdpfw_kern.c#L306
+>
+> If I comment out line 332 or set `found` to 1, the XDP program does not 
+> crash. I've tried a `goto` approach as well which is available here:
+>
+> https://gist.github.com/gamemann/9f0d42c25151d0f2e1630840d04fd599
+>
+> However, this causes the following error when starting the XDP program:
+>
+> ```
+> invalid read from stack off -488+0 size 8
+> processed 844 insns (limit 1000000) max_states_per_insn 4 total_states 
+> 28 peak_states 28 mark_read
+> ```
+>
+> If I comment out line 27 from that Gist (`continue;`), the program runs 
+> properly. I've also tried moving the code into its own for loop by 
+> making some modifications. However, I get the same results. I'd assume 
+> this is some sort of BPF limitation with for loops and jumps. However, 
+> I'm sure there's a strong possibility I'm just not doing something right 
+> when attempting to match the payload.
 
-The issue from your fail1 example should very likely be that the offset in your
-case is unbounded so verifier cannot do anything with this information. You would
-need to make the offset bounded, add it to data and then open the range in the
-data/data_end test with the constant you're accessing later, see my comment. I
-haven't run your example, but that is what I'd probably try first.
+Yeah, you're right, the verifier caps the size of the tree of branches
+it'll explore at 8192 entries (which is why your error triggers at
+8193). So to get past the verifier you'll simply have to limit the
+complexity of your program.
 
-Thanks,
-Daniel
+A few techniques come to mind to achieve this:
 
-   [0] https://github.com/cilium/cilium/blob/master/bpf/lib/icmp6.h#L209
+- Limit the length of the loop (you have MAX_PCKT_LENGTH at 64k, which
+  is never going to be the case since XDP doesn't support jumboframes).
+
+- Split up your program into smaller components and use tail calls or
+  non-inlined functions to call through to them (though not sure how far
+  per-function verification has come, so the latter may not give you
+  much benefit yet). Splitting up the code also helps with not running
+  the bits that are not needed in a current filter configuration, which
+  is an important way to improve performance of XDP programs. See
+  xdp-filter[0] for an example of how to conditionally load different
+  code subsets as needed.
+
+- Use a matching algorithm that doesn't require looping through the
+  packet byte-by-byte as you're doing now. For instance, you could have
+  a hash map that uses the payload you're trying to match as the key
+  with an appropriate chunk size.
+
+-Toke
+
+[0] https://github.com/xdp-project/xdp-tools/tree/master/xdp-filter
