@@ -1,123 +1,156 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from postout1.mail.lrz.de ([129.187.255.137]:38999 "EHLO
-        postout1.mail.lrz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726270AbgERJRO (ORCPT
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45834 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726726AbgERNOa (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 18 May 2020 05:17:14 -0400
-From: "Gaul, Maximilian" <maximilian.gaul@hm.edu>
-Subject: AW: How does the Kernel decide which Umem frame to choose for the
- next packet?
-Date: Mon, 18 May 2020 09:17:06 +0000
-Message-ID: <0f2212ea98c74001b5c0282bfb6718d7@hm.edu>
-References: <ba88e0ff11b940fe8855a0dd43c947ae@hm.edu>,<CAJ8uoz1wQcCN6N_NPQhG5OFOyBp-a2Mqwh+nqeTGYqOeL_dCLw@mail.gmail.com>
-In-Reply-To: <CAJ8uoz1wQcCN6N_NPQhG5OFOyBp-a2Mqwh+nqeTGYqOeL_dCLw@mail.gmail.com>
-Content-Language: de-DE
+        Mon, 18 May 2020 09:14:30 -0400
+Received: from mail-vs1-xe43.google.com (mail-vs1-xe43.google.com [IPv6:2607:f8b0:4864:20::e43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B2F41C061A0C
+        for <xdp-newbies@vger.kernel.org>; Mon, 18 May 2020 06:14:30 -0700 (PDT)
+Received: by mail-vs1-xe43.google.com with SMTP id d7so904475vsh.0
+        for <xdp-newbies@vger.kernel.org>; Mon, 18 May 2020 06:14:30 -0700 (PDT)
 MIME-Version: 1.0
+References: <ba88e0ff11b940fe8855a0dd43c947ae@hm.edu> <CAJ8uoz1wQcCN6N_NPQhG5OFOyBp-a2Mqwh+nqeTGYqOeL_dCLw@mail.gmail.com>
+ <0f2212ea98c74001b5c0282bfb6718d7@hm.edu>
+In-Reply-To: <0f2212ea98c74001b5c0282bfb6718d7@hm.edu>
+From: Magnus Karlsson <magnus.karlsson@gmail.com>
+Date: Mon, 18 May 2020 15:14:18 +0200
+Message-ID: <CAJ8uoz33iGMze_Au6RQDqzsM8Po_E20ZxSxT21TFCwJwkKdW1g@mail.gmail.com>
+Subject: Re: How does the Kernel decide which Umem frame to choose for the
+ next packet?
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
-To: Magnus Karlsson <magnus.karlsson@gmail.com>
+To: "Gaul, Maximilian" <maximilian.gaul@hm.edu>
 Cc: Xdp <xdp-newbies@vger.kernel.org>
 
-> User-space decides this by what frames it enters into the fill ring.
-> Kernel-space uses the frames in order from that ring.
->=20
-> /Magnus
+On Mon, May 18, 2020 at 11:17 AM Gaul, Maximilian
+<maximilian.gaul@hm.edu> wrote:
+>
+> > User-space decides this by what frames it enters into the fill ring.
+> > Kernel-space uses the frames in order from that ring.
+> >
+> > /Magnus
+>
+> Thank you for your reply Magnus,
+>
+> I am sorry to ask again but I am not so sure when this happens.
+> So I first check my socket RX-ring for new packets:
+>
+>                 xsk_ring_cons__peek(&xsk_socket->rx, 1024, &idx_rx)
+>
+> which looks like this:
+>
+>                 static inline size_t xsk_ring_cons__peek(struct xsk_ring_=
+cons *cons,
+>                                                          size_t nb, __u32=
+ *idx)
+>                 {
+>                         size_t entries =3D xsk_cons_nb_avail(cons, nb);
+>
+>                         if (entries > 0) {
+>                                 /* Make sure we do not speculatively read=
+ the data before
+>                                  * we have received the packet buffers fr=
+om the ring.
+>                                  */
+>                                 libbpf_smp_rmb();
+>
+>                                 *idx =3D cons->cached_cons;
+>                                 cons->cached_cons +=3D entries;
+>                         }
+>
+>                         return entries;
+>                 }
+>
+> where `idx_rx` is the starting position of descriptors for the new packet=
+s in the RX-ring.
+>
+> My first question here is: How can there already be descriptors of packet=
+s in my RX-ring if I didn't enter any frames into the fill ring of the umem=
+ yet?
+> So I assume libbpf did this for me already?
 
-Thank you for your reply Magnus,
+Yes, that is correct.
 
-I am sorry to ask again but I am not so sure when this happens.
-So I first check my socket RX-ring for new packets:
+> After this call I know how many packets are waiting. So I reserve exactly=
+ as many Umem frames:
+>
+>                 xsk_ring_prod__reserve(&umem_info->fq, rx_rcvd_amnt, &idx=
+_fq);
+>
+> which looks like this:
+>
+>                 static inline size_t xsk_ring_prod__reserve(struct xsk_ri=
+ng_prod *prod,
+>                                                                 size_t nb=
+, __u32 *idx)
+>                 {
+>                         if (xsk_prod_nb_free(prod, nb) < nb)
+>                                 return 0;
+>
+>                         *idx =3D prod->cached_prod;
+>                         prod->cached_prod +=3D nb;
+>
+>                         return nb;
+>                 }
+>
+> But what am I exactly reserving here? How can I reserve anything from the=
+ Umem without telling it the RX-ring of my socket?
 
-=09=09xsk_ring_cons__peek(&xsk_socket->rx, 1024, &idx_rx)
+You are reserving descriptor slots in a producer ring.
 
-which looks like this:
+> After  this, I extract the RX-ring packet descriptors, starting at `idx_r=
+x`:
+>
+>                 const struct xdp_desc *desc =3D xsk_ring_cons__rx_desc(&x=
+sk_socket->rx, idx_rx + i);
+>
+> I am also not entirely certain with the zero-copy aspect of AF-XDP. As fa=
+r as I know the NIC writes incoming packets via DMA directly into system me=
+mory. But this time system memory means the Umem area - right? Where with n=
+on-zero-copy this would be any position in memory and the Kernel first has =
+to copy the packets into the Umem area?
 
-=09=09static inline size_t xsk_ring_cons__peek(struct xsk_ring_cons *cons,
-=09=09=09=09=09=09=09 size_t nb, __u32 *idx)
-=09=09{
-=09=09=09size_t entries =3D xsk_cons_nb_avail(cons, nb);
+In zero-copy mode, the NIC DMA:s the packet straight into the umem, so
+they are immediately seen by the user space process.
 
-=09=09=09if (entries > 0) {
-=09=09=09=09/* Make sure we do not speculatively read the data before
-=09=09=09=09 * we have received the packet buffers from the ring.
-=09=09=09=09 */
-=09=09=09=09libbpf_smp_rmb();
+> I am also a bit confused what the size of a RX-queue means in this contex=
+t. Assuming the output of ethtool:
+>
+>                 $ ethtool -g eth20
+>                 Ring parameters for eth20:
+>                 Pre-set maximums:
+>                 RX:             8192
+>                 RX Mini:        0
+>                 RX Jumbo:       0
+>                 TX:             8192
+>                 Current hardware settings:
+>                 RX:             1024
+>                 RX Mini:        0
+>                 RX Jumbo:       0
+>                 TX:             1024
+>
+> Does this mean that at the moment my NIC can store 1024 incoming packets =
+inside its own memory?
 
-=09=09=09=09*idx =3D cons->cached_cons;
-=09=09=09=09cons->cached_cons +=3D entries;
-=09=09=09}
+The NIC does not have its own memory. This just means that their can
+be 1024 packets that will be processed by the NIC or have been
+processed by the NIC but not handled by the driver. Nothing you need
+to care about unless you are performance optimizing, or writing a
+driver of course :-).
 
-=09=09=09return entries;
-=09=09}
+> So there is no connection between the RX-queue size of the NIC and the Um=
+em area?
 
-where `idx_rx` is the starting position of descriptors for the new packets =
-in the RX-ring.
+Correct.
 
-My first question here is: How can there already be descriptors of packets =
-in my RX-ring if I didn't enter any frames into the fill ring of the umem y=
-et?
-So I assume libbpf did this for me already?
+/Magnus
 
-After this call I know how many packets are waiting. So I reserve exactly a=
-s many Umem frames:
-
-=09=09xsk_ring_prod__reserve(&umem_info->fq, rx_rcvd_amnt, &idx_fq);
-
-which looks like this:
-
-=09=09static inline size_t xsk_ring_prod__reserve(struct xsk_ring_prod *pro=
-d,
-=09=09=09=09=09=09=09=09size_t nb, __u32 *idx)
-=09=09{
-=09=09=09if (xsk_prod_nb_free(prod, nb) < nb)
-=09=09=09=09return 0;
-
-=09=09=09*idx =3D prod->cached_prod;
-=09=09=09prod->cached_prod +=3D nb;
-
-=09=09=09return nb;
-=09=09}
-
-But what am I exactly reserving here? How can I reserve anything from the U=
-mem without telling it the RX-ring of my socket?
-
-After  this, I extract the RX-ring packet descriptors, starting at `idx_rx`=
-:
-
-=09=09const struct xdp_desc *desc =3D xsk_ring_cons__rx_desc(&xsk_socket->r=
-x, idx_rx + i);
-
-I am also not entirely certain with the zero-copy aspect of AF-XDP. As far =
-as I know the NIC writes incoming packets via DMA directly into system memo=
-ry. But this time system memory means the Umem area - right? Where with non=
--zero-copy this would be any position in memory and the Kernel first has to=
- copy the packets into the Umem area?
-
-I am also a bit confused what the size of a RX-queue means in this context.=
- Assuming the output of ethtool:
-
-=09=09$ ethtool -g eth20
-=09=09Ring parameters for eth20:
-=09=09Pre-set maximums:
-=09=09RX:             8192
-=09=09RX Mini:        0
-=09=09RX Jumbo:       0
-=09=09TX:             8192
-=09=09Current hardware settings:
-=09=09RX:             1024
-=09=09RX Mini:        0
-=09=09RX Jumbo:       0
-=09=09TX:             1024
-
-Does this mean that at the moment my NIC can store 1024 incoming packets in=
-side its own memory? So there is no connection between the RX-queue size of=
- the NIC and the Umem area?
-
-Sorry for this wall of text. Maybe you can answer a few of my questions, I =
-hope they are not too confusing.
-
-Thank you so much
-
-Max
+> Sorry for this wall of text. Maybe you can answer a few of my questions, =
+I hope they are not too confusing.
+>
+> Thank you so much
+>
+> Max
