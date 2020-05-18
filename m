@@ -1,44 +1,43 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from postout1.mail.lrz.de ([129.187.255.137]:49789 "EHLO
-        postout1.mail.lrz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726040AbgERIhV (ORCPT
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33042 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726447AbgERIvY (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 18 May 2020 04:37:21 -0400
-Received: from lxmhs51.srv.lrz.de (localhost [127.0.0.1])
-        by postout1.mail.lrz.de (Postfix) with ESMTP id 49QXSZ4PD2zyTf
-        for <xdp-newbies@vger.kernel.org>; Mon, 18 May 2020 10:37:18 +0200 (CEST)
-Received: from postout1.mail.lrz.de ([127.0.0.1])
-        by lxmhs51.srv.lrz.de (lxmhs51.srv.lrz.de [127.0.0.1]) (amavisd-new, port 20024)
-        with LMTP id gWp__88ZGvYm for <xdp-newbies@vger.kernel.org>;
-        Mon, 18 May 2020 10:37:18 +0200 (CEST)
-Received: from BADWLRZ-SWMBX05.ads.mwn.de (BADWLRZ-SWMBX05.ads.mwn.de [IPv6:2001:4ca0:0:108::161])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
-        (Client CN "BADWLRZ-SWMBX05", Issuer "BADWLRZ-SWMBX05" (not verified))
-        by postout1.mail.lrz.de (Postfix) with ESMTPS id 49QXSZ2PrdzyS5
-        for <xdp-newbies@vger.kernel.org>; Mon, 18 May 2020 10:37:18 +0200 (CEST)
-From: "Gaul, Maximilian" <maximilian.gaul@hm.edu>
-Subject: How does the Kernel decide which Umem frame to choose for the next
- packet?
-Date: Mon, 18 May 2020 08:37:09 +0000
-Message-ID: <ba88e0ff11b940fe8855a0dd43c947ae@hm.edu>
-Content-Language: de-DE
+        Mon, 18 May 2020 04:51:24 -0400
+Received: from mail-vs1-xe35.google.com (mail-vs1-xe35.google.com [IPv6:2607:f8b0:4864:20::e35])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C7181C061A0C
+        for <xdp-newbies@vger.kernel.org>; Mon, 18 May 2020 01:51:23 -0700 (PDT)
+Received: by mail-vs1-xe35.google.com with SMTP id o26so5058873vsr.10
+        for <xdp-newbies@vger.kernel.org>; Mon, 18 May 2020 01:51:23 -0700 (PDT)
 MIME-Version: 1.0
+References: <ba88e0ff11b940fe8855a0dd43c947ae@hm.edu>
+In-Reply-To: <ba88e0ff11b940fe8855a0dd43c947ae@hm.edu>
+From: Magnus Karlsson <magnus.karlsson@gmail.com>
+Date: Mon, 18 May 2020 10:51:11 +0200
+Message-ID: <CAJ8uoz1wQcCN6N_NPQhG5OFOyBp-a2Mqwh+nqeTGYqOeL_dCLw@mail.gmail.com>
+Subject: Re: How does the Kernel decide which Umem frame to choose for the
+ next packet?
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Xdp <xdp-newbies@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: "Gaul, Maximilian" <maximilian.gaul@hm.edu>
+Cc: Xdp <xdp-newbies@vger.kernel.org>
 
-Hello,
+On Mon, May 18, 2020 at 10:39 AM Gaul, Maximilian
+<maximilian.gaul@hm.edu> wrote:
+>
+> Hello,
+>
+> I read through the paper "The Path to DPDK Speeds for AF XDP" but I couldn't find information about how the Kernel choses the Umem frame for the next packet? Or in case of zero-copy, how the driver decides which Umem frame to chose.
+> But maybe I just overlooked it.
+>
+> So how does this work?
 
-I read through the paper "The Path to DPDK Speeds for AF XDP" but I couldn'=
-t find information about how the Kernel choses the Umem frame for the next =
-packet? Or in case of zero-copy, how the driver decides which Umem frame to=
- chose.
-But maybe I just overlooked it.
+User-space decides this by what frames it enters into the fill ring.
+Kernel-space uses the frames in order from that ring.
 
-So how does this work?
+/Magnus
 
-Best regards
-
-Max
+> Best regards
+>
+> Max
