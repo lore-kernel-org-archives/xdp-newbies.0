@@ -1,37 +1,70 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-1.mimecast.com ([207.211.31.81]:25909 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1730181AbgEVPwP (ORCPT
+Received: from qrelay215.mxroute.com ([172.82.139.215]:42973 "EHLO
+        qrelay215.mxroute.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729040AbgEVQMm (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 22 May 2020 11:52:15 -0400
-Date: Fri, 22 May 2020 17:51:36 +0200
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+        Fri, 22 May 2020 12:12:42 -0400
+Received: from filter003.mxroute.com ([168.235.111.26] 168-235-111-26.cloud.ramnode.com)
+ (Authenticated sender: mN4UYu2MZsgR)
+ by qrelay215.mxroute.com (ZoneMTA) with ESMTPA id 1723d2876aa000add6.001
+ for <xdp-newbies@vger.kernel.org>;
+ Fri, 22 May 2020 16:12:41 +0000
+Received: from ocean.mxroute.com (ocean.mxroute.com [195.201.59.214])
+        by filter003.mxroute.com (Postfix) with ESMTPS id C28366001A
+        for <xdp-newbies@vger.kernel.org>; Fri, 22 May 2020 16:12:40 +0000 (UTC)
 Subject: Re: AF_XDP Side Of Project Breaking With XDP-Native
-Message-ID: <20200522175136.5a6fdc55@carbon>
-In-Reply-To: <50fe1ab5-55e7-980b-54d4-cd1d5e864865@gflclan.com>
 References: <50fe1ab5-55e7-980b-54d4-cd1d5e864865@gflclan.com>
+ <20200522175136.5a6fdc55@carbon>
+From: Christian Deacon <gamemann@gflclan.com>
+Message-ID: <cd32e639-018e-2346-9570-f2167dfe651e@gflclan.com>
+Date: Fri, 22 May 2020 11:12:29 -0500
 MIME-Version: 1.0
+In-Reply-To: <20200522175136.5a6fdc55@carbon>
+Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 7bit
-To: Christian Deacon <gamemann@gflclan.com>
-Cc: brouer@redhat.com, xdp-newbies@vger.kernel.org
+To: Jesper Dangaard Brouer <brouer@redhat.com>
+Cc: xdp-newbies@vger.kernel.org
 
-On Fri, 22 May 2020 10:22:10 -0500
-Christian Deacon <gamemann@gflclan.com> wrote:
+Hey Jesper,
 
-> If I'm not doing anything wrong here, is it possible there's a bug with 
-> the NIC's driver? Unfortunately, I'm not sure which driver the cluster's 
-> NIC is using. 
 
-Please run:
- ethtool -i ens3
+I apologize for not providing that information before. The driver is 
+`virtio_net`. Unfortunately, I'm not sure what the NIC driver on the 
+cluster is. Once my program's code is confirmed to be correct, I will 
+try reaching out to our hosting provider to see if they can provide this 
+information if the NIC's driver is the suspected cause to this issue.
 
-And provide output.  As it will tell you that NIC driver you are using.
+```
 
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
+root@SEAV21:~/AF_XDP-Test# ethtool -i ens3
+driver: virtio_net
+version: 1.0.0
+firmware-version:
+expansion-rom-version:
+bus-info: 0000:00:03.0
+supports-statistics: yes
+supports-test: no
+supports-eeprom-access: no
+supports-register-dump: no
+supports-priv-flags: no
+```
+
+
+Thank you!
+
+
+On 5/22/2020 10:51 AM, Jesper Dangaard Brouer wrote:
+> On Fri, 22 May 2020 10:22:10 -0500
+> Christian Deacon <gamemann@gflclan.com> wrote:
+>
+>> If I'm not doing anything wrong here, is it possible there's a bug with
+>> the NIC's driver? Unfortunately, I'm not sure which driver the cluster's
+>> NIC is using.
+> Please run:
+>   ethtool -i ens3
+>
+> And provide output.  As it will tell you that NIC driver you are using.
+>
