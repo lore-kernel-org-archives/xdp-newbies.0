@@ -1,42 +1,252 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:47576 "EHLO
+Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:45915 "EHLO
         us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1729929AbgEVPMM (ORCPT
+        with ESMTP id S1726267AbgE0QyU (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 22 May 2020 11:12:12 -0400
-Received: by mail-ed1-f71.google.com with SMTP id bs5so3812355edb.18
-        for <xdp-newbies@vger.kernel.org>; Fri, 22 May 2020 08:12:09 -0700 (PDT)
-From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-Subject: Re: XDP Software Issue - Payload Matching
-In-Reply-To: <a8acdb19-2d7d-43d6-67a7-3ad926ae27c4@gflclan.com>
-References: <9f91026d-e3da-ff7c-b2dd-a4a795e6975b@gflclan.com> <878shyg3e9.fsf@toke.dk> <bbf21c58-09b3-b80f-11ab-548b229b9bdb@gflclan.com> <87ftc5ut0q.fsf@toke.dk> <edbf300d-a687-7652-d702-d58be09fd541@gflclan.com> <874ksjuca6.fsf@toke.dk> <a8acdb19-2d7d-43d6-67a7-3ad926ae27c4@gflclan.com>
-Date: Fri, 22 May 2020 17:12:06 +0200
-Message-ID: <87tv08j96h.fsf@toke.dk>
+        Wed, 27 May 2020 12:54:20 -0400
+From: "Eelco Chaudron" <echaudro@redhat.com>
+Subject: Re: fentry/fexit trace to BPF_PROG_TYPE_EXT BPF program not working
+Date: Wed, 27 May 2020 18:54:07 +0200
+Message-ID: <898E05E3-544D-4836-B6FD-3D9EE835F52B@redhat.com>
+In-Reply-To: <45653D32-C707-4095-B121-DDE1ADA567B8@redhat.com>
+References: <666CF27B-18B4-420B-A0FC-29947DB1682D@redhat.com>
+ <CAADnVQJGdEJaW6oQbFOQYJWJxhjY-P=jawYYedb_qDN4zZufQg@mail.gmail.com>
+ <917D3B95-2FB0-4785-9B5E-F4AA6B9104BE@redhat.com>
+ <45653D32-C707-4095-B121-DDE1ADA567B8@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 8bit
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Christian Deacon <gamemann@gflclan.com>, xdp-newbies@vger.kernel.org
-Cc: Jesper Dangaard Brouer <brouer@redhat.com>
+To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Cc: Alexei Starovoitov <ast@kernel.org>, Xdp <xdp-newbies@vger.kernel.org>, Toke =?utf-8?b?SMO4aWxhbmQtSsO4cmdlbnNlbg==?= <toke@redhat.com>
 
-Christian Deacon <gamemann@gflclan.com> writes:
 
-> Hey Toke,
+
+On 14 May 2020, at 13:56, Eelco Chaudron wrote:
+
+> On 13 May 2020, at 16:58, Eelco Chaudron wrote:
 >
-> I apologize for the delay on this. I've been working on a couple other 
-> XDP/BPF projects recently.
->
-> Thank you for the information you provided!
->
-> Do you know of any open-source projects/examples that uses the method 
-> you're suggesting to compare packet data without using for/while loops? 
-> I haven't tried implementing the code yet, but I'm not entirely sure how 
-> I am going to do so.
+>> On 6 May 2020, at 3:45, Alexei Starovoitov wrote:
+>>
+>>> On Wed, Apr 29, 2020 at 4:51 AM Eelco Chaudron <echaudro@redhat.com> 
+>>> wrote:
+>>>>
+>>>> Hi Alexie at al.
+>>>>
+>>>> I was trying to attach a fentry/fexit trace to BPF_PROG_TYPE_EXT 
+>>>> BPF
+>>>> program but I'm getting a verifier error, and not sure why. Is this
+>>>> supported?
+>>>
 
-Well, having a map that uses IP addresses as lookup key is kinda the
-same, I suppose, it's just a very limited part of the payload that's
-being used as the key. But other than that, no, please consider this a
-completely off-the-top-of-my-head idea with no warranties, implied or
-otherwise :)
+<SNIP>
 
--Toke
+> xdp-fexit]$ bpftool btf dump file xdpdump_bpf.o
+> [1] PTR '(anon)' type_id=2
+> [2] INT 'long long unsigned int' size=8 bits_offset=0 nr_bits=64 
+> encoding=(none)
+> [3] FUNC_PROTO '(anon)' ret_type_id=4 vlen=1
+> 	'ctx' type_id=1
+> [4] INT 'int' size=4 bits_offset=0 nr_bits=32 encoding=SIGNED
+> [5] FUNC 'trace_on_exit' type_id=3
+> [6] STRUCT 'xdp_buff' size=48 vlen=6
+> 	'data' type_id=7 bits_offset=0
+> 	'data_end' type_id=7 bits_offset=64
+> 	'data_meta' type_id=7 bits_offset=128
+> 	'data_hard_start' type_id=7 bits_offset=192
+> 	'handle' type_id=8 bits_offset=256
+> 	'rxq' type_id=9 bits_offset=320
+> [7] PTR '(anon)' type_id=0
+> [8] INT 'long unsigned int' size=8 bits_offset=0 nr_bits=64 
+> encoding=(none)
+> [9] PTR '(anon)' type_id=10
+> [10] STRUCT 'xdp_rxq_info' size=16 vlen=2
+> 	'dev' type_id=11 bits_offset=0
+> 	'queue_index' type_id=12 bits_offset=64
+> [11] PTR '(anon)' type_id=14
+> [12] TYPEDEF '__u32' type_id=13
+> [13] INT 'unsigned int' size=4 bits_offset=0 nr_bits=32 
+> encoding=(none)
+> [14] STRUCT 'net_device' size=4 vlen=1
+> 	'ifindex' type_id=4 bits_offset=0
+> [15] INT 'char' size=1 bits_offset=0 nr_bits=8 encoding=SIGNED
+> [16] ARRAY '(anon)' type_id=15 index_type_id=17 nr_elems=4
+> [17] INT '__ARRAY_SIZE_TYPE__' size=4 bits_offset=0 nr_bits=32 
+> encoding=(none)
+> [18] VAR '_license' type_id=16, linkage=global-alloc
+> [19] DATASEC 'license' size=0 vlen=1
+> 	type_id=18 offset=0 size=4
+>
+> Maybe you can take a quick peek why it’s failing as I have no real 
+> experience with the verifier. I created some sample code that you can 
+> easily use with the following instructions:
+>
+> Checkout the xdp tools repo and build it:
+>
+>   # git clone https://github.com/chaudron/xdp-tools.git
+>   # cd xdp-tools
+>   # git checkout dev/xdpdump_multi
+>   # make
+>
+>   # ulimit -l unlimited
+>   # cd xdp-test
+>   # cp ../lib/libxdp/xdp-dispatcher.o .
+>   # ../xdp-loader/xdp-loader load -m skb eth0 test_two_bpf.o 
+> test_bpf.o test_long_func_name.o --force
+>
+>
+> Bpftool should now show you the programs loaded, look for xdp_test_I:
+>
+>   # bpftool prog | grep "xdp_test_I "
+>   199: ext  name xdp_test_I  tag b5a46c6e9935298c  gpl
+>
+>
+> Now use the id (199) in the xdp-fexit test program
+>
+>   # cd ../xdp-fexit/
+>   # git diff
+>
+>   -    prog_fd = bpf_prog_get_fd_by_id(56);
+>   +    prog_fd = bpf_prog_get_fd_by_id(199);
+>
+>   # make
+>
+>
+> Run it:
+>
+>   # ./fexit
+>
+>   - Found prog_fd = 3
+>   - Opening object file
+>   - Opened object file: 0xa526b0
+>   libbpf: load bpf program failed: Permission denied
+>   libbpf: -- BEGIN DUMP LOG ---
+>   libbpf:
+>   func#0 @0
+>   arg#0 type is not a struct
+>   Unrecognized arg#0 type PTR
+>   0: R1=ctx(id=0,off=0,imm=0) R10=fp0
+>   ; int BPF_PROG(trace_on_exit, struct xdp_buff *xdp, int ret)
+>   0: (79) r1 = *(u64 *)(r1 +0)
+>   invalid bpf_context access off=0 size=8
+>   verification time 145 usec
+>   stack depth 0
+>   processed 1 insns (limit 1000000) max_states_per_insn 0 total_states 
+> 0 peak_states 0 mark_read 0
+>
+>   libbpf: -- END LOG --
+>   libbpf: failed to load program 'fexit/xdp_test_I'
+>   libbpf: failed to load object './xdpdump_bpf.o'
+>   ERROR: Failed to load object file: Permission denied
+>
+> Any ideas are welcome…
+
+Hi Alexei,
+
+I’m still trying to get attach an fentry to a EXT program, however I 
+did found the verifier issues…
+If I attach fentry to an XDP entry point, the BPF_PROG() macro casts the 
+ctx to long int *, which works:
+
+SEC("fentry/func")
+int BPF_PROG(trace_on_entry, struct xdp_buff *xdp)
+{
+}
+
+Is there a difference between attaching to an XDP program vs EXT that it 
+is requiring a struct?
+
+So if I change my function to the below the verifier stops complaining 
+for the EXT program:
+
+
+#define bpf_debug(fmt, ...)                     \
+     {                                           \
+	char __fmt[] = fmt;                         \
+	bpf_trace_printk(__fmt, sizeof(__fmt),      \
+                          ##__VA_ARGS__);        \
+     }
+
+SEC("fentry/func")
+int trace_on_entry(struct xdp_md *xdp)
+{
+      bpf_debug("HALLO ID: %u", xdp->rx_queue_index);
+      return 0;
+}
+
+
+However now the verifier complains about the following and have no clue 
+why:
+
+   libbpf: map:xdpdump_perf_map 
+container_name:____btf_map_xdpdump_perf_map cannot be found in BTF. 
+Missing BPF_ANNOTATE_KV_PAIR?
+   libbpf: created map xdpdump_perf_map: fd=7
+   libbpf: created map xdpdump_.data: fd=8
+   libbpf: load_attr.prog_type 26,load_attr.attach_prog_fd 6, 
+load_attr.attach_btf_id 7
+   libbpf: load bpf program failed: Permission denied
+   libbpf: -- BEGIN DUMP LOG ---
+   libbpf:
+   Unrecognized arg#0 type PTR
+   ; int trace_on_entry(struct xdp_md *xdp)
+   0: (b7) r2 = 1965367354
+   ; bpf_debug("HALLO ID: %u", xdp->rx_queue_index);
+   1: (63) *(u32 *)(r10 -8) = r2
+   2: (18) r2 = 0x4449204f4c4c4148
+   4: (7b) *(u64 *)(r10 -16) = r2
+   5: (b7) r2 = 0
+   6: (73) *(u8 *)(r10 -4) = r2
+   last_idx 6 first_idx 0
+   regs=4 stack=0 before 5: (b7) r2 = 0
+   7: (61) r3 = *(u32 *)(r1 +16)
+   func 'xdp_test_I' doesn't have 3-th argument
+   invalid bpf_context access off=16 size=4
+   processed 7 insns (limit 1000000) max_states_per_insn 0 total_states 
+0 peak_states 0 mark_read 0
+
+   libbpf: -- END LOG --
+   libbpf: failed to load program 'fentry/func'
+   libbpf: failed to load object './xdpdump_multi_bpf.o'
+   ERROR: Can't load eBPF object: Kernel verifier blocks program 
+loading(-4007)
+
+
+This is the program details I try to attach too:
+
+49: type 28  name xdp_test_I  tag b5a46c6e9935298c  gpl
+	loaded_at 2020-05-27T11:40:55+0000  uid 0
+	xlated 136B  jited 108B  memlock 4096B
+	btf_id 12
+
+# bpftool btf dump id 12
+[1] PTR '(anon)' type_id=2
+[2] STRUCT 'xdp_md' size=20 vlen=5
+	'data' type_id=3 bits_offset=0
+	'data_end' type_id=3 bits_offset=32
+	'data_meta' type_id=3 bits_offset=64
+	'ingress_ifindex' type_id=3 bits_offset=96
+	'rx_queue_index' type_id=3 bits_offset=128
+[3] TYPEDEF '__u32' type_id=4
+[4] INT 'unsigned int' size=4 bits_offset=0 nr_bits=32 encoding=(none)
+[5] FUNC_PROTO '(anon)' ret_type_id=6 vlen=1
+	'ctx' type_id=1
+[6] INT 'int' size=4 bits_offset=0 nr_bits=32 encoding=SIGNED
+[7] FUNC 'xdp_test_I' type_id=5 linkage=global
+[8] INT 'char' size=1 bits_offset=0 nr_bits=8 encoding=SIGNED
+[9] ARRAY '(anon)' type_id=8 index_type_id=10 nr_elems=4
+[10] INT '__ARRAY_SIZE_TYPE__' size=4 bits_offset=0 nr_bits=32 
+encoding=(none)
+[11] VAR '_license' type_id=9, linkage=global-alloc
+[12] DATASEC 'license' size=4 vlen=1
+	type_id=11 offset=0 size=4
+
+
+I’ll try to look into this, but some help would be appreciated. Will 
+try to join the community call tomorrow…
+
+Thanks,
+
+
+Eelco
