@@ -1,68 +1,34 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45338 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731145AbgFWH1R (ORCPT
+Received: from us-smtp-2.mimecast.com ([207.211.31.81]:55908 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726160AbgFBJBx (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 23 Jun 2020 03:27:17 -0400
+        Tue, 2 Jun 2020 05:01:53 -0400
+Received: by mail-ej1-f70.google.com with SMTP id e14so3837396ejt.16
+        for <xdp-newbies@vger.kernel.org>; Tue, 02 Jun 2020 02:01:50 -0700 (PDT)
+From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Subject: Re: XDP_REDIRECT with xsks_map and dev_map
+In-Reply-To: <CA+Jwd2y5Pjh+QMrH9vjBtHhvG2EC1MCfm-A2Pq2hjRPEvJ1J1Q@mail.gmail.com>
+References: <CA+Jwd2y5Pjh+QMrH9vjBtHhvG2EC1MCfm-A2Pq2hjRPEvJ1J1Q@mail.gmail.com>
+Date: Tue, 02 Jun 2020 11:01:47 +0200
+Message-ID: <87d06hzvr8.fsf@toke.dk>
 MIME-Version: 1.0
-References: <CAPydje97m+hG3_Cqg560uHoq8aKG9eDpTHA1eJC=hLuKtMf_vw@mail.gmail.com>
-In-Reply-To: <CAPydje97m+hG3_Cqg560uHoq8aKG9eDpTHA1eJC=hLuKtMf_vw@mail.gmail.com>
-From: =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@gmail.com>
-Date: Tue, 23 Jun 2020 09:27:03 +0200
-Message-ID: <CAJ+HfNgi5wEwmFTgKpR1KemVm3p0FCPTd8V+BBWC6C59OO9O8Q@mail.gmail.com>
-Subject: Re: Talk about AF_XDP support multithread concurrently receive packet
+Content-Type: text/plain
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-To: Yahui Chen <goodluckwillcomesoon@gmail.com>
-Cc: "bpf@vger.kernel.org" <bpf@vger.kernel.org>, "Karlsson, Magnus" <magnus.karlsson@intel.com>, =?UTF-8?B?QmrDtnJuIFTDtnBlbA==?= <bjorn.topel@intel.com>, Xdp <xdp-newbies@vger.kernel.org>
+To: maharishi bhargava <bhargavamaharishi@gmail.com>, xdp-newbies@vger.kernel.org
 
-On Tue, 23 Jun 2020 at 08:21, Yahui Chen <goodluckwillcomesoon@gmail.com> w=
-rote:
->
-> I have make an issue for the libbpf in github, issue number 163.
->
-> Andrii suggest me sending a mail here. So ,I paste out the content of the=
- issue:
->
+maharishi bhargava <bhargavamaharishi@gmail.com> writes:
 
-Yes, and the xdp-newsbies is an even better list for these kinds of
-discussions (added).
+> Hi, in my XDP program, I want to redirect some packets using AF_XDP
+> and redirect other packets directly from driver space.
+> Redirection through AF_XDP works fine, but redirection through dev map
+> stops after some packets are processed.
 
-> Currently, libbpf do not support concurrently receive pkts using AF_XDP.
->
-> For example: I create 4 af_xdp sockets on nic's ring 0. Four sockets
-> receiving packets concurrently can't work correctly because the API of
-> cq `xsk_ring_prod__reserve` and `xsk_ring_prod__submit` don't support
-> concurrence.
->
+Do you mean it stops even if you are *only* redirecting to a devmap, or
+if you are first redirecting a few packets to AF_XDP, then to devmap?
 
-In other words, you are using shared umem sockets. The 4 sockets can
-potentially receive packets from queue 0, depending on how the XDP
-program is done.
+Also, which driver(s) are the physical NICs you're redirecting to/from
+using, and which kernel version are you on?
 
-> So, my question is why libbpf was designed non-concurrent mode, is the
-> limit of kernel or other reason? I want to change the code to support
-> concurrent receive pkts, therefore I want to find out whether this is
-> theoretically supported.
->
-
-You are right that the AF_XDP functionality in libbpf is *not* by
-itself multi-process/thread safe, and this is deliberate. From the
-libbpf perspective we cannot know how a user will construct the
-application, and we don't want to penalize the single-thread/process
-case.
-
-It's entirely up to you to add explicit locking, if the
-single-producer/single-consumer queues are shared between
-threads/processes. Explicit synchronization is required using, say,
-POSIX mutexes.
-
-Does that clear things up?
-
-
-Cheers,
-Bj=C3=B6rn
-
-> Thx.
+-Toke
