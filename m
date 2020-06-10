@@ -1,206 +1,66 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51332 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725997AbgFELgI (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 5 Jun 2020 07:36:08 -0400
-Received: from mail-ua1-x942.google.com (mail-ua1-x942.google.com [IPv6:2607:f8b0:4864:20::942])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D85C4C08C5C3
-        for <xdp-newbies@vger.kernel.org>; Fri,  5 Jun 2020 04:36:07 -0700 (PDT)
-Received: by mail-ua1-x942.google.com with SMTP id q10so3166057uaj.13
-        for <xdp-newbies@vger.kernel.org>; Fri, 05 Jun 2020 04:36:07 -0700 (PDT)
+Received: from us-smtp-delivery-1.mimecast.com ([207.211.31.120]:44579 "EHLO
+        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727769AbgFJJc1 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 10 Jun 2020 05:32:27 -0400
+Received: by mail-ej1-f70.google.com with SMTP id ca6so821441ejb.7
+        for <xdp-newbies@vger.kernel.org>; Wed, 10 Jun 2020 02:32:21 -0700 (PDT)
+From: Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Subject: Re: How to load BTF style maps?
+In-Reply-To: <CAMDScm=VZJMZYN=SXo9OAshY=yYxwtavLDgTvu1qEasg77JyLw@mail.gmail.com>
+References: <CAMDScm=VZJMZYN=SXo9OAshY=yYxwtavLDgTvu1qEasg77JyLw@mail.gmail.com>
+Date: Wed, 10 Jun 2020 11:32:18 +0200
+Message-ID: <87ftb38dwd.fsf@toke.dk>
 MIME-Version: 1.0
-References: <CA+Jwd2y5Pjh+QMrH9vjBtHhvG2EC1MCfm-A2Pq2hjRPEvJ1J1Q@mail.gmail.com>
- <87d06hzvr8.fsf@toke.dk> <CA+Jwd2z4_tGfh9wS_CJQL36O_vYyv5knXkm6=A+UvNNtojEcrw@mail.gmail.com>
- <877dwpmp7f.fsf@toke.dk> <CA+Jwd2xnb8Nuc6Y2V=04fBa2bXfaMy1FPyK8CsFnOkqyxrtEwg@mail.gmail.com>
- <87lfl4l8zu.fsf@toke.dk> <20200603104833.GA14391@ranger.igk.intel.com>
- <87ftbcl86e.fsf@toke.dk> <20200603110726.GA55184@ranger.igk.intel.com>
- <CA+Jwd2wPcKWkfGa=TszqODbm2sGiyXszy5LRKozab0JrsSoGBQ@mail.gmail.com>
- <874krskwz6.fsf@toke.dk> <CA+Jwd2ww5csJOhbid7aSWHcC4MahDM8mu+y90pX+U3H9F2iJRQ@mail.gmail.com>
- <877dwme8ym.fsf@toke.dk>
-In-Reply-To: <877dwme8ym.fsf@toke.dk>
-From: Magnus Karlsson <magnus.karlsson@gmail.com>
-Date: Fri, 5 Jun 2020 13:35:55 +0200
-Message-ID: <CAJ8uoz0tPZ1Z==kzKagDCv7F3ysa9oiEKF1xM+AWrCUYAQgwmw@mail.gmail.com>
-Subject: Re: XDP_REDIRECT with xsks_map and dev_map
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Transfer-Encoding: 8bit
-To: =?UTF-8?B?VG9rZSBIw7hpbGFuZC1Kw7hyZ2Vuc2Vu?= <toke@redhat.com>
-Cc: maharishi bhargava <bhargavamaharishi@gmail.com>, Maciej Fijalkowski <maciej.fijalkowski@intel.com>, Xdp <xdp-newbies@vger.kernel.org>, Magnus Karlsson <magnus.karlsson@intel.com>
+To: Elerion <elerion1000@gmail.com>, xdp-newbies@vger.kernel.org
 
-On Fri, Jun 5, 2020 at 12:57 AM Toke Høiland-Jørgensen <toke@redhat.com> wrote:
->
-> maharishi bhargava <bhargavamaharishi@gmail.com> writes:
->
-> > On Wed, Jun 3, 2020 at 8:39 PM Toke Høiland-Jørgensen <toke@redhat.com> wrote:
-> >>
-> >> maharishi bhargava <bhargavamaharishi@gmail.com> writes:
-> >>
-> >> > On Wed, Jun 3, 2020 at 4:41 PM Maciej Fijalkowski
-> >> > <maciej.fijalkowski@intel.com> wrote:
-> >> >>
-> >> >> On Wed, Jun 03, 2020 at 01:07:05PM +0200, Toke Høiland-Jørgensen wrote:
-> >> >> > Maciej Fijalkowski <maciej.fijalkowski@intel.com> writes:
-> >> >> >
-> >> >> > > On Wed, Jun 03, 2020 at 12:49:25PM +0200, Toke HÃƒÂ¸iland-JÃƒÂ¸rgensen wrote:
-> >> >> > >> maharishi bhargava <bhargavamaharishi@gmail.com> writes:
-> >> >> > >>
-> >> >> > >> > On Tue, Jun 2, 2020 at 9:31 PM Toke HÃƒÂ¸iland-JÃƒÂ¸rgensen <toke@redhat.com> wrote:
-> >> >> > >> >>
-> >> >> > >> >> maharishi bhargava <bhargavamaharishi@gmail.com> writes:
-> >> >> > >> >>
-> >> >> > >> >> > On Tue 2 Jun, 2020, 14:31 Toke HÃƒÂ¸iland-JÃƒÂ¸rgensen, <toke@redhat.com> wrote:
-> >> >> > >> >> >>
-> >> >> > >> >> >> maharishi bhargava <bhargavamaharishi@gmail.com> writes:
-> >> >> > >> >> >>
-> >> >> > >> >> >> > Hi, in my XDP program, I want to redirect some packets using AF_XDP
-> >> >> > >> >> >> > and redirect other packets directly from driver space.
-> >> >> > >> >> >> > Redirection through AF_XDP works fine, but redirection through dev map
-> >> >> > >> >> >> > stops after some packets are processed.
-> >> >> > >> >> >>
-> >> >> > >> >> >> Do you mean it stops even if you are *only* redirecting to a devmap, or
-> >> >> > >> >> >> if you are first redirecting a few packets to AF_XDP, then to devmap?
-> >> >> > >> >> >>
-> >> >> > >> >> >> Also, which driver(s) are the physical NICs you're redirecting to/from
-> >> >> > >> >> >> using, and which kernel version are you on?
-> >> >> > >> >> >>
-> >> >> > >> >> >> -Toke
-> >> >> > >> >> >
-> >> >> > >> >> >
-> >> >> > >> >> >
-> >> >> > >> >> > Currently, I'm trying to redirect packets only using devmap. But also
-> >> >> > >> >> > have code for redirection using AF_XDP(only when a given condition is
-> >> >> > >> >> > satisfied). A DPDK program is running in userspace which will receive
-> >> >> > >> >> > packets from AF_XDP.
-> >> >> > >> >>
-> >> >> > >> >> Right, so it's just devmap redirect that breaks. What do you mean
-> >> >> > >> >> 'redirection stops', exactly? How are you seeing this? Does xdp_monitor
-> >> >> > >> >> (from samples/bpf) report any exceptions?
-> >> >> > >> >>
-> >> >> > >> >> -Toke
-> >> >> > >> >>
-> >> >> > >> > So, In my setup, there are three systems, Let's Assume A, B, C. System
-> >> >> > >> > B is acting as a forwarder between A and C. So I can see the number of
-> >> >> > >> > packets received at system C. To be specific, only 1024 packets are
-> >> >> > >> > received. If I remove the xsks_map part from the code and don't run
-> >> >> > >> > DPDK in userspace. This problem does not occur. Also if I forward all
-> >> >> > >> > the packets using AF_XDP, there is no such issue.
-> >> >> > >>
-> >> >> > >> I thought you said you were seeing the problem when only redirecting to
-> >> >> > >> a devmap? So why does the xsk_map code impact this? I think you may have
-> >> >> > >> to share some code...
-> >> >> > >
-> >> >> > > Isn't the case here that either xsk_map or dev_map consumes the frame and
-> >> >> > > therefore the latter doesn't see it? so cloning might be needed here?
-> >> >> >
-> >> >> > Yeah, certainly you can't redirect *the same packet* to both xsk_map and
-> >> >> > devmap - but that wasn't what I understood was the use case here?
-> >> >>
-> >> >> Maybe the best would be if Maharishi shared the code as you requested :)
-> >> >>
-> >> >> >
-> >> >> > -Toke
-> >> >> >
-> >> > CODE:
-> >> > BPF MAPS:
-> >> >
-> >> >
-> >> > struct bpf_map_def SEC("maps") xsks_map = {
-> >> >     .type = BPF_MAP_TYPE_XSKMAP,
-> >> >     .key_size = sizeof(int),
-> >> >     .value_size = sizeof(int),
-> >> >     .max_entries = 64,  /* Assume netdev has no more than 64 queues */
-> >> > };
-> >> >
-> >> > struct bpf_map_def SEC("maps") tx_port = {
-> >> >     .type = BPF_MAP_TYPE_DEVMAP,
-> >> >     .key_size = sizeof(int),
-> >> >     .value_size = sizeof(int),
-> >> >     .max_entries = 1024,
-> >> > };
-> >> >
-> >> > struct Ingress_qos_lts_value{
-> >> >     struct bpf_spin_lock lock;
-> >> >     u64 timestamp;
-> >> > };
-> >> > struct bpf_map_def SEC("maps") Ingress_qos_lts = {
-> >> >     .type = BPF_MAP_TYPE_ARRAY,
-> >> >     .key_size = sizeof(u32),
-> >> >     .value_size = sizeof(struct Ingress_qos_lts_value),
-> >> >     .max_entries = 1025,
-> >> > };
-> >> > BPF_ANNOTATE_KV_PAIR(Ingress_qos_lts,u32,struct Ingress_qos_lts_value);
-> >> >
-> >> >
-> >> > SEC("prog")
-> >> > int ebpf_filter(struct xdp_md *ctx){
-> >> >     struct xdp_output xout;
-> >> >    xout.output_port = 1;
-> >> >     void* ebpf_packetStart = ((void*)(long)ctx->data);
-> >> >     void* ebpf_packetEnd = ((void*)(long)ctx->data_end);
-> >> >     u64 rate = 100;//100 Kbps
-> >> >     rate *= 1000*1000*100;//10 Gbps
-> >> >     u32 key = 1;//some key
-> >> >     u64 packet_length=(ebpf_packetEnd-ebpf_packetStart-42)*8;
-> >> >     packet_length *= 1000000000; //packet length * 10^9, to convert
-> >> > rate from second to nanosecond
-> >> >     struct Ingress_qos_lts_value* val;
-> >> >     val = bpf_map_lookup_elem(&Ingress_qos_lts, &key);
-> >> >     u64 now = bpf_ktime_get_ns();
-> >> >     u64 lts;
-> >> >     if (val) {
-> >> >         bpf_spin_lock(&val->lock);
-> >> >         lts = *(&val->timestamp)+(packet_length/rate);
-> >> >         if(now>lts){
-> >> >             lts = now;
-> >> >         }
-> >> >         *(&val->timestamp) = lts;
-> >> >         bpf_spin_unlock(&val->lock);
-> >> >                     // printk("Time : %x %x\n",lts,now);
-> >> >         if(lts>now){
-> >> >             return bpf_redirect_map(&xsks_map, ctx->rx_queue_index, 0);
-> >> >         }
-> >> >     }
-> >> >     return  bpf_redirect_map(&tx_port,xout.output_port,0);
-> >> > }
-> >> >
-> >> > So, Basically this code redirects the packet to some other interface
-> >> > or sends the packet to userspace based on the incoming packet rate.
-> >>
-> >> Well, if you say it goes away when you remove the xsk code, the obvious
-> >> explanation would be that the packets are being redirected to userspace
-> >> instead? What does xdp_monitor say?
-> >>
-> >> -Toke
-> >>
-> > No packets are not going to userspace. NIC stops processing any more
-> > packets after 1024 redirected packets. I'll post the results of
-> > xdp_monitor asap.
-> >
-> > Also, one piece of information that might be helpful. In DPDK's
-> > default code for creating xsk_socket, the value of bind_flags was 0.
-> > When I changed it to XDP_COPY(1 << 1), everything started working
-> > correctly. So, is it something like, the socket was getting created in
-> > zero-copy mode and as far as I know, kernel version 5.3 does not
-> > support zero-copy mode. Due to this xdp_redirect using DEVMAP was not
-> > working as expected.
->
-> Hmm, in zero-copy mode packets are DMA'ed directly into the
-> userspace-provided buffer (hence zero copies). Pretty sure this is
-> incompatible with forwarding them to the stack, whether or not the
-> kernel supports zero-copy in the first place.
+Elerion <elerion1000@gmail.com> writes:
 
-If you redirect to another netdev or XDP_PASS a packet to the kernel,
-it will be copied and the copy is sent onwards to the system. As Toke
-says, whatever you had in that packet will be visible to the process
-you created/used the zero-copy AF_XDP socket in. But any further
-modification to the packet will not be visible in the umem area, since
-the packet was copied to another kernel internal buffer.
-
-/Magnus
-
-> Cc Magnus who will know for sure.
+> I have maps written in the old style like this:
 >
-> -Toke
+> struct bpf_map_def SEC("maps") xdp_stats_map = {
+> .type        = BPF_MAP_TYPE_ARRAY,
+> .key_size    = sizeof(__u32),
+> .value_size  = sizeof(struct datarec),
+> .max_entries = XDP_ACTION_MAX,
+> };
 >
+> I changed it to the new BTF style like this but now the example BPF
+> loader from the kernel doesn't work anymore.
+>
+> struct {
+>     __uint(type, BPF_MAP_TYPE_ARRAY);
+>     __uint(max_entries,  XDP_ACTION_MAX);
+>     __type(key,  __u32);
+>     __type(value,  struct datarec);
+> }  xdp_stats_map SEC(".maps");
+>
+> I used this to load my program
+> https://github.com/torvalds/linux/blob/master/samples/bpf/bpf_load.c
+>
+> But now it fails to load. First thing I noticed was the I had to
+> change "maps" to ".maps"
+> https://github.com/torvalds/linux/blob/master/samples/bpf/bpf_load.c#L563
+>
+> But then bpf_create_map_node fails because all the arguments are 0. I
+> dumped the buffer here
+> https://github.com/torvalds/linux/blob/master/samples/bpf/bpf_load.c#L489
+> and it just copies 28 bytes of zeroes for each map I have.
+>
+> How do you load BTF style maps? bpf_load.c doesn't seem to work on them.
+
+Hmm, bpf_load.c seems to be using old-style loading (not libbpf) and so
+wouldn't understand BTF-defined maps. I guess we should fix that.
+
+In the meantime, you can try one of the following options:
+
+Use xdp-loader from xdp-tools (since this seems to be an XDP use case?):
+https://github.com/xdp-project/xdp-tools
+
+Use bpftool (in tools/bpf/bpftool in the kernel source tree).
+
+-Toke
