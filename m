@@ -1,112 +1,121 @@
-Return-Path: <kal.conley@dectris.com>
+Return-Path: <xdp-newbies-owner@vger.kernel.org>
+Received: from mail-db8eur05olkn2086.outbound.protection.outlook.com ([40.92.89.86]:42432
+        "EHLO EUR05-DB8-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726044AbgFQJrv (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 17 Jun 2020 05:47:51 -0400
+Subject: Re: Lightweight packet timestamping
+References: <DB7PR08MB3130BDD01387627E7FAD775F9E890@DB7PR08MB3130.eurprd08.prod.outlook.com>
+ <DB7PR08MB3130C02AB04133E07146F40D9E890@DB7PR08MB3130.eurprd08.prod.outlook.com>
+ <DB7PR08MB3130BA2C0F90E0819577C5289E890@DB7PR08MB3130.eurprd08.prod.outlook.com>
+ <b712de09-fd35-1d5e-1842-31bb3b2e163d@gmail.com>
+ <DB7PR08MB31304BCD517885F0E1C063F69E830@DB7PR08MB3130.eurprd08.prod.outlook.com>
+ <87d0667hm9.fsf@toke.dk> <20200616180001.7409bbad@carbon>
+ <65a07187-8005-a78e-b684-eaafda886fa5@gmail.com>
+From: Federico Parola <fede.parola@hotmail.it>
+Message-ID: <DB7PR08MB31300A48E2638C814C929B929E9A0@DB7PR08MB3130.eurprd08.prod.outlook.com>
+Date: Wed, 17 Jun 2020 11:47:31 +0200
+In-Reply-To: <65a07187-8005-a78e-b684-eaafda886fa5@gmail.com>
+Content-Language: en-US
 MIME-Version: 1.0
-References: <CAHApi-mMi2jYAOCrGhpkRVybz0sDpOSkLFCZfVe-2wOcAO_MqQ@mail.gmail.com>
- <CAHApi-=YSo=sOTkRxmY=fct3TePFFdG9oPTRHWYd1AXjk0ACfw@mail.gmail.com>
- <20190902110818.2f6a8894@carbon> <fd3ee317865e9743305c0e88e31f27a2d51a0575.camel@mellanox.com>
-In-Reply-To: <fd3ee317865e9743305c0e88e31f27a2d51a0575.camel@mellanox.com>
-From: Kal Cutter Conley <kal.conley@dectris.com>
-Date: Sun, 14 Jun 2020 10:55:30 +0200
-Message-ID: <CAHApi-k=9Szxm0QMD4N4PW9Lq8L4hW6e7VfyBePzrTgvKGRs5Q@mail.gmail.com>
-Subject: Re: net/mlx5e: bind() always returns EINVAL with XDP_ZEROCOPY
-Content-Type: text/plain; charset="UTF-8"
+Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-To: Saeed Mahameed <saeedm@mellanox.com>
-Cc: "brouer@redhat.com" <brouer@redhat.com>, Maxim Mikityanskiy <maximmi@mellanox.com>, "magnus.karlsson@intel.com" <magnus.karlsson@intel.com>, "toke.hoiland-jorgensen@kau.se" <toke.hoiland-jorgensen@kau.se>, "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>, Tariq Toukan <tariqt@mellanox.com>, "gospo@broadcom.com" <gospo@broadcom.com>, "jakub.kicinski@netronome.com" <jakub.kicinski@netronome.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "bjorn.topel@intel.com" <bjorn.topel@intel.com>
+Content-Type: text/plain; charset=utf-8;
+        format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: xdp-newbies@vger.kernel.org
 
-Hi Saeed,
-Thanks for explaining the reasoning behind the special mlx5 queue
-numbering with XDP zerocopy.
+On 16/06/20 18:07, David Ahern wrote:
+> On 6/16/20 10:00 AM, Jesper Dangaard Brouer wrote:
+>> On Wed, 10 Jun 2020 23:09:34 +0200
+>> Toke H=C3=B8iland-J=C3=B8rgensen <toke@redhat.com> wrote:
+>>
+>>> Federico Parola <fede.parola@hotmail.it> writes:
+>>>
+>>>> On 06/06/20 01:34, David Ahern wrote:
+>>>>> On 6/4/20 7:30 AM, Federico Parola wrote:
+>>>>>> Hello everybody,
+>>>
+>>>>>> I'm implementing a token bucket algorithm to apply rate limit to
+>>>>>> traffic and I need the timestamp of packets to update the bucket.
+>>>>>> To get this information I'm using the bpf_ktime_get_ns() helper
+>>>>>> but I've discovered it has a non negligible impact on
+>>>>>> performance. I've seen there is work in progress to make hardware
+>>>>>> timestamps available to XDP programs, but I don't know if this
+>>>>>> feature is already available. Is there a faster way to retrieve
+>>>>>> this information?
+>>>
+>>>>>> Thanks for your attention.
+>>>>>>  =20
+>>>>> bpf_ktime_get_ns should be fairly light. What kind of performance los=
+s
+>>>>> are you seeing with it?
+>>>>
+>>>> I've run some tests on a program forwarding packets between two
+>>>> interfaces and applying rate limit: using the bpf_ktime_get_ns() I can
+>>>> process up to 3.84 Mpps, if I replace the helper with a lookup on a ma=
+p
+>>>> containing the current timestamp updated in user space I go up to 4.48
+>>>> Mpps.
+>>
+>> ((1/3.84*1000)-(1/4.48*1000) =3D 37.20 ns overhead)
+>=20
+> I had the same math yesterday and did some tests as well. I am really
+> surprised the timestamp is that high.
 
-We have a process using AF_XDP that also shares the network interface
-with other processes on the system. ethtool rx flow classification
-rules are used to route the traffic to the appropriate XSK queue
-N..(2N-1). The issue is these queues are only valid as long they are
-active (as far as I can tell). This means if my AF_XDP process dies
-other processes no longer receive ingress traffic routed over queues
-N..(2N-1) even though my XDP program is still loaded and would happily
-always return XDP_PASS. Other drivers do not have this usability issue
-because they use queues that are always valid. Is there a simple
-workaround for this issue? It seems to me queues N..(2N-1) should
-simply map to 0..(N-1) when they are not active?
+Do your tests show a similar overhead?
 
-Kal
+>=20
+>>
+>> I was about to suggest doing something close to this.  That is, only cal=
+l
+>> bpf_ktime_get_ns() once per NAPI poll-cycle, and store the timestamp in
+>> a map.  If you don't need super high per packet precision.  You can
+>> even use a per-CPU map to store the info (to avoid cross CPU
+>> cache/talk), because softirq will keep RX-processing pinned to a CPU.
+>>
+>> It sounds like you update the timestamp from userspace, is that true?
+>> (Quote: "current timestamp updated in user space")
+>>
+>> I would suggest that you can leverage the softirq tracepoints (use
+>> SEC("raw_tracepoint/") for low overhead).  E.g. irq:softirq_entry
+>> (see when kernel calls trace_softirq_entry) to update the map once per
+>> NAPI/net_rx_action. I have a bpftrace based-tool[1] that measure
+>=20
+> I have code that measures the overhead of net_rx_action:
+>      https://github.com/dsahern/bpf-progs/blob/master/ksrc/net_rx_action.=
+c
+>=20
+> this use case would just need the enter probe.
+>=20
+>=20
+>> network-softirq latency, e.g time it takes from "softirq_raise" until
+>> it is run "softirq_entry".  You can leverage ideas from that script,
+>> like 'vec =3D=3D 3' is NET_RX_SOFTIRQ to limit this to networking.
+>>
+>> [1] https://github.com/xdp-project/xdp-project/blob/master/areas/latency=
+/softirq_net_latency.bt
+>>
 
+Thanks for your suggestion, currently I have a thread in user space that=20
+updates a PERCPU_ARRAY map with the current timestamp every millisecond=20
+and the precision seems to be good enough.
+I'll check your solution as well.
 
-On Tue, Sep 3, 2019 at 10:19 PM Saeed Mahameed <saeedm@mellanox.com> wrote:
+>>> Can you share more details on the platform you're running this on?
+>>> I.e., CPU and chipset details, network driver, etc.
+>>
+>> Yes, please.  I plan to work on XDP-feature of extracting hardware
+>> offload-info from the drivers descriptor, like timestamps, vlan,
+>> rss-hash, checksum, etc.  If you tell me what NIC driver you are using,
+>> I could make sure to include that in the supported drivers.
+>>
 >
-> On Mon, 2019-09-02 at 11:08 +0200, Jesper Dangaard Brouer wrote:
-> > On Sun, 1 Sep 2019 18:47:15 +0200
-> > Kal Cutter Conley <kal.conley@dectris.com> wrote:
-> >
-> > > Hi,
-> > > I figured out the problem. Let me document the issue here for
-> > > others
-> > > and hopefully start a discussion.
-> > >
-> > > The mlx5 driver uses special queue ids for ZC. If N is the number
-> > > of
-> > > configured queues, then for XDP_ZEROCOPY the queue ids start at N.
-> > > So
-> > > queue ids [0..N) can only be used with XDP_COPY and queue ids
-> > > [N..2N)
-> > > can only be used with XDP_ZEROCOPY.
-> >
-> > Thanks for the followup and explanation on how mlx5 AF_XDP queue
-> > implementation is different from other vendors.
-> >
-> >
-> > > sudo ethtool -L eth0 combined 16
-> > > sudo samples/bpf/xdpsock -r -i eth0 -c -q 0   # OK
-> > > sudo samples/bpf/xdpsock -r -i eth0 -z -q 0   # ERROR
-> > > sudo samples/bpf/xdpsock -r -i eth0 -c -q 16  # ERROR
-> > > sudo samples/bpf/xdpsock -r -i eth0 -z -q 16  # OK
-> > >
-> > > Why was this done? To use zerocopy if available and fallback on
-> > > copy
-> > > mode normally you would set sxdp_flags=0. However, here this is no
-> > > longer possible. To support this driver, you have to first try
-> > > binding
-> > > with XDP_ZEROCOPY and the special queue id, then if that fails, you
-> > > have to try binding again with a normal queue id. Peculiarities
-> > > like
-> > > this complicate the XDP user api. Maybe someone can explain the
-> > > benefits?
-> >
->
-> in mlx5 we like to keep full functional separation between different
-> queues. Unlike other implementations in mlx5 kernel standard rx rings
-> can still function while xsk queues are opened. from user perspective
-> this should be very simple and very usefull:
->
-> queues 0..(N-1): can't be used for XSK ZC since they are standard RX
-> queues managed by kernel  and driver
-> queues N..(2N-1): Are XSK user app managed queues, they can't be used
-> for anything else.
->
-> benefits:
-> - RSS is not interrupted, Ongoing traffic and Current RX queues keeps
-> going normally when XSK apps are activated/deactivated on the fly.
-> - Well-defined full logical separation between different types of RX
-> queue.
->
-> as Jesper explained we understand the confusion, and we will come up
-> with a solution the fits all vendors.
->
-> > Thanks for complaining, it is actually valuable. It really illustrate
-> > the kernel need to improve in this area, which is what our talk[1] at
-> > LPC2019 (Sep 10) is about.
-> >
-> > Title: "Making Networking Queues a First Class Citizen in the Kernel"
-> >  [1] https://linuxplumbersconf.org/event/4/contributions/462/
-> >
-> > As you can see, several vendors are actually involved. Kudos to
-> > Magnus
-> > for taking initiative here!  It's unfortunately not solved
-> > "tomorrow",
-> > as first we have to agree this is needed (facility to register
-> > queues),
-> > then agree on API and get commitment from vendors, as this requires
-> > drivers changes.  There is a long road ahead, but I think it will be
-> > worthwhile in the end, as effective use of dedicated hardware queues
-> > (both RX and TX) is key to performance.
-> >
+
+I ran the test on a Intel Xeon Gold 5120 @2.60GHz on a single core using=20
+a dual port 40 GbE Intel XL710 NIC (i40e driver), forwarding 64 bytes=20
+frames between the ports.
+
+Thanks for your help.
+
+Federico
