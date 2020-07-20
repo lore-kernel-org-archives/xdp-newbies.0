@@ -1,36 +1,44 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51110 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54196 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726496AbgGJDEM (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 9 Jul 2020 23:04:12 -0400
-Received: from mail-wm1-x334.google.com (mail-wm1-x334.google.com [IPv6:2a00:1450:4864:20::334])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 106D5C08C5CE
-        for <xdp-newbies@vger.kernel.org>; Thu,  9 Jul 2020 20:04:12 -0700 (PDT)
-Received: by mail-wm1-x334.google.com with SMTP id q15so4279770wmj.2
-        for <xdp-newbies@vger.kernel.org>; Thu, 09 Jul 2020 20:04:11 -0700 (PDT)
-Received: from ?IPv6:2a01:4c8:53:b80f:cec:6ee:dab9:67b9? ([2a01:4c8:53:b80f:cec:6ee:dab9:67b9])
-        by smtp.gmail.com with ESMTPSA id p25sm6757408wmg.39.2020.07.09.20.04.09
-        for <xdp-newbies@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 09 Jul 2020 20:04:09 -0700 (PDT)
-From: Cameron Boness <xdevps3@gmail.com>
-Mime-Version: 1.0 (1.0)
-Date: Fri, 10 Jul 2020 04:04:08 +0100
-Subject: TCP Payload
-Message-Id: <449BEAB8-F4ED-489D-BF59-8993637268DB@gmail.com>
+        with ESMTP id S1726015AbgGTIPL (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Mon, 20 Jul 2020 04:15:11 -0400
+Received: from mail-io1-xd33.google.com (mail-io1-xd33.google.com [IPv6:2607:f8b0:4864:20::d33])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA903C061794
+        for <xdp-newbies@vger.kernel.org>; Mon, 20 Jul 2020 01:15:11 -0700 (PDT)
+Received: by mail-io1-xd33.google.com with SMTP id v8so16668083iox.2
+        for <xdp-newbies@vger.kernel.org>; Mon, 20 Jul 2020 01:15:11 -0700 (PDT)
+MIME-Version: 1.0
+From: Alexander Petrovsky <askjuise@gmail.com>
+Date: Mon, 20 Jul 2020 11:15:52 +0300
+Message-ID: <CAH57y_Rxm9_eB5jyjJ2OryLd6HB6mXSG8s-MR3BWs-99PVNG0g@mail.gmail.com>
+Subject: IP fragmentation
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="UTF-8"
 To: xdp-newbies@vger.kernel.org
 
-Hi,
+Hello!
 
-I want to be able to read the data being sent in TCP payloads using XDP (in=
- c), but so far all I can read is a number of headers (eth->iph->tcp->dns).=
- Is it possible to get the TCP payload (i.e. client sent data) from xdp_md =
-at all? Been looking online for hours, doesn't seem like anyone who's done =
-XDP that's posted about it has ever parsed such data, hoping it's possible =
-:(
+I have the eBPF/XDP based balancing router, it looks like facebook
+katran, but a little bit smarter, we use random based balancing
+algorithm, so also we have to learn how to sync connections between
+nodes.
 
-Thanks
+But, the main problem for us it's fragmented IP packets. Some times
+ago I tried to use for such packets AF_XDP, fast pass them into the
+user space, accumulate and after that pass back to the network, it was
+a PoC. So, I wonder, is some chance that IP de-fragmentation functions
+will be added into XDP?
+
+Also, I have a strange idea, I could store such fragmented packets in
+the LRU map, the original fragmented IP packet I could drop. When all
+the fragments stored, I could make the decision about the destination
+for balancing/routing. But now, here come problems, seems I could
+construct a big packet / jumbo frame, but it seems a little bit ugly.
+How could I emit all fragments from the map to the network after I've
+got the last fragment?
+
+-- 
+Alexander Petrovsky
