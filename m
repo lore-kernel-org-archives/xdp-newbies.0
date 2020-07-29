@@ -1,59 +1,35 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44934 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34964 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726447AbgGVWsZ (ORCPT
+        with ESMTP id S1728046AbgG2Ioy (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 22 Jul 2020 18:48:25 -0400
-Date: Wed, 22 Jul 2020 15:48:20 -0700 (PDT)
-Message-Id: <20200722.154820.1749937838006185071.davem@davemloft.net>
-Subject: LPC 2020 Networking and BPF Track CFP (Reminder)
-From: David Miller <davem@davemloft.net>
-Mime-Version: 1.0
+        Wed, 29 Jul 2020 04:44:54 -0400
+Received: from mail-pl1-x631.google.com (mail-pl1-x631.google.com [IPv6:2607:f8b0:4864:20::631])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B9E66C0619D2
+        for <xdp-newbies@vger.kernel.org>; Wed, 29 Jul 2020 01:44:54 -0700 (PDT)
+Received: by mail-pl1-x631.google.com with SMTP id b9so11502409plx.6
+        for <xdp-newbies@vger.kernel.org>; Wed, 29 Jul 2020 01:44:54 -0700 (PDT)
+Received: from [192.168.192.8] ([103.86.182.200])
+        by smtp.gmail.com with ESMTPSA id k71sm1508057pje.33.2020.07.29.01.44.53
+        for <xdp-newbies@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 29 Jul 2020 01:44:53 -0700 (PDT)
+From: Sandip Patil <techiek7@gmail.com>
+Subject: igb native xdp support
+Message-ID: <9ffcedaa-5b57-0188-0ab7-9a38ecbb9f69@gmail.com>
+Date: Wed, 29 Jul 2020 14:14:51 +0530
+MIME-Version: 1.0
+Content-Language: en-US
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-wireless@vger.kernel.org, netfilter-devel@vger.kernel.org, bpf@vger.kernel.org, xdp-newbies@vger.kernel.org, lwn@lwn.net
+To: xdp-newbies@vger.kernel.org
 
+Hello team,
 
-[ The deadline is a week and a half away, please get your submissions
-  in soon! ]
+Is there a plan to add support for native XDP in Intel igb driver?
 
-This is a reminder for the call for proposals for the networking and
-bpf track at the Linux Plumbers Conference on the wider internet,
-which will be happening on August 24th-28th, 2020.
+Regards,
 
-This year the technical committee is comprised of:
-
-David S. Miller <davem@davemloft.net>
-Alexei Starovoitov <ast@kernel.org>
-Daniel Borkmann <daniel@iogearbox.net>
-Jakub Sitnicki <jakub@cloudflare.com>
-Paolo Abeni <pabeni@redhat.com>
-Jakub Kicinski <kuba@kernel.org>
-Michal Kubecek <mkubecek@suse.cz>
-Sabrina Dubroca <sd@queasysnail.net>
-
-We are seeking talks of 40 minutes in length (including Q & A),
-optionally accompanied by papers of 2 to 10 pages in length.  The
-papers, while not required, are very strongly encouraged by the
-committee.  The submitters intention to provide a paper will be taken
-into consideration as a criteria when deciding which proposals to
-accept.
-
-Any kind of advanced networking and/or bpf related topic will be
-considered.
-
-Please submit your proposals on the LPC website at:
-
-	https://www.linuxplumbersconf.org/event/7/abstracts/#submit-abstract
-
-And be sure to select "Networking & BPF Summit" in the Track
-pulldown menu.
-
-Proposals must be submitted by August 2nd, and submitters will be
-notified of acceptance by August 9th.
-
-Final slides and papers (as PDF) are due on August 24th, the first day of
-the conference.
+Sandip Patil
