@@ -1,35 +1,39 @@
 Return-Path: <xdp-newbies-owner@vger.kernel.org>
-Received: from mga07.intel.com ([134.134.136.100]:34453 "EHLO mga07.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726336AbgG2SWW (ORCPT <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 29 Jul 2020 14:22:22 -0400
-Date: Wed, 29 Jul 2020 11:22:20 -0700
-From: Jesse Brandeburg <jesse.brandeburg@intel.com>
-Subject: Re: igb native xdp support
-Message-ID: <20200729112220.000041da@intel.com>
-In-Reply-To: <9ffcedaa-5b57-0188-0ab7-9a38ecbb9f69@gmail.com>
-References: <9ffcedaa-5b57-0188-0ab7-9a38ecbb9f69@gmail.com>
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37530 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731099AbgGaNEI (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Fri, 31 Jul 2020 09:04:08 -0400
+Received: from mail-yb1-xb29.google.com (mail-yb1-xb29.google.com [IPv6:2607:f8b0:4864:20::b29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2B1EEC061574
+        for <xdp-newbies@vger.kernel.org>; Fri, 31 Jul 2020 06:04:08 -0700 (PDT)
+Received: by mail-yb1-xb29.google.com with SMTP id y17so16177521ybm.12
+        for <xdp-newbies@vger.kernel.org>; Fri, 31 Jul 2020 06:04:08 -0700 (PDT)
 MIME-Version: 1.0
+From: David Gohberg <gohberg@gmail.com>
+Date: Fri, 31 Jul 2020 16:03:56 +0300
+Message-ID: <CAE2Pf893-Y7svSxm68LPE3MbLrzxPqRDOuRuhJraYi564YWm6g@mail.gmail.com>
+Subject: taking first steps with XDP
 Sender: xdp-newbies-owner@vger.kernel.org
 List-ID: <xdp-newbies.vger.kernel.org>
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-To: Sandip Patil <techiek7@gmail.com>
-Cc: xdp-newbies@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: xdp-newbies@vger.kernel.org
 
-On Wed, 29 Jul 2020 14:14:51 +0530
-Sandip Patil <techiek7@gmail.com> wrote:
+Hello everyone,
 
-> Hello team,
-> 
-> Is there a plan to add support for native XDP in Intel igb driver?
+My goal is to build a simple program that schedules sending an
+heartbeat packet (sort of like an ICMP reply-response) to a list of IP
+addresses (a few million of them) on regular intervals, and update
+alive/dead software state for each address. I have a pcap
+implementation but performance is subpar.
 
-I think someone has just recently posted patches for part of this on
-intel-wired-lan mailing list.
-
-you can download the patch or see it's status here:
-https://lore.kernel.org/netdev/20200713090549.b7dive4cmtm4o7dq@SvensMacbookPro.hq.voleatech.com/
-
-Have a look and give us feedback on the list by replying (if you're not
-subscribed you can bounce the message to yourself via the below)
-https://lore.kernel.org/netdev/20200713090549.b7dive4cmtm4o7dq@SvensMacbookPro.hq.voleatech.com/
+I understand that for the rx part, a simple xdp program that
+intercepts the heartbeat reply and writes to some bpf map will be
+sufficient. However, from what I read, in order to send packets in the
+same path, I will need to use AF_XDP sockets and write a user-space
+application that will have to deal with cpu cores, rings, queues,
+umems and everything related. Since I don't really need to redirect
+the heartbeat reply packet to user-space, just acknowledge that a
+reply was received (that can happen in the XDP program) is there a
+layer or library over AF_XDP that allows for a simpler tx API which
+abstracts the underlying mechanisms I mentioned?
