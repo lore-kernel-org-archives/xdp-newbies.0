@@ -5,109 +5,132 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 199F8C43463
-	for <xdp-newbies@archiver.kernel.org>; Mon, 21 Sep 2020 05:05:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 724C2C43465
+	for <xdp-newbies@archiver.kernel.org>; Mon, 21 Sep 2020 13:35:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AE05520735
-	for <xdp-newbies@archiver.kernel.org>; Mon, 21 Sep 2020 05:05:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 30137206A4
+	for <xdp-newbies@archiver.kernel.org>; Mon, 21 Sep 2020 13:35:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="X7xtXGXa"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AAWwcW3L"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726322AbgIUFFe (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Mon, 21 Sep 2020 01:05:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38786 "EHLO
+        id S1726537AbgIUNfm (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Mon, 21 Sep 2020 09:35:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32906 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726228AbgIUFFe (ORCPT
+        with ESMTP id S1726471AbgIUNfm (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Mon, 21 Sep 2020 01:05:34 -0400
-Received: from mail-pf1-x435.google.com (mail-pf1-x435.google.com [IPv6:2607:f8b0:4864:20::435])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E9AA4C061755
-        for <xdp-newbies@vger.kernel.org>; Sun, 20 Sep 2020 22:05:33 -0700 (PDT)
-Received: by mail-pf1-x435.google.com with SMTP id o20so8227938pfp.11
-        for <xdp-newbies@vger.kernel.org>; Sun, 20 Sep 2020 22:05:33 -0700 (PDT)
+        Mon, 21 Sep 2020 09:35:42 -0400
+Received: from mail-pj1-x102d.google.com (mail-pj1-x102d.google.com [IPv6:2607:f8b0:4864:20::102d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9198FC061755
+        for <xdp-newbies@vger.kernel.org>; Mon, 21 Sep 2020 06:35:42 -0700 (PDT)
+Received: by mail-pj1-x102d.google.com with SMTP id gf14so7151633pjb.5
+        for <xdp-newbies@vger.kernel.org>; Mon, 21 Sep 2020 06:35:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=J2AboHUHvwMct3f9rNsQ3BzKZ3JxYpUIlcBNty+wXZw=;
-        b=X7xtXGXa1v9N80fej33mnjoFo2ko9OTmIwTnQuAjhSLRiiDIOXOuS6qtva6/NNT8T9
-         Z8sHJmJOoI61RrNooy2CJzWM9JTot0cOlUQ233REjpQvcWjWBSklNL9vIoh4UMFbiUP7
-         Y6FnuNHjCC+4HnQLmJB9DYsKd23RzYzQ3+wvdMDd/7nyWKZDiGzTPS0SFsoYBXLKtolr
-         orxsbPDu5gP7CmZH7UI8UgB8cHNYwG0mO9ud7EQasfU9BohAyTs38pW1q5yR7V/rmsV6
-         3z7xIzacyVmdKQ/9shgTt0emWA1AdNvEg5pfPXcaT3/jj/tqCIOswi1UbNhmL6a8bcG3
-         aWMg==
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=qdrTb6l8iTZTbICRY/qQfCvqHV6jbimSgFMXzIHx5oU=;
+        b=AAWwcW3LbjZPgOd2ROyhgy9Za3nA2l6ISHJZWOQsWkybfughAkgwqucTSwA1jdJDHe
+         LlbCK3s26dn688WGH+Wa+iN3hYJPbpb1Ra7Pxenl0/KSWWD7+dOfkfn2auYYIqJvCle+
+         iC6LahFqksuFcR5vh5FAMx9y19nGA6cLk8IzS4FGDYZIkoPL2en5yu+ETrdr2ldjz66R
+         qYXu5pM4tKhym/nQZjn0eTA2OqSuabjcIdagocPql3D3LC7Tsux+PdLJU0VdXD1Ebf+e
+         Js8KRgXfZ6jjpFslZqDnCKjkK6TKVdeCWl9NgWRz8EMGAoERUnGmhqD5VAh5NOrmPPpS
+         ytSA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=J2AboHUHvwMct3f9rNsQ3BzKZ3JxYpUIlcBNty+wXZw=;
-        b=bj7OukhTfFM8cpKHMCpKGiV+JCVAH9QNiqZujB19bN0d35dUTg9XG9kxMRmo2YdWRl
-         p33EsteOQULYfeFbKwoeqa13jIa6P/pk/Nk9wO2pg4Qq4iGbQSxiWrCKUL1zMHuJf3pT
-         URl9hqRjS8s8gcK2WIVTKQy4Sq2rdqG2tqAGxL4V+sLPNgfrVU1eLlSkyZfsa9c3DB6X
-         PfFVJLpY0VB0uBk7oBqpgy4XQqFVEuYSJDZtOq2kL8tO18hjFHg3VjPxcqtR4HVKg+xf
-         zYZ+VhtAm3sHR8XkJbRmFmAKCihLxMg9RMB8WZUorkkwjJJZTGVDUNlf4wNnjfHGYuq8
-         8CnQ==
-X-Gm-Message-State: AOAM532xfaUnASrk4thlLlQ16SfY8m0Uj+qupfz9dyN1yViIpsmF34eB
-        Oz13eHoNeTGWYc0Crwa1dzVXuESFpFVxNxnXFNdGxmfweg8=
-X-Google-Smtp-Source: ABdhPJwjYPVk/57Zb7UQgNvlV//aKfcmJXLDk9OnQ8i5V/ZDhrpg1Iscn78tGeqkCKWY6GFtktg7yu42KNIKMj9W5rY=
-X-Received: by 2002:a63:2845:: with SMTP id o66mr6540401pgo.77.1600664733199;
- Sun, 20 Sep 2020 22:05:33 -0700 (PDT)
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=qdrTb6l8iTZTbICRY/qQfCvqHV6jbimSgFMXzIHx5oU=;
+        b=QXLOwYudv3VthV4EeXxkfdqeNzF4mS+uKJyfvdKIFej7usv7B0gB51RW9b4ENpWNMj
+         14NwRpd7V1Paij+kVEYWPWs5dF/HQQSUg+1vUliyLIPreXPODsTqh4w+VBpMimE77+td
+         ukREv2IHBRXmU/j/ZOxiZ0peIeGTokmYYah1NdfHhcprMbu8rctyd2NzCsXKkIFpmznQ
+         w+ULwIXEzYVGSaWBwv1VsqT9uUTqso0p2rfi6sxLBfYEDXwOjG24GX/ZbPKYTnLqxnsE
+         Wi7k6oR+G76sKYwhMf4w64NVogntgBAxytSNN0NTg4tiaHgjm0WgfcEjcnIHYLPH+1pq
+         9GxQ==
+X-Gm-Message-State: AOAM533uHpd1fo1IE2wW3yzlZ/QdaUo1n+Q1NTud0DD5g34U160I1V3n
+        TDHfxaHZNoYpCSmPdsCRfh+f76k8DDmt1weCndJTfmL8
+X-Google-Smtp-Source: ABdhPJwcT4F612kiaT2kijJX8hYwlOk/OSi3GkXpePUDVLEqoIi6awIhHzOf9ziaX1ddjmwMmtN+5Jgilhcgywrpyr4=
+X-Received: by 2002:a17:90b:891:: with SMTP id bj17mr21591851pjb.11.1600695342061;
+ Mon, 21 Sep 2020 06:35:42 -0700 (PDT)
 MIME-Version: 1.0
+References: <CAOfgOfuNuRo_dNO=RJcz1XiK_=hZmdopG12XcUFB_s0No3vsRw@mail.gmail.com>
+ <87blhzqxa2.fsf@toke.dk>
+In-Reply-To: <87blhzqxa2.fsf@toke.dk>
 From:   Topi Wala <walatopi@gmail.com>
-Date:   Sun, 20 Sep 2020 22:05:22 -0700
-Message-ID: <CAOfgOfuNuRo_dNO=RJcz1XiK_=hZmdopG12XcUFB_s0No3vsRw@mail.gmail.com>
-Subject: 
-To:     xdp-newbies@vger.kernel.org
+Date:   Mon, 21 Sep 2020 06:35:31 -0700
+Message-ID: <CAOfgOft3xQgpxDmrExdJdPoiqcYD=yL0DNRHA6FRkgGKePQTQQ@mail.gmail.com>
+Subject: Re: xdp-filter troubles
+To:     =?UTF-8?B?VG9rZSBIw7hpbGFuZC1Kw7hyZ2Vuc2Vu?= <toke@redhat.com>
+Cc:     xdp-newbies@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-I have a setup that has 2 namespaces, connected using a linux bridge,
-with veth pairs in each of the namespace.
+Sorry about the subject. I had to forward after using text (default is
+http in gmail).
+My kernel version is 5.7.17 (quite new). I am using xdp (ip link show
+on the device shows the xdp, not xdpgeneric).
+I'm using bpftool, since this is to deploy to a third party, and using
+standard linux tools (bpftool, iproute2) is fine, userspace binaries
+are not.
+Is there anything I miss by not using the xdp-filter binary?
 
-ns1=192.168.1.10/24
-ns2=192.168.1.11/24
-host-br=192.168.1.1/24
+However, I think I have figured out the issue, and I'm quite surprised by i=
+t.
+It appears that as soon as the xdpfilter program is attached, the arp
+entry for that IP is discarded from all the entities connected to that
+bridge.
+The peer node consequently does an ARP before ping, and since ARP is
+not an IP packet, it doesn't show up in the bpf log.
+Since the remote node doesn't get an ARP response (arp request is
+dropped), it doesn't send the ping packet at all.
 
-I can ping between host, ns1, ns2 fine.
+Thanks,
+Hari
 
-I'm attaching an xdp filter program
-https://github.com/xdp-project/xdp-tools/blob/master/xdp-filter/xdpfilt_dny_ip.c
 
-I'm using bpftool to attach this to ns1-host end. I also attach a
-dummy xdp prog (that just returns XDP_PASS) to the end inside the ns1.
-I see all ping packets to this destination dropped. Dumping
-xdp_stats_map does show counters incremented for XDP_DROP
 
-However, when using bpftool to update the filter_ipv4 map to allow
-packets with destination to go through, it doesn't work.
-
-./bpftool map update name filter_ipv4 key 192 168 1 10 value 2 0 0 0 0 0 0 0
-
-I've tried with pinned maps, and different combinations of key/value
-as well, to no avail. The lookup just doesn't seem to succeed. Any
-suggestions on how I might go about debugging this?
-
---------
-
-Update:
-
-I did try with bpf_printk to see what was going on, and there seems to
-be some really weird issue that happens after the bpf map is updated.
-
-So, to keep things simple, I attached the xdp filter program to my
-host bridge interface. Pinging the bridge address from either
-namespace drops the packet, AND my printk message is logged and I can
-read it from /sys/kernel/debug/tracing/trace_pipe
-
-I insert entries into the map, and then when I try to do the same, not
-only does it not work, there is no printk message either. Removing
-these entries still does not get the printk message back.
-
-How do I go about debugging this? Are there any known issues with
-using maps that are not pinned (I have tried with pinning them, but
-didn't debug that setup deeply).
-
-Thanks.
-Topi
+On Mon, Sep 21, 2020 at 2:44 AM Toke H=C3=B8iland-J=C3=B8rgensen <toke@redh=
+at.com> wrote:
+>
+> [ adding a subject - please make sure to include one in the future ]
+>
+> > I have a setup that has 2 namespaces, connected using a linux bridge,
+> > with veth pairs in each of the namespace.
+> >
+> > ns1=3D192.168.1.10/24
+> > ns2=3D192.168.1.11/24
+> > host-br=3D192.168.1.1/24
+> >
+> > I can ping between host, ns1, ns2 fine.
+> >
+> > I'm attaching an xdp filter program
+> > https://github.com/xdp-project/xdp-tools/blob/master/xdp-filter/xdpfilt=
+_dny_ip.c
+> >
+> > I'm using bpftool to attach this to ns1-host end. I also attach a
+> > dummy xdp prog (that just returns XDP_PASS) to the end inside the ns1.
+> > I see all ping packets to this destination dropped. Dumping
+> > xdp_stats_map does show counters incremented for XDP_DROP
+> >
+> > However, when using bpftool to update the filter_ipv4 map to allow
+> > packets with destination to go through, it doesn't work.
+> >
+> > ./bpftool map update name filter_ipv4 key 192 168 1 10 value 2 0 0 0 0 =
+0 0 0
+> >
+> > I've tried with pinned maps, and different combinations of key/value
+> > as well, to no avail. The lookup just doesn't seem to succeed. Any
+> > suggestions on how I might go about debugging this?
+>
+> What kernel version are you using? And how are you attaching the program
+> - from your description I'm guessing you may be using generic XDP? Also,
+> why are you using bpftool to load the program instead of just using the
+> xdp-filter binary?
+>
+> -Toke
+>
