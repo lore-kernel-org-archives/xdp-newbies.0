@@ -8,57 +8,57 @@ X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A577BC433DF
-	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 23:13:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7CB7C433E7
+	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 23:13:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6C80420760
-	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 23:13:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 724FC20760
+	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 23:13:05 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="t0KhpzJm"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RP9Lr0dw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389089AbgJJWzS (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        id S2387846AbgJJWzS (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
         Sat, 10 Oct 2020 18:55:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59746 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59742 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729402AbgJJSo1 (ORCPT
+        with ESMTP id S1728919AbgJJSo1 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
         Sat, 10 Oct 2020 14:44:27 -0400
-Received: from mail-pf1-x444.google.com (mail-pf1-x444.google.com [IPv6:2607:f8b0:4864:20::444])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D86A8C08EC3F;
-        Sat, 10 Oct 2020 11:17:46 -0700 (PDT)
-Received: by mail-pf1-x444.google.com with SMTP id f19so9725507pfj.11;
-        Sat, 10 Oct 2020 11:17:46 -0700 (PDT)
+Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E0561C08EC68;
+        Sat, 10 Oct 2020 11:17:52 -0700 (PDT)
+Received: by mail-pf1-x443.google.com with SMTP id n14so9744871pff.6;
+        Sat, 10 Oct 2020 11:17:52 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=7XtdEIP/yMYueLEMBvBgxI2I7uijB3xDVdLEjuFSqs8=;
-        b=t0KhpzJme8IfqBHzeXM6ksIyb+FttavxhX6wR36lAa7OIMmlhAU9+FEop6R9vu9r++
-         sdTQrWFmFV8O95uWIFTh6bScOn9h5OGOS7BTvsXRsPVoOw9mlYVZJKbbi0ePXLSj1RZD
-         BXecQ6FJxbWpNqZ+OfdwHkIf+G4mTwzZZNkAGut7+daw34Nf4U3eDrNdA9K+/uz9q9/H
-         ZazfCiP3AxWby3qu8Ug4+6nJebnYG5P50VKQ2pX6azwCLc6mJ7QMqOtBhKIyEcYh9bdM
-         1DeIvXmLiPIFfNXMwcafPHT43of3FsvbkV9xaHfpNHG7W7HLJEX9/xASdNEKp03TpEP3
-         Le4g==
+        bh=OW/gvTkGu86YgUxpgjSRkvij/4SXXCYc66hmNhRMo9c=;
+        b=RP9Lr0dwyZrTys8jBoQ9I0zvpSSbuymiY1u0AVevyxRC9RcycEfPU1qogzQIlGLn5F
+         bnzf29bXersmue4wdam21u2v8bnvKumcx48SimZTQHgY/0I/J6ljJ5HZagxEpc+XotcQ
+         I3hpZDoD8a2ujP2AYkAoLG15I5gNVjTZrSqWsUyvJNHIKlWT3Y5ggaQ46BivmN5DG0hR
+         9KXC/IBWD+1XZld+iSEDbfoE7RKQH3dGYxAtZLtgjTT8+z4eyXFDzlc1umSnqobPPVT4
+         0Ra0EZOfp32uTwsIdjKttEpdIzSIGa4pCO8koolM5YRKLeGQyIle+bvHpqGlcn+5MAkr
+         aqxA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=7XtdEIP/yMYueLEMBvBgxI2I7uijB3xDVdLEjuFSqs8=;
-        b=WBX+hUlMPPyY2NuVI9c8FStyZWCUeMGdJPa2ZHLw9OaaGGJmWHhDWLcF7FLNkAu4K9
-         DRybiUt70Ohb768RbqfFEBOJ3fORuJFgTkKKj0padhRJAeS71cE13eCjLruJW3qPiYKO
-         4Rw6Fq7jfYGvd0kk+cDDvO4KjyzZ11mWvsEcJ1XNoxysMaHOUkQDB23Q7Hwu4gi3ZmHF
-         P+d3NpP6tVrfcg7hsRblXMUE3CeFGXGAx6xs2ANLWXia9JtfmkSNtMsmImWHPsJN1ngq
-         HYcu0qpQwsdnefzsyjDKjV/oXClMYZwkAwS7LFPpM/ZZy7DWue84mwAfIix0ttCMsZ6n
-         S1lA==
-X-Gm-Message-State: AOAM532/FAP7Vj4/w5bBgAx09XhUT7gRM27wALI5F8UrQAojo4dCNvKS
-        WiYpBqQt4BL4Cbm0tMg/Ng==
-X-Google-Smtp-Source: ABdhPJxHLascyH/l2C7lPRnkHuT7P1wX3vuG7sq+GKqN5tOApQDbTJ8ODaXQbwosOBbW00862A4TFQ==
-X-Received: by 2002:a17:90b:309:: with SMTP id ay9mr11077438pjb.39.1602353866398;
-        Sat, 10 Oct 2020 11:17:46 -0700 (PDT)
+        bh=OW/gvTkGu86YgUxpgjSRkvij/4SXXCYc66hmNhRMo9c=;
+        b=jkqZ6wOOqCz9MsBtTFlb0hL7KheY42c8jvO3BlRzpfOtybg1fSrxXVB4PRbEVTRdFN
+         FXeGhRCL7UNZHcxE4RBM8eqbroeR5tkD4Z2FRAr/XY8TS9RiPHWhB1QHUVHir6z7zmVc
+         MSK+ECUGf4SV8rwT9aEnHnIb1sW2tEQQzRdaOx+W7pmkta8af+laLwWhKLwCsEYPlOVz
+         Qd8QdFZgzV7OCu2xFsXXmN/SWnboK9Kahp/3cyljuOEvS1AY+F2PUrY4Bf25/NlEB964
+         S1BZFNjk3rNh56CZ4c6zZCktSJY3t5J+5wztXqYABlH/a4xiffFSGDTrCcB05ah0Cse4
+         MESg==
+X-Gm-Message-State: AOAM533VRYyndYgfmS2NI/4KWKDxvCu/yUPRAqfsQCfASFSIyf6Nq0qg
+        kwvWooa2mtpPDI/0SbFE0g==
+X-Google-Smtp-Source: ABdhPJz3z9tzziFA8Y4tikPOGrztipNfWRECVbGGGWQUD3ZzPw+iH0RspWjfzcpT1xXSQModH4AOAQ==
+X-Received: by 2002:a17:90a:71cb:: with SMTP id m11mr10999364pjs.14.1602353872462;
+        Sat, 10 Oct 2020 11:17:52 -0700 (PDT)
 Received: from localhost.localdomain ([182.209.58.45])
-        by smtp.gmail.com with ESMTPSA id q65sm14974615pfq.219.2020.10.10.11.17.43
+        by smtp.gmail.com with ESMTPSA id q65sm14974615pfq.219.2020.10.10.11.17.49
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 10 Oct 2020 11:17:45 -0700 (PDT)
+        Sat, 10 Oct 2020 11:17:51 -0700 (PDT)
 From:   "Daniel T. Lee" <danieltimlee@gmail.com>
 To:     Daniel Borkmann <daniel@iogearbox.net>,
         Alexei Starovoitov <ast@kernel.org>,
@@ -67,9 +67,9 @@ To:     Daniel Borkmann <daniel@iogearbox.net>,
         Lorenzo Bianconi <lorenzo@kernel.org>
 Cc:     bpf@vger.kernel.org, netdev@vger.kernel.org,
         Xdp <xdp-newbies@vger.kernel.org>
-Subject: [PATCH bpf-next v2 1/3] samples: bpf: Refactor xdp_monitor with libbpf
-Date:   Sun, 11 Oct 2020 03:17:32 +0900
-Message-Id: <20201010181734.1109-2-danieltimlee@gmail.com>
+Subject: [PATCH bpf-next v2 3/3] samples: bpf: refactor XDP kern program maps with BTF-defined map
+Date:   Sun, 11 Oct 2020 03:17:34 +0900
+Message-Id: <20201010181734.1109-4-danieltimlee@gmail.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20201010181734.1109-1-danieltimlee@gmail.com>
 References: <20201010181734.1109-1-danieltimlee@gmail.com>
@@ -79,307 +79,154 @@ Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-To avoid confusion caused by the increasing fragmentation of the BPF
-Loader program, this commit would like to change to the libbpf loader
-instead of using the bpf_load.
+Most of the samples were converted to use the new BTF-defined MAP as
+they moved to libbpf, but some of the samples were missing.
 
-Thanks to libbpf's bpf_link interface, managing the tracepoint BPF
-program is much easier. bpf_program__attach_tracepoint manages the
-enable of tracepoint event and attach of BPF programs to it with a
-single interface bpf_link, so there is no need to manage event_fd and
-prog_fd separately.
+Instead of using the previous BPF MAP definition, this commit refactors
+xdp_monitor and xdp_sample_pkts_kern MAP definition with the new
+BTF-defined MAP format.
 
-This commit refactors xdp_monitor with using this libbpf API, and the
-bpf_load is removed and migrated to libbpf.
+Also, this commit removes the max_entries attribute at PERF_EVENT_ARRAY
+map type. The libbpf's bpf_object__create_map() will automatically
+set max_entries to the maximum configured number of CPUs on the host.
 
 Signed-off-by: Daniel T. Lee <danieltimlee@gmail.com>
 
 ---
 Changes in v2:
- - added cleanup logic for bpf_link and bpf_object
- - split increment into seperate satement
- - refactor pointer array initialization
+ - revert BTF key/val type to default of BPF_MAP_TYPE_PERF_EVENT_ARRAY
 
- samples/bpf/Makefile           |   2 +-
- samples/bpf/xdp_monitor_user.c | 159 +++++++++++++++++++++++++--------
- 2 files changed, 121 insertions(+), 40 deletions(-)
+ samples/bpf/xdp_monitor_kern.c     | 60 +++++++++++++++---------------
+ samples/bpf/xdp_sample_pkts_kern.c | 14 +++----
+ samples/bpf/xdp_sample_pkts_user.c |  1 -
+ 3 files changed, 36 insertions(+), 39 deletions(-)
 
-diff --git a/samples/bpf/Makefile b/samples/bpf/Makefile
-index 4f1ed0e3cf9f..0cee2aa8970f 100644
---- a/samples/bpf/Makefile
-+++ b/samples/bpf/Makefile
-@@ -99,7 +99,7 @@ per_socket_stats_example-objs := cookie_uid_helper_example.o
- xdp_redirect-objs := xdp_redirect_user.o
- xdp_redirect_map-objs := xdp_redirect_map_user.o
- xdp_redirect_cpu-objs := bpf_load.o xdp_redirect_cpu_user.o
--xdp_monitor-objs := bpf_load.o xdp_monitor_user.o
-+xdp_monitor-objs := xdp_monitor_user.o
- xdp_rxq_info-objs := xdp_rxq_info_user.o
- syscall_tp-objs := syscall_tp_user.o
- cpustat-objs := cpustat_user.o
-diff --git a/samples/bpf/xdp_monitor_user.c b/samples/bpf/xdp_monitor_user.c
-index ef53b93db573..03d0a182913f 100644
---- a/samples/bpf/xdp_monitor_user.c
-+++ b/samples/bpf/xdp_monitor_user.c
-@@ -26,12 +26,37 @@ static const char *__doc_err_only__=
- #include <net/if.h>
- #include <time.h>
+diff --git a/samples/bpf/xdp_monitor_kern.c b/samples/bpf/xdp_monitor_kern.c
+index 3d33cca2d48a..5c955b812c47 100644
+--- a/samples/bpf/xdp_monitor_kern.c
++++ b/samples/bpf/xdp_monitor_kern.c
+@@ -6,21 +6,21 @@
+ #include <uapi/linux/bpf.h>
+ #include <bpf/bpf_helpers.h>
  
-+#include <signal.h>
- #include <bpf/bpf.h>
--#include "bpf_load.h"
-+#include <bpf/libbpf.h>
- #include "bpf_util.h"
+-struct bpf_map_def SEC("maps") redirect_err_cnt = {
+-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+-	.key_size = sizeof(u32),
+-	.value_size = sizeof(u64),
+-	.max_entries = 2,
++struct {
++	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
++	__type(key, u32);
++	__type(value, u64);
++	__uint(max_entries, 2);
+ 	/* TODO: have entries for all possible errno's */
+-};
++} redirect_err_cnt SEC(".maps");
  
-+enum map_type {
-+	REDIRECT_ERR_CNT,
-+	EXCEPTION_CNT,
-+	CPUMAP_ENQUEUE_CNT,
-+	CPUMAP_KTHREAD_CNT,
-+	DEVMAP_XMIT_CNT,
-+};
-+
-+static const char *const map_type_strings[] = {
-+	[REDIRECT_ERR_CNT] = "redirect_err_cnt",
-+	[EXCEPTION_CNT] = "exception_cnt",
-+	[CPUMAP_ENQUEUE_CNT] = "cpumap_enqueue_cnt",
-+	[CPUMAP_KTHREAD_CNT] = "cpumap_kthread_cnt",
-+	[DEVMAP_XMIT_CNT] = "devmap_xmit_cnt",
-+};
-+
-+#define NUM_MAP 5
-+#define NUM_TP 8
-+
-+static int tp_cnt;
-+static int map_cnt;
- static int verbose = 1;
- static bool debug = false;
-+struct bpf_map *map_data[NUM_MAP] = {};
-+struct bpf_link *tp_links[NUM_TP] = {};
-+struct bpf_object *obj;
+ #define XDP_UNKNOWN	XDP_REDIRECT + 1
+-struct bpf_map_def SEC("maps") exception_cnt = {
+-	.type		= BPF_MAP_TYPE_PERCPU_ARRAY,
+-	.key_size	= sizeof(u32),
+-	.value_size	= sizeof(u64),
+-	.max_entries	= XDP_UNKNOWN + 1,
+-};
++struct {
++	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
++	__type(key, u32);
++	__type(value, u64);
++	__uint(max_entries, XDP_UNKNOWN + 1);
++} exception_cnt SEC(".maps");
  
- static const struct option long_options[] = {
- 	{"help",	no_argument,		NULL, 'h' },
-@@ -41,6 +66,16 @@ static const struct option long_options[] = {
- 	{0, 0, NULL,  0 }
+ /* Tracepoint format: /sys/kernel/debug/tracing/events/xdp/xdp_redirect/format
+  * Code in:                kernel/include/trace/events/xdp.h
+@@ -129,19 +129,19 @@ struct datarec {
  };
+ #define MAX_CPUS 64
  
-+static void int_exit(int sig)
-+{
-+	/* Detach tracepoints */
-+	while (tp_cnt)
-+		bpf_link__destroy(tp_links[--tp_cnt]);
-+
-+	bpf_object__close(obj);
-+	exit(0);
-+}
-+
- /* C standard specifies two constants, EXIT_SUCCESS(0) and EXIT_FAILURE(1) */
- #define EXIT_FAIL_MEM	5
+-struct bpf_map_def SEC("maps") cpumap_enqueue_cnt = {
+-	.type		= BPF_MAP_TYPE_PERCPU_ARRAY,
+-	.key_size	= sizeof(u32),
+-	.value_size	= sizeof(struct datarec),
+-	.max_entries	= MAX_CPUS,
+-};
++struct {
++	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
++	__type(key, u32);
++	__type(value, struct datarec);
++	__uint(max_entries, MAX_CPUS);
++} cpumap_enqueue_cnt SEC(".maps");
  
-@@ -483,23 +518,23 @@ static bool stats_collect(struct stats_record *rec)
- 	 * this can happen by someone running perf-record -e
- 	 */
+-struct bpf_map_def SEC("maps") cpumap_kthread_cnt = {
+-	.type		= BPF_MAP_TYPE_PERCPU_ARRAY,
+-	.key_size	= sizeof(u32),
+-	.value_size	= sizeof(struct datarec),
+-	.max_entries	= 1,
+-};
++struct {
++	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
++	__type(key, u32);
++	__type(value, struct datarec);
++	__uint(max_entries, 1);
++} cpumap_kthread_cnt SEC(".maps");
  
--	fd = map_data[0].fd; /* map0: redirect_err_cnt */
-+	fd = bpf_map__fd(map_data[REDIRECT_ERR_CNT]);
- 	for (i = 0; i < REDIR_RES_MAX; i++)
- 		map_collect_record_u64(fd, i, &rec->xdp_redirect[i]);
- 
--	fd = map_data[1].fd; /* map1: exception_cnt */
-+	fd = bpf_map__fd(map_data[EXCEPTION_CNT]);
- 	for (i = 0; i < XDP_ACTION_MAX; i++) {
- 		map_collect_record_u64(fd, i, &rec->xdp_exception[i]);
- 	}
- 
--	fd = map_data[2].fd; /* map2: cpumap_enqueue_cnt */
-+	fd = bpf_map__fd(map_data[CPUMAP_ENQUEUE_CNT]);
- 	for (i = 0; i < MAX_CPUS; i++)
- 		map_collect_record(fd, i, &rec->xdp_cpumap_enqueue[i]);
- 
--	fd = map_data[3].fd; /* map3: cpumap_kthread_cnt */
-+	fd = bpf_map__fd(map_data[CPUMAP_KTHREAD_CNT]);
- 	map_collect_record(fd, 0, &rec->xdp_cpumap_kthread);
- 
--	fd = map_data[4].fd; /* map4: devmap_xmit_cnt */
-+	fd = bpf_map__fd(map_data[DEVMAP_XMIT_CNT]);
- 	map_collect_record(fd, 0, &rec->xdp_devmap_xmit);
- 
- 	return true;
-@@ -598,8 +633,8 @@ static void stats_poll(int interval, bool err_only)
- 
- 	/* TODO Need more advanced stats on error types */
- 	if (verbose) {
--		printf(" - Stats map0: %s\n", map_data[0].name);
--		printf(" - Stats map1: %s\n", map_data[1].name);
-+		printf(" - Stats map0: %s\n", bpf_map__name(map_data[0]));
-+		printf(" - Stats map1: %s\n", bpf_map__name(map_data[1]));
- 		printf("\n");
- 	}
- 	fflush(stdout);
-@@ -618,44 +653,51 @@ static void stats_poll(int interval, bool err_only)
- 
- static void print_bpf_prog_info(void)
- {
--	int i;
-+	struct bpf_program *prog;
-+	struct bpf_map *map;
-+	int i = 0;
- 
- 	/* Prog info */
--	printf("Loaded BPF prog have %d bpf program(s)\n", prog_cnt);
--	for (i = 0; i < prog_cnt; i++) {
--		printf(" - prog_fd[%d] = fd(%d)\n", i, prog_fd[i]);
-+	printf("Loaded BPF prog have %d bpf program(s)\n", tp_cnt);
-+	bpf_object__for_each_program(prog, obj) {
-+		printf(" - prog_fd[%d] = fd(%d)\n", i, bpf_program__fd(prog));
-+		i++;
- 	}
- 
-+	i = 0;
- 	/* Maps info */
--	printf("Loaded BPF prog have %d map(s)\n", map_data_count);
--	for (i = 0; i < map_data_count; i++) {
--		char *name = map_data[i].name;
--		int fd     = map_data[i].fd;
-+	printf("Loaded BPF prog have %d map(s)\n", map_cnt);
-+	bpf_object__for_each_map(map, obj) {
-+		const char *name = bpf_map__name(map);
-+		int fd		 = bpf_map__fd(map);
- 
- 		printf(" - map_data[%d] = fd(%d) name:%s\n", i, fd, name);
-+		i++;
- 	}
- 
- 	/* Event info */
--	printf("Searching for (max:%d) event file descriptor(s)\n", prog_cnt);
--	for (i = 0; i < prog_cnt; i++) {
--		if (event_fd[i] != -1)
--			printf(" - event_fd[%d] = fd(%d)\n", i, event_fd[i]);
-+	printf("Searching for (max:%d) event file descriptor(s)\n", tp_cnt);
-+	for (i = 0; i < tp_cnt; i++) {
-+		int fd = bpf_link__fd(tp_links[i]);
-+
-+		if (fd != -1)
-+			printf(" - event_fd[%d] = fd(%d)\n", i, fd);
- 	}
+ /* Tracepoint: /sys/kernel/debug/tracing/events/xdp/xdp_cpumap_enqueue/format
+  * Code in:         kernel/include/trace/events/xdp.h
+@@ -210,12 +210,12 @@ int trace_xdp_cpumap_kthread(struct cpumap_kthread_ctx *ctx)
+ 	return 0;
  }
  
- int main(int argc, char **argv)
- {
- 	struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
-+	struct bpf_program *prog;
- 	int longindex = 0, opt;
--	int ret = EXIT_SUCCESS;
--	char bpf_obj_file[256];
-+	int ret = EXIT_FAILURE;
-+	enum map_type type;
-+	char filename[256];
+-struct bpf_map_def SEC("maps") devmap_xmit_cnt = {
+-	.type		= BPF_MAP_TYPE_PERCPU_ARRAY,
+-	.key_size	= sizeof(u32),
+-	.value_size	= sizeof(struct datarec),
+-	.max_entries	= 1,
+-};
++struct {
++	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
++	__type(key, u32);
++	__type(value, struct datarec);
++	__uint(max_entries, 1);
++} devmap_xmit_cnt SEC(".maps");
  
- 	/* Default settings: */
- 	bool errors_only = true;
- 	int interval = 2;
+ /* Tracepoint: /sys/kernel/debug/tracing/events/xdp/xdp_devmap_xmit/format
+  * Code in:         kernel/include/trace/events/xdp.h
+diff --git a/samples/bpf/xdp_sample_pkts_kern.c b/samples/bpf/xdp_sample_pkts_kern.c
+index 33377289e2a8..9cf76b340dd7 100644
+--- a/samples/bpf/xdp_sample_pkts_kern.c
++++ b/samples/bpf/xdp_sample_pkts_kern.c
+@@ -5,14 +5,12 @@
+ #include <bpf/bpf_helpers.h>
  
--	snprintf(bpf_obj_file, sizeof(bpf_obj_file), "%s_kern.o", argv[0]);
+ #define SAMPLE_SIZE 64ul
+-#define MAX_CPUS 128
 -
- 	/* Parse commands line args */
- 	while ((opt = getopt_long(argc, argv, "hDSs:",
- 				  long_options, &longindex)) != -1) {
-@@ -672,40 +714,79 @@ int main(int argc, char **argv)
- 		case 'h':
- 		default:
- 			usage(argv);
--			return EXIT_FAILURE;
-+			return ret;
- 		}
- 	}
+-struct bpf_map_def SEC("maps") my_map = {
+-	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
+-	.key_size = sizeof(int),
+-	.value_size = sizeof(u32),
+-	.max_entries = MAX_CPUS,
+-};
++
++struct {
++	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
++	__uint(key_size, sizeof(int));
++	__uint(value_size, sizeof(u32));
++} my_map SEC(".maps");
  
-+	snprintf(filename, sizeof(filename), "%s_kern.o", argv[0]);
- 	if (setrlimit(RLIMIT_MEMLOCK, &r)) {
- 		perror("setrlimit(RLIMIT_MEMLOCK)");
--		return EXIT_FAILURE;
-+		return ret;
- 	}
+ SEC("xdp_sample")
+ int xdp_sample_prog(struct xdp_md *ctx)
+diff --git a/samples/bpf/xdp_sample_pkts_user.c b/samples/bpf/xdp_sample_pkts_user.c
+index 991ef6f0880b..4b2a300c750c 100644
+--- a/samples/bpf/xdp_sample_pkts_user.c
++++ b/samples/bpf/xdp_sample_pkts_user.c
+@@ -18,7 +18,6 @@
  
--	if (load_bpf_file(bpf_obj_file)) {
--		printf("ERROR - bpf_log_buf: %s", bpf_log_buf);
--		return EXIT_FAILURE;
-+	/* Remove tracepoint program when program is interrupted or killed */
-+	signal(SIGINT, int_exit);
-+	signal(SIGTERM, int_exit);
-+
-+	obj = bpf_object__open_file(filename, NULL);
-+	if (libbpf_get_error(obj)) {
-+		printf("ERROR: opening BPF object file failed\n");
-+		obj = NULL;
-+		goto cleanup;
-+	}
-+
-+	/* load BPF program */
-+	if (bpf_object__load(obj)) {
-+		printf("ERROR: loading BPF object file failed\n");
-+		goto cleanup;
-+	}
-+
-+	for (type = 0; type < NUM_MAP; type++) {
-+		map_data[type] =
-+			bpf_object__find_map_by_name(obj, map_type_strings[type]);
-+
-+		if (libbpf_get_error(map_data[type])) {
-+			printf("ERROR: finding a map in obj file failed\n");
-+			goto cleanup;
-+		}
-+		map_cnt++;
- 	}
--	if (!prog_fd[0]) {
--		printf("ERROR - load_bpf_file: %s\n", strerror(errno));
--		return EXIT_FAILURE;
-+
-+	bpf_object__for_each_program(prog, obj) {
-+		tp_links[tp_cnt] = bpf_program__attach(prog);
-+		if (libbpf_get_error(tp_links[tp_cnt])) {
-+			printf("ERROR: bpf_program__attach failed\n");
-+			tp_links[tp_cnt] = NULL;
-+			goto cleanup;
-+		}
-+		tp_cnt++;
- 	}
+ #include "perf-sys.h"
  
- 	if (debug) {
- 		print_bpf_prog_info();
- 	}
- 
--	/* Unload/stop tracepoint event by closing fd's */
-+	/* Unload/stop tracepoint event by closing bpf_link's */
- 	if (errors_only) {
--		/* The prog_fd[i] and event_fd[i] depend on the
--		 * order the functions was defined in _kern.c
-+		/* The bpf_link[i] depend on the order of
-+		 * the functions was defined in _kern.c
- 		 */
--		close(event_fd[2]); /* tracepoint/xdp/xdp_redirect */
--		close(prog_fd[2]);  /* func: trace_xdp_redirect */
--		close(event_fd[3]); /* tracepoint/xdp/xdp_redirect_map */
--		close(prog_fd[3]);  /* func: trace_xdp_redirect_map */
-+		bpf_link__destroy(tp_links[2]);	/* tracepoint/xdp/xdp_redirect */
-+		tp_links[2] = NULL;
-+
-+		bpf_link__destroy(tp_links[3]);	/* tracepoint/xdp/xdp_redirect_map */
-+		tp_links[3] = NULL;
- 	}
- 
- 	stats_poll(interval, errors_only);
- 
-+	ret = EXIT_SUCCESS;
-+
-+cleanup:
-+	/* Detach tracepoints */
-+	while (tp_cnt)
-+		bpf_link__destroy(tp_links[--tp_cnt]);
-+
-+	bpf_object__close(obj);
- 	return ret;
- }
+-#define MAX_CPUS 128
+ static int if_idx;
+ static char *if_name;
+ static __u32 xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST;
 -- 
 2.25.1
 
