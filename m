@@ -1,66 +1,69 @@
-Return-Path: <SRS0=6Pat=DQ=vger.kernel.org=xdp-newbies-owner@kernel.org>
+Return-Path: <SRS0=cssK=DR=vger.kernel.org=xdp-newbies-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 41E23C433DF
-	for <xdp-newbies@archiver.kernel.org>; Fri,  9 Oct 2020 18:30:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 09683C433E7
+	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 10:41:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DB2CF222C3
-	for <xdp-newbies@archiver.kernel.org>; Fri,  9 Oct 2020 18:30:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BA738221E9
+	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 10:41:17 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cBdWPln7"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DKGgVKSP"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388253AbgJISaB (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Fri, 9 Oct 2020 14:30:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34426 "EHLO
+        id S1729578AbgJJKfe (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Sat, 10 Oct 2020 06:35:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40440 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388240AbgJISaB (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Fri, 9 Oct 2020 14:30:01 -0400
-Received: from mail-yb1-xb42.google.com (mail-yb1-xb42.google.com [IPv6:2607:f8b0:4864:20::b42])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 11219C0613D2;
-        Fri,  9 Oct 2020 11:30:01 -0700 (PDT)
-Received: by mail-yb1-xb42.google.com with SMTP id b142so7934608ybg.9;
-        Fri, 09 Oct 2020 11:30:01 -0700 (PDT)
+        with ESMTP id S1728751AbgJJKbs (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Sat, 10 Oct 2020 06:31:48 -0400
+Received: from mail-ed1-x541.google.com (mail-ed1-x541.google.com [IPv6:2a00:1450:4864:20::541])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A39FDC0613E3;
+        Sat, 10 Oct 2020 02:58:47 -0700 (PDT)
+Received: by mail-ed1-x541.google.com with SMTP id 33so11880361edq.13;
+        Sat, 10 Oct 2020 02:58:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=wPYR1XCw2CHMtKERpHn+P66N/lX3Kc4UU6HrVKuMVLg=;
-        b=cBdWPln7Bzz/a9GnOWgIBN6QkUjaH5CSD3bi3K/WZfh3LcHuOVPunpURPyg5qiKQQ2
-         B4MzAMZU7fWXHSHhImCOsNkYeRQyiS2LN+/O+kyXhcyrG1FRu7MAtuyIZ1f91aZtSirg
-         eO6lG8vJI15ObWRevYcTW+VYpPt+XFxLOlLzrpfslqDZkeXo30g2IN8lPEURBIKt8azh
-         k7+Dy0LsPCgjEFhXJvBRy0vC71FGiqrCLQiUJ7uAN8pvtiqkGGONrAYPTjhvq+8eImXb
-         5Ca9N3GELpUVfC74hup7MXbEzH0OhdQxNu/kh18GX8l1mX0zlFCD5lLMZzm8rOGK5Qql
-         f8dQ==
+        bh=SeitlzLVHovjLjm98fbptQsAkFvsyB8947FeMfcf+nE=;
+        b=DKGgVKSP3QSuXW5E7dmqH0yjGz0cWfWzDO85bh02XzBoRSghupAWFyIHUl7anZVJI7
+         lt57yGodPiUl3bm8SxZSmnc9TXXJFc81yJxgLfNlxBDgOp8eNZ8FbsijBqFjt8dfEC9J
+         u9etbhAByT9QXPia7pSoG5gzhL7ESeEfrHHy05oOUawy7QK7afGsDL5yzBDeqjTbG14e
+         buK3SuKVrp1v2LWHM55/7MbvY2jn0z41epKuNOZPDsZx33a7JeJXTCkzIUq8wrLm2WB2
+         JdhD+ddlJ1CebUCRjykN2yCIIMi1En+s3xP/TcnKN/MIkIufQunzC5gbysR2oWmWGZIC
+         biXQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=wPYR1XCw2CHMtKERpHn+P66N/lX3Kc4UU6HrVKuMVLg=;
-        b=pru5Qc7cXqO5gaHSCeztGQVyIPudf2SL1UN+vxs6ysPk0wocS5pukzD4Ld/ZbhdpgE
-         4IR3n44Z2Kt4yLbm3mMg+wZSAIPpzzx+ddgGduEoy3osEJEtyziU/pOU7fyFQImH1o88
-         bjzQNqpAufdARRXniQ+9uxFGcAqelSKuAquK1Q7dDA4LPYEKildZFYtIMb1KuMTjLHPK
-         Q7kXykj7k62PR0I0JMGTMPLPTLuOzxLyi+IgIZjtLAm5r9d1aaWyCDdFHFRjiytOfYsK
-         b6RGkgLqWu/+9RlaxoiiH1Ug5GDVwlQeGUnRKtk/hxFmE/yDUU5XNAm1td5D2E3aBONv
-         J+TQ==
-X-Gm-Message-State: AOAM532VX8eCfsCJdfYGxjdSWXYiPPoEDOLliisnpjeFreqDX8hDsL02
-        dtxCIS0D6h15Yw97e5ciG5ri0EgiINq5slhnSEY=
-X-Google-Smtp-Source: ABdhPJzc7KQ0asHvWNhe0QOPDN5Aazv4uob54x6oPwpVHbmE04qba53tCDqGfjODwq0oNJNwrCMNuVeCkOYPalmE7u8=
-X-Received: by 2002:a25:2d41:: with SMTP id s1mr18499463ybe.459.1602268200350;
- Fri, 09 Oct 2020 11:30:00 -0700 (PDT)
+        bh=SeitlzLVHovjLjm98fbptQsAkFvsyB8947FeMfcf+nE=;
+        b=dWASRf6rvsWBzKfADWo7fXsFvoSb2Ftkvd6EMcgmYiE3IEKJxGmfLLRAcOIs1JE2+K
+         PEsjFRbMi4lIVQI6jRggWPpVgOjIWc0xWK0cvvfQQQ2GP8WdxzASiAzFBJc+qyElGoQM
+         QhrbVgsWaqxaQ7HC6BGox9kTPQOE38K/TZABfe7N+FTLQBW28LZJVAifGV5sIVvFIHI2
+         b1TQ2OAtq523s7p91PH/N82jmcBlNWDQA9pKvv6avV7p2Y0qdyZ3h++1hbxwM4PM1OiT
+         H/y+dN8jr+xOuqQ/SWL2C1L5Hxd0odc/5gpEKcCdceesEavhDxplJzAuzqLx+2nfP4EW
+         RUvw==
+X-Gm-Message-State: AOAM530V7h0iaoyilbxo0E2YMD9fUsL63P0/PJC5VxLrGLmFySMGRavR
+        G3GGEco63Fnbvefjtn7Ilv+Kk9ckj7ZeNN7vPg==
+X-Google-Smtp-Source: ABdhPJwEKdbtc+BVmGyUHEb3yux15x0kwE3MJTtARqdGa3MJTwe+n1g36kKA0Gj7BTvmIbEkl6XjBD8gHgUjealKiws=
+X-Received: by 2002:aa7:d719:: with SMTP id t25mr3757681edq.11.1602323926187;
+ Sat, 10 Oct 2020 02:58:46 -0700 (PDT)
 MIME-Version: 1.0
-References: <20201009160353.1529-1-danieltimlee@gmail.com>
-In-Reply-To: <20201009160353.1529-1-danieltimlee@gmail.com>
-From:   Andrii Nakryiko <andrii.nakryiko@gmail.com>
-Date:   Fri, 9 Oct 2020 11:29:49 -0700
-Message-ID: <CAEf4BzZJgsd3OkcgULc7_Hxhg_ZcSmp+XT0e--8EMkz9_+5Qxg@mail.gmail.com>
-Subject: Re: [PATCH bpf-next 0/3] samples: bpf: Refactor XDP programs with libbpf
-To:     "Daniel T. Lee" <danieltimlee@gmail.com>
+References: <20201009160353.1529-1-danieltimlee@gmail.com> <20201009160353.1529-3-danieltimlee@gmail.com>
+ <CAEf4Bzao-mCaQ4BnvoFZ_-wMSuoJ3JMJw1SAuy9bNRwy0E7qdg@mail.gmail.com>
+In-Reply-To: <CAEf4Bzao-mCaQ4BnvoFZ_-wMSuoJ3JMJw1SAuy9bNRwy0E7qdg@mail.gmail.com>
+From:   "Daniel T. Lee" <danieltimlee@gmail.com>
+Date:   Sat, 10 Oct 2020 18:58:31 +0900
+Message-ID: <CAEKGpzgXLbSyEuZ9x01k2vkRPFXJDTsreCqXUov7sfiL+BTE5A@mail.gmail.com>
+Subject: Re: [PATCH bpf-next 2/3] samples: bpf: Replace attach_tracepoint() to
+ attach() in xdp_redirect_cpu
+To:     Andrii Nakryiko <andrii.nakryiko@gmail.com>
 Cc:     Daniel Borkmann <daniel@iogearbox.net>,
         Alexei Starovoitov <ast@kernel.org>,
         Jesper Dangaard Brouer <brouer@redhat.com>,
@@ -72,57 +75,84 @@ Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-On Fri, Oct 9, 2020 at 9:04 AM Daniel T. Lee <danieltimlee@gmail.com> wrote:
+On Sat, Oct 10, 2020 at 3:23 AM Andrii Nakryiko
+<andrii.nakryiko@gmail.com> wrote:
 >
-> To avoid confusion caused by the increasing fragmentation of the BPF
-> Loader program, this commit would like to convert the previous bpf_load
-> loader with the libbpf loader.
+> On Fri, Oct 9, 2020 at 9:04 AM Daniel T. Lee <danieltimlee@gmail.com> wrote:
+> >
+> > From commit d7a18ea7e8b6 ("libbpf: Add generic bpf_program__attach()"),
+> > for some BPF programs, it is now possible to attach BPF programs
+> > with __attach() instead of explicitly calling __attach_<type>().
+> >
+> > This commit refactors the __attach_tracepoint() with libbpf's generic
+> > __attach() method. In addition, this refactors the logic of setting
+> > the map FD to simplify the code. Also, the missing removal of
+> > bpf_load.o in Makefile has been fixed.
+> >
+> > Signed-off-by: Daniel T. Lee <danieltimlee@gmail.com>
+> > ---
+> >  samples/bpf/Makefile                |   2 +-
+> >  samples/bpf/xdp_redirect_cpu_user.c | 138 +++++++++++++---------------
+> >  2 files changed, 67 insertions(+), 73 deletions(-)
+> >
 >
-> Thanks to libbpf's bpf_link interface, managing the tracepoint BPF
-> program is much easier. bpf_program__attach_tracepoint manages the
-> enable of tracepoint event and attach of BPF programs to it with a
-> single interface bpf_link, so there is no need to manage event_fd and
-> prog_fd separately.
+> [...]
 >
-> And due to addition of generic bpf_program__attach() to libbpf, it is
-> now possible to attach BPF programs with __attach() instead of
-> explicitly calling __attach_<type>().
+> >  #define NUM_TP 5
+> > +#define NUM_MAP 9
+> >  struct bpf_link *tp_links[NUM_TP] = { 0 };
 >
-> This patchset refactors xdp_monitor with using this libbpf API, and the
-> bpf_load is removed and migrated to libbpf. Also, attach_tracepoint()
-> is replaced with the generic __attach() method in xdp_redirect_cpu.
-> Moreover, maps in kern program have been converted to BTF-defined map.
+> = {}
 >
-> Daniel T. Lee (3):
->   samples: bpf: Refactor xdp_monitor with libbpf
->   samples: bpf: Replace attach_tracepoint() to attach() in
->     xdp_redirect_cpu
->   samples: bpf: refactor XDP kern program maps with BTF-defined map
+> > +static int map_fds[NUM_MAP];
+> >  static int tp_cnt = 0;
+> >
+> >  /* Exit return codes */
 >
->  samples/bpf/Makefile                |   4 +-
->  samples/bpf/xdp_monitor_kern.c      |  60 ++++++------
->  samples/bpf/xdp_monitor_user.c      | 144 +++++++++++++++++++++-------
->  samples/bpf/xdp_redirect_cpu_user.c | 138 +++++++++++++-------------
->  samples/bpf/xdp_sample_pkts_kern.c  |  14 ++-
->  samples/bpf/xdp_sample_pkts_user.c  |   1 -
->  6 files changed, 211 insertions(+), 150 deletions(-)
+> [...]
 >
-> --
-> 2.25.1
+> > -static struct bpf_link * attach_tp(struct bpf_object *obj,
+> > -                                  const char *tp_category,
+> > -                                  const char* tp_name)
+> > +static int init_tracepoints(struct bpf_object *obj)
+> >  {
+> > +       char *tp_section = "tracepoint/";
+> >         struct bpf_program *prog;
+> > -       struct bpf_link *link;
+> > -       char sec_name[PATH_MAX];
+> > -       int len;
+> > +       const char *section;
+> >
+> > -       len = snprintf(sec_name, PATH_MAX, "tracepoint/%s/%s",
+> > -                      tp_category, tp_name);
+> > -       if (len < 0)
+> > -               exit(EXIT_FAIL);
+> > +       bpf_object__for_each_program(prog, obj) {
+> > +               section = bpf_program__section_name(prog);
+> > +               if (strncmp(section, tp_section, strlen(tp_section)) != 0)
+> > +                       continue;
+>
+> that's a convoluted and error-prone way (you can also use "tp/bla/bla"
+> for tracepoint programs, for example). Use
+> bpf_program__is_tracepoint() check.
 >
 
-Thanks for this clean up, Daniel! It's great! I left a few nits here
-and there in the appropriate patches.
+Thanks for the review!
+I think that's a much better way. I will send the next patch with applying
+that method.
 
-There still seem to be a bunch of users of bpf_load.c, which would be
-nice to get rid of completely. But before you go do that, consider
-integrating BPF skeleton into samples/bpf Makefile. That way instead
-of all those look ups of maps/programs by name, you'd be writing a
-straightforward skel->maps.my_map and similar short and non-failing
-code. This should make the overall time spent on conversion much
-smaller (and more pleasant, IMO).
-
-You've dealt with a lot of samples/bpf reworking, so it should be too
-hard for you to figure out the best way to do this, but check
-selftests/bpf's Makefile, if you need some ideas. Or just ask for
-help. Thanks!
+> >
+> > -       prog = bpf_object__find_program_by_title(obj, sec_name);
+> > -       if (!prog) {
+> > -               fprintf(stderr, "ERR: finding progsec: %s\n", sec_name);
+> > -               exit(EXIT_FAIL_BPF);
+> > +               tp_links[tp_cnt] = bpf_program__attach(prog);
+> > +               if (libbpf_get_error(tp_links[tp_cnt])) {
+> > +                       tp_links[tp_cnt] = NULL;
+> > +                       return -EINVAL;
+> > +               }
+> > +               tp_cnt++;
+> >         }
+> >
+>
+> [...]
