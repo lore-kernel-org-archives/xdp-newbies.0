@@ -2,66 +2,67 @@ Return-Path: <SRS0=cssK=DR=vger.kernel.org=xdp-newbies-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C623DC433DF
-	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 11:40:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8DF2C433E7
+	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 11:53:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 69C4D22240
-	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 11:40:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6841B22258
+	for <xdp-newbies@archiver.kernel.org>; Sat, 10 Oct 2020 11:53:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="M3Eumw0m"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aKfWe9sQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730205AbgJJLic (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Sat, 10 Oct 2020 07:38:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38920 "EHLO
+        id S1730059AbgJJLrA (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Sat, 10 Oct 2020 07:47:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38918 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728942AbgJJKUC (ORCPT
+        with ESMTP id S1728919AbgJJKUC (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
         Sat, 10 Oct 2020 06:20:02 -0400
-Received: from mail-ed1-x544.google.com (mail-ed1-x544.google.com [IPv6:2a00:1450:4864:20::544])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 06461C0613E7;
-        Sat, 10 Oct 2020 03:09:01 -0700 (PDT)
-Received: by mail-ed1-x544.google.com with SMTP id p13so11961871edi.7;
-        Sat, 10 Oct 2020 03:09:00 -0700 (PDT)
+Received: from mail-ej1-x642.google.com (mail-ej1-x642.google.com [IPv6:2a00:1450:4864:20::642])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9E8B1C0613E1;
+        Sat, 10 Oct 2020 02:56:05 -0700 (PDT)
+Received: by mail-ej1-x642.google.com with SMTP id e22so16612819ejr.4;
+        Sat, 10 Oct 2020 02:56:05 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=2u/FYiRZYg0jlbMYQJDVSfy4QaCXsq7tXWs5W7D5VoA=;
-        b=M3Eumw0msG+svHWDgfMyn8t0lD/I/Ri7vS5SQmEPCz5fxCv2x1cHbxGWAc9APCShVr
-         JyEN8UQu+DNlcMMaod7sN/1EIcWopAGAcixecB+9MVohiuBfN0qRvh7ywQ8TJcPwaZzs
-         YGFtiR20V4L458PCs3BqVh0Zo5XXkZ8Q9J4pTSjxUZJTQQ9BMTRKHuDPsRrom5NwrwxX
-         4ozR8TT4A8rcrGRioP+N7rchFL8txMPqP6idg9xAZbm+EUe04ItfXtXnf4IPYdMsaXru
-         sSQRel37IqBfkJZJXjos6LZ9w222/F7KIcgJU8M7BvaM9mu8L4088Z5FRf41z3zIJEUF
-         tOqw==
+        bh=VR/tQHvJwBGuUu8JsJE9tUxiX1G5oEfON4+74b7xloE=;
+        b=aKfWe9sQ2EhbomX3OoQsQ5kk5LwyBcn3Znd1S+SsiJ9XQD0JEojmwv1efkWq1RB5AB
+         gMsu5JI4EFqEOKht2wEqtLttpT13VVUpTVxtEGa1goF+GRBGyoJV3caU5hUnJc+N8FYt
+         4nqelkdQ/3Npr4BAirZZO8gJ4WdIGf+6Eh9nqj4nJk7KBPgMEVaWz0YdexP6FobC5Qqn
+         61UQTZlotYDo2EKneuMkLSSaaqqG60d3kvm+954yODnEwsWN4q7U4YgVQFWM+VJOsIAq
+         fYNWBQ8gcgS4Es/yiA1NvN87ZTeJaxfTkOmnxRo3zSxpV976K9cCdt1ReUidUVZ3/MuY
+         itnA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=2u/FYiRZYg0jlbMYQJDVSfy4QaCXsq7tXWs5W7D5VoA=;
-        b=qjyEjiC2wbBDky7eH6HPH0Vp5pO3nCiXivnzUmDOHvM+YTFlm+n2obZrJ5yNCc2upu
-         rAfUYam8/WlNe2DJc26uukTtIpjvpHmfU1ZTa3ScQzhmb8ia3X9Ow2DYG7jECCumLEVH
-         rmhQqbKEU+hKor+/o59x1l7o827gOboc2EqcMBNcd5aJG7Sr13o9YZgSN70rp+So0g3c
-         f+a8LsfhWMZa53RgzSTiZjh+Dq8PHnSjbhCx5Orm3az1OZg6ZnoHAiTF5N08CesQXKhc
-         hKVBfufHN9HbsaFCafm2+P5ZtRzt3Ppm/19+cjhKGwag6VLUQI4Bwiziwtnp5NNi+HtM
-         J6Ug==
-X-Gm-Message-State: AOAM530cgZMiZXL+ZEvpO875JRX+/dP+YBF6In6wXhj+hH2Yo+RdonEl
-        zPrCaolkKGwb1dYvY81seQSo6JByQ4IXNVme/qJg7j/0opAZ
-X-Google-Smtp-Source: ABdhPJz8Qo4DZGrU8DHUc5b10nkKSIGd/ZuyqcqtpD0fWUdZgcaWDGoDt1qfQHQqyELaXkvm72rmue4ixWoMXVXM6Q8=
-X-Received: by 2002:a50:cbc7:: with SMTP id l7mr3770872edi.148.1602324539440;
- Sat, 10 Oct 2020 03:08:59 -0700 (PDT)
+        bh=VR/tQHvJwBGuUu8JsJE9tUxiX1G5oEfON4+74b7xloE=;
+        b=s1wQZT7tCErCTBWilbVAM/WSW/sChwyctvpf0AbYmFmyHKRJI5QvX5dw1XuskEUQMb
+         rWsTGPlI8+hFVkS3OQGSvzoFP0bWDsTIkDyA2EhO4PlGZHJBG6geXPE0tKlZvt910hc4
+         Onug4LPbNVMsll5+YBa4Kqz081aEgm+1wk3pRZuK22N9ofoWSjwQdohDo6qxZNzPF3SW
+         5cFzd2GPOsCqky3bi5lYRSzKSKKGS98rkqugO4mN4ji8sP2JNkVcpy7gIdSuTuqJ7aQP
+         AvXcpwl4ncWDCeiX5bzEZzDeerr8Ir3youhXyXOgq5y8ExMbtI77RHfzy2tfzL+EBo0L
+         YkWw==
+X-Gm-Message-State: AOAM530J8YQBjX3gQi5tizAv/TkhKifZO66xtdwFikzR7InzccZTlKUx
+        uNl0J3M8fUKqknjP2WKqn8GcO38kChHxj4VjlA==
+X-Google-Smtp-Source: ABdhPJwZykUG0Thgw1Kayj5L/BQM/DvuxDe82XXX7C6oeM+gqc8HOJie+y57a4eYTKEntKRM6UoqdmvFo2YOoCqYjj0=
+X-Received: by 2002:a17:906:590d:: with SMTP id h13mr18186970ejq.226.1602323764107;
+ Sat, 10 Oct 2020 02:56:04 -0700 (PDT)
 MIME-Version: 1.0
-References: <20201009160353.1529-1-danieltimlee@gmail.com> <20201009160353.1529-2-danieltimlee@gmail.com>
- <CAEf4BzYNF_BbwXM-HFFSk=ybJRdR=_P1OcVwxZ6dav6_b4BOWw@mail.gmail.com>
-In-Reply-To: <CAEf4BzYNF_BbwXM-HFFSk=ybJRdR=_P1OcVwxZ6dav6_b4BOWw@mail.gmail.com>
+References: <20201009160353.1529-1-danieltimlee@gmail.com> <20201009160353.1529-4-danieltimlee@gmail.com>
+ <CAEf4Bzai3y8yHcYAnSBhZ3Wa8nvDcsUw=1o5S-xn42DwPKUndQ@mail.gmail.com>
+In-Reply-To: <CAEf4Bzai3y8yHcYAnSBhZ3Wa8nvDcsUw=1o5S-xn42DwPKUndQ@mail.gmail.com>
 From:   "Daniel T. Lee" <danieltimlee@gmail.com>
-Date:   Sat, 10 Oct 2020 19:08:45 +0900
-Message-ID: <CAEKGpzjcYCgOFCN2f4M-X-mnozTrcayp4jQVb6YB9cYE0M8F8A@mail.gmail.com>
-Subject: Re: [PATCH bpf-next 1/3] samples: bpf: Refactor xdp_monitor with libbpf
+Date:   Sat, 10 Oct 2020 18:55:49 +0900
+Message-ID: <CAEKGpzgPepj2c=tvwgwH93OLDvq_GCDjGeoh_w3VCFwUuE=HPA@mail.gmail.com>
+Subject: Re: [PATCH bpf-next 3/3] samples: bpf: refactor XDP kern program maps
+ with BTF-defined map
 To:     Andrii Nakryiko <andrii.nakryiko@gmail.com>
 Cc:     Daniel Borkmann <daniel@iogearbox.net>,
         Alexei Starovoitov <ast@kernel.org>,
@@ -74,176 +75,79 @@ Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-On Sat, Oct 10, 2020 at 3:17 AM Andrii Nakryiko
+On Sat, Oct 10, 2020 at 3:25 AM Andrii Nakryiko
 <andrii.nakryiko@gmail.com> wrote:
 >
 > On Fri, Oct 9, 2020 at 9:04 AM Daniel T. Lee <danieltimlee@gmail.com> wrote:
 > >
-> > To avoid confusion caused by the increasing fragmentation of the BPF
-> > Loader program, this commit would like to change to the libbpf loader
-> > instead of using the bpf_load.
+> > Most of the samples were converted to use the new BTF-defined MAP as
+> > they moved to libbpf, but some of the samples were missing.
 > >
-> > Thanks to libbpf's bpf_link interface, managing the tracepoint BPF
-> > program is much easier. bpf_program__attach_tracepoint manages the
-> > enable of tracepoint event and attach of BPF programs to it with a
-> > single interface bpf_link, so there is no need to manage event_fd and
-> > prog_fd separately.
+> > Instead of using the previous BPF MAP definition, this commit refactors
+> > xdp_monitor and xdp_sample_pkts_kern MAP definition with the new
+> > BTF-defined MAP format.
 > >
-> > This commit refactors xdp_monitor with using this libbpf API, and the
-> > bpf_load is removed and migrated to libbpf.
+> > Also, this commit removes the max_entries attribute at PERF_EVENT_ARRAY
+> > map type. The libbpf's bpf_object__create_map() will automatically
+> > set max_entries to the maximum configured number of CPUs on the host.
 > >
 > > Signed-off-by: Daniel T. Lee <danieltimlee@gmail.com>
 > > ---
-> >  samples/bpf/Makefile           |   2 +-
-> >  samples/bpf/xdp_monitor_user.c | 144 ++++++++++++++++++++++++---------
-> >  2 files changed, 108 insertions(+), 38 deletions(-)
+> >  samples/bpf/xdp_monitor_kern.c     | 60 +++++++++++++++---------------
+> >  samples/bpf/xdp_sample_pkts_kern.c | 14 +++----
+> >  samples/bpf/xdp_sample_pkts_user.c |  1 -
+> >  3 files changed, 36 insertions(+), 39 deletions(-)
 > >
 >
 > [...]
 >
-> > +static int tp_cnt;
-> > +static int map_cnt;
-> >  static int verbose = 1;
-> >  static bool debug = false;
-> > +struct bpf_map *map_data[NUM_MAP] = { 0 };
-> > +struct bpf_link *tp_links[NUM_TP] = { 0 };
+> > --- a/samples/bpf/xdp_sample_pkts_kern.c
+> > +++ b/samples/bpf/xdp_sample_pkts_kern.c
+> > @@ -5,14 +5,12 @@
+> >  #include <bpf/bpf_helpers.h>
+> >
+> >  #define SAMPLE_SIZE 64ul
+> > -#define MAX_CPUS 128
+> > -
+> > -struct bpf_map_def SEC("maps") my_map = {
+> > -       .type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
+> > -       .key_size = sizeof(int),
+> > -       .value_size = sizeof(u32),
+> > -       .max_entries = MAX_CPUS,
+> > -};
+> > +
+> > +struct {
+> > +       __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+> > +       __type(key, int);
+> > +       __type(value, u32);
 >
-> this syntax means "initialize *only the first element* to 0
-> (explicitly) and the rest of elements to default (which is also 0)".
-> So it's just misleading, use ` = {}`.
+>
+> this actually will generate unnecessary libbpf warnings, because
+> PERF_EVENT_ARRAY doesn't support BTF types for key/value. So use
+> __uint(key_size, sizeof(int)) and __uint(value_size, sizeof(u32))
+> instead.
 >
 
 Thanks for the great review!
+I'll fix it right away and send the next version of patch.
 
-Come to think of it, it could be confusing as you mentioned. I will
-remove the unnecessary initializer in the next patch and resend it.
 
+> > +} my_map SEC(".maps");
 > >
-> >  static const struct option long_options[] = {
-> >         {"help",        no_argument,            NULL, 'h' },
-> > @@ -41,6 +65,15 @@ static const struct option long_options[] = {
-> >         {0, 0, NULL,  0 }
-> >  };
+> >  SEC("xdp_sample")
+> >  int xdp_sample_prog(struct xdp_md *ctx)
+> > diff --git a/samples/bpf/xdp_sample_pkts_user.c b/samples/bpf/xdp_sample_pkts_user.c
+> > index 991ef6f0880b..4b2a300c750c 100644
+> > --- a/samples/bpf/xdp_sample_pkts_user.c
+> > +++ b/samples/bpf/xdp_sample_pkts_user.c
+> > @@ -18,7 +18,6 @@
 > >
-> > +static void int_exit(int sig)
-> > +{
-> > +       /* Detach tracepoints */
-> > +       while (tp_cnt)
-> > +               bpf_link__destroy(tp_links[--tp_cnt]);
-> > +
->
-> see below about proper cleanup
->
-> > +       exit(0);
-> > +}
-> > +
-> >  /* C standard specifies two constants, EXIT_SUCCESS(0) and EXIT_FAILURE(1) */
-> >  #define EXIT_FAIL_MEM  5
+> >  #include "perf-sys.h"
 > >
->
-> [...]
->
+> > -#define MAX_CPUS 128
+> >  static int if_idx;
+> >  static char *if_name;
+> >  static __u32 xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST;
+> > --
+> > 2.25.1
 > >
-> > -static void print_bpf_prog_info(void)
-> > +static void print_bpf_prog_info(struct bpf_object *obj)
-> >  {
-> > -       int i;
-> > +       struct bpf_program *prog;
-> > +       struct bpf_map *map;
-> > +       int i = 0;
-> >
-> >         /* Prog info */
-> > -       printf("Loaded BPF prog have %d bpf program(s)\n", prog_cnt);
-> > -       for (i = 0; i < prog_cnt; i++) {
-> > -               printf(" - prog_fd[%d] = fd(%d)\n", i, prog_fd[i]);
-> > +       printf("Loaded BPF prog have %d bpf program(s)\n", tp_cnt);
-> > +       bpf_object__for_each_program(prog, obj) {
-> > +               printf(" - prog_fd[%d] = fd(%d)\n", i++, bpf_program__fd(prog));
-> >         }
-> >
-> > +       i = 0;
-> >         /* Maps info */
-> > -       printf("Loaded BPF prog have %d map(s)\n", map_data_count);
-> > -       for (i = 0; i < map_data_count; i++) {
-> > -               char *name = map_data[i].name;
-> > -               int fd     = map_data[i].fd;
-> > +       printf("Loaded BPF prog have %d map(s)\n", map_cnt);
-> > +       bpf_object__for_each_map(map, obj) {
-> > +               const char *name = bpf_map__name(map);
-> > +               int fd           = bpf_map__fd(map);
-> >
-> > -               printf(" - map_data[%d] = fd(%d) name:%s\n", i, fd, name);
-> > +               printf(" - map_data[%d] = fd(%d) name:%s\n", i++, fd, name);
->
-> please move out increment into a separate statement, no need to
-> confuse readers unnecessarily
->
-
-I will fix it at the following patch.
-
-> >         }
-> >
-> >         /* Event info */
-> > -       printf("Searching for (max:%d) event file descriptor(s)\n", prog_cnt);
-> > -       for (i = 0; i < prog_cnt; i++) {
-> > -               if (event_fd[i] != -1)
-> > -                       printf(" - event_fd[%d] = fd(%d)\n", i, event_fd[i]);
-> > +       printf("Searching for (max:%d) event file descriptor(s)\n", tp_cnt);
-> > +       for (i = 0; i < tp_cnt; i++) {
-> > +               int fd = bpf_link__fd(tp_links[i]);
-> > +
-> > +               if (fd != -1)
-> > +                       printf(" - event_fd[%d] = fd(%d)\n", i, fd);
-> >         }
-> >  }
-> >
-> >  int main(int argc, char **argv)
-> >  {
->
-> [...]
->
-> > +       obj = bpf_object__open_file(filename, NULL);
-> > +       if (libbpf_get_error(obj)) {
-> > +               printf("ERROR: opening BPF object file failed\n");
-> > +               obj = NULL;
-> >                 return EXIT_FAILURE;
-> >         }
-> > -       if (!prog_fd[0]) {
-> > -               printf("ERROR - load_bpf_file: %s\n", strerror(errno));
-> > +
-> > +       /* load BPF program */
-> > +       if (bpf_object__load(obj)) {
->
-> would be still good to call bpf_object__close(obj) here, this will
-> avoid warnings about memory leaks, if you run this program under ASAN
->
-> > +               printf("ERROR: loading BPF object file failed\n");
-> >                 return EXIT_FAILURE;
-> >         }
-> >
-> > +       for (type = 0; type < NUM_MAP; type++) {
-> > +               map_data[type] =
-> > +                       bpf_object__find_map_by_name(obj, map_type_strings[type]);
-> > +
-> > +               if (libbpf_get_error(map_data[type])) {
-> > +                       printf("ERROR: finding a map in obj file failed\n");
->
-> same about cleanup, goto into single cleanup place would be
-> appropriate throughout this entire function, probably.
->
-
-Jump to single cleanup will be much more intuitive.
-I will update and send the next version of patch right away.
-
-Thank you for your time and effort for the review.
-
-Best,
-Daniel
-
-> > +                       return EXIT_FAILURE;
-> > +               }
-> > +               map_cnt++;
-> > +       }
-> > +
->
-> [...]
