@@ -5,60 +5,60 @@ X-Spam-Level:
 X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A090EC2D0E4
-	for <xdp-newbies@archiver.kernel.org>; Tue, 17 Nov 2020 14:57:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D566EC63697
+	for <xdp-newbies@archiver.kernel.org>; Tue, 17 Nov 2020 14:57:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 525B024198
-	for <xdp-newbies@archiver.kernel.org>; Tue, 17 Nov 2020 14:57:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 76F2F2168B
+	for <xdp-newbies@archiver.kernel.org>; Tue, 17 Nov 2020 14:57:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OSxcENPl"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JCemuPV8"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728786AbgKQO5c (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Tue, 17 Nov 2020 09:57:32 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46086 "EHLO
+        id S1731432AbgKQO5l (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Tue, 17 Nov 2020 09:57:41 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46112 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728735AbgKQO5c (ORCPT
+        with ESMTP id S1725779AbgKQO5l (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 17 Nov 2020 09:57:32 -0500
-Received: from mail-pf1-x441.google.com (mail-pf1-x441.google.com [IPv6:2607:f8b0:4864:20::441])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4985EC0613CF;
-        Tue, 17 Nov 2020 06:57:32 -0800 (PST)
-Received: by mail-pf1-x441.google.com with SMTP id a18so17444419pfl.3;
-        Tue, 17 Nov 2020 06:57:32 -0800 (PST)
+        Tue, 17 Nov 2020 09:57:41 -0500
+Received: from mail-pj1-x1041.google.com (mail-pj1-x1041.google.com [IPv6:2607:f8b0:4864:20::1041])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 63317C0613CF;
+        Tue, 17 Nov 2020 06:57:41 -0800 (PST)
+Received: by mail-pj1-x1041.google.com with SMTP id r9so579467pjl.5;
+        Tue, 17 Nov 2020 06:57:41 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=OCOWn97V912XxX8GvwyAqu/EnuyWY6mSN6tb2siU3Is=;
-        b=OSxcENPlI3DugsDfg4Pf00aX0EhcUrMWDDpyGJ3/NOnnGC9pEZOj5hMnZgzinaH87O
-         6Qb2uI93gcF4fzTtXC76o9r//n1I/kw4zl8SwvCHbPqKwzMXdOryr+zo4C7BYGoOyn11
-         3EPNJ3tlCObGxu5HUJYKL+ocJ+Rec2e/SqKilDrTR0JhZ2n0HSbfqhDKUg0DGJSaO4x5
-         UHFq1kxfj1LooG+GKdTgtR6gf90PWl6LU2yP3t4r+UQ9+tjUE5/WuhEh1Bh81Uj97ELe
-         0CLOBlNGOIscMaITS6JviNI9GzoR/EDiYf7jPDn+1RRE/r6uh86fwYAfuCHlxJlFOsgd
-         8Z9w==
+        bh=hNLmbGtRSRTodwyPLo1Qjw0giVAhsJ8X91yhlKjTtyA=;
+        b=JCemuPV8165vXk40QY+wraWw4UABiltNB054EL56i6i3rzuNNCAWJalm5oxnJtguCq
+         30YTUcVHyJSj62AD5MF85mQaP451fwyNtD+DeODaNFCK2VmNBDZy3GmwvzYStEluFUai
+         iTFlmXPbgdccMk62VpBeVO5ehCZrINgzSeZIrmQPhldPfuI9BE1SBWge/3kxPB0EVGsX
+         1r/hzvXr7o0p4b+imNI5GUSH/UKYn7XQZCk2LDIz6zOQOn+foHfEBX1Eoy+bZuyTcuEG
+         r7M2hTNHkAp11uF5lxiAjccswEA7WGXlAwSn9cGkvXBMx982K9+060JSxv3Z/B6Fgh15
+         G4sg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=OCOWn97V912XxX8GvwyAqu/EnuyWY6mSN6tb2siU3Is=;
-        b=uEu2e3h3OVuQrp9cjZ4CZqiMS4GXDDu1qjZIYTzHWAQHw8znktlTq6qiseSP3YpNz4
-         WIf3hm+tEwftlmNhS1VfU5L+hDFtjzlXX+UVFC2rsyITZEimf+NaM2mnLDYf0Rd2jx+C
-         lKJyydxPHz24z/EVrSMN8kaYUAdKIkoEqD0aib0ouNSAtJmzpV5bTFFv1rQceFsJf4Sf
-         rLvxzvf8uenLd08C9z7QjaW/pcjAlT6B+FkKaNzPfhgp2OWsm6RGUnzfXvYzC3JyaUu6
-         lexh/j9zj3pXfxM5KJ33MCiO0o1JdofovaMihCGeTAo8xKYPXo/rwAbjuWwKRB+r3ian
-         YzgA==
-X-Gm-Message-State: AOAM530hg3B0PgCv4VPINPJANHYopYm9fAN4RZLzimdVyUohVCIn8c+O
-        2TEJNC1W0o0XpewnGV48Vw==
-X-Google-Smtp-Source: ABdhPJyutYPncJHQxU4NWtx2gGJWW1wkrRuiE00cOuwxx8QYboffYeYe21mP8TV9LVgOx6ohuUpNRA==
-X-Received: by 2002:a63:5853:: with SMTP id i19mr3988023pgm.333.1605625051805;
-        Tue, 17 Nov 2020 06:57:31 -0800 (PST)
+        bh=hNLmbGtRSRTodwyPLo1Qjw0giVAhsJ8X91yhlKjTtyA=;
+        b=kqDXVNrfyaPxWtvR9vI+TZukOHAjrWOBqS8jMd/W3Z1vUhwRYDY84EUspXOaYQnRhX
+         q4ylTHEBrn99tl1GFKopp653RlD/fftha8T78/QgIc+RYQ8s3LzT7aenDaQr1JZXdHxE
+         IIEWypaRlcwa71zQqdK/Bna7oYOD/InDepSwc77pwIQQuSVaSQ8BPCiIHkm/r9q01te/
+         ISZ5JqxHoTCvu1Fjh/b6v3aqS4kLIEzOM8Tow8QWlLrdtHBECGCikxlaTn/p0dUiVdUE
+         v8Y+tECOwFCS+jI81fT8LiptsEobNzv9pAuLv4F/10ZIoFt1gLS5bBs7WfOlnJBGzG4x
+         cRDA==
+X-Gm-Message-State: AOAM532vz0jYx07TJKvqJxvR2s8PYeejf+tqAITPRjNekYD11le1VEDS
+        khEEjSsXtCF/AOmAmu2kGg==
+X-Google-Smtp-Source: ABdhPJwKnmz1mHk0MMMNKqOVyeiGhMEjTlEWe2bgl+tWakNPcjafAWytRJXH0gjNBfsNC8Cw9kLGIA==
+X-Received: by 2002:a17:90a:4a15:: with SMTP id e21mr4831216pjh.130.1605625060953;
+        Tue, 17 Nov 2020 06:57:40 -0800 (PST)
 Received: from localhost.localdomain ([182.209.58.45])
-        by smtp.gmail.com with ESMTPSA id q13sm3517981pjq.15.2020.11.17.06.57.27
+        by smtp.gmail.com with ESMTPSA id q13sm3517981pjq.15.2020.11.17.06.57.36
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 17 Nov 2020 06:57:31 -0800 (PST)
+        Tue, 17 Nov 2020 06:57:40 -0800 (PST)
 From:   "Daniel T. Lee" <danieltimlee@gmail.com>
 To:     Daniel Borkmann <daniel@iogearbox.net>,
         Alexei Starovoitov <ast@kernel.org>,
@@ -75,9 +75,9 @@ To:     Daniel Borkmann <daniel@iogearbox.net>,
         John Fastabend <john.fastabend@gmail.com>
 Cc:     bpf@vger.kernel.org, netdev@vger.kernel.org,
         Xdp <xdp-newbies@vger.kernel.org>
-Subject: [PATCH bpf-next 1/9] selftests: bpf: move tracing helpers to trace_helper
-Date:   Tue, 17 Nov 2020 14:56:36 +0000
-Message-Id: <20201117145644.1166255-2-danieltimlee@gmail.com>
+Subject: [PATCH bpf-next 3/9] samples: bpf: refactor test_cgrp2_sock2 program with libbpf
+Date:   Tue, 17 Nov 2020 14:56:38 +0000
+Message-Id: <20201117145644.1166255-4-danieltimlee@gmail.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20201117145644.1166255-1-danieltimlee@gmail.com>
 References: <20201117145644.1166255-1-danieltimlee@gmail.com>
@@ -87,183 +87,197 @@ Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-Under the samples/bpf directory, similar tracing helpers are
-fragmented around. To keep consistent of tracing programs, this commit
-moves the helper and define locations to increase the reuse of each
-helper function.
+This commit refactors the existing cgroup program with libbpf bpf
+loader. The original test_cgrp2_sock2 has keeped the bpf program
+attached to the cgroup hierarchy even after the exit of user program.
+To implement the same functionality with libbpf, this commit uses the
+BPF_LINK_PINNING to pin the link attachment even after it is closed.
+
+Since this uses LINK instead of ATTACH, detach of bpf program from
+cgroup with 'test_cgrp2_sock' is not used anymore.
+
+The code to mount the bpf was added to the .sh file in case the bpff
+was not mounted on /sys/fs/bpf. Additionally, to fix the problem that
+shell script cannot find the binary object from the current path,
+relative path './' has been added in front of binary.
 
 Signed-off-by: Daniel T. Lee <danieltimlee@gmail.com>
-
 ---
- samples/bpf/Makefile                        |  2 +-
- samples/bpf/hbm.c                           | 51 ++++-----------------
- tools/testing/selftests/bpf/trace_helpers.c | 33 ++++++++++++-
- tools/testing/selftests/bpf/trace_helpers.h |  3 ++
- 4 files changed, 45 insertions(+), 44 deletions(-)
+ samples/bpf/Makefile            |  2 +-
+ samples/bpf/test_cgrp2_sock2.c  | 63 ++++++++++++++++++++++++---------
+ samples/bpf/test_cgrp2_sock2.sh | 21 ++++++++---
+ 3 files changed, 64 insertions(+), 22 deletions(-)
 
 diff --git a/samples/bpf/Makefile b/samples/bpf/Makefile
-index aeebf5d12f32..3e83cd5ca1c2 100644
+index 01449d767122..7a643595ac6c 100644
 --- a/samples/bpf/Makefile
 +++ b/samples/bpf/Makefile
-@@ -110,7 +110,7 @@ xdp_fwd-objs := xdp_fwd_user.o
- task_fd_query-objs := bpf_load.o task_fd_query_user.o $(TRACE_HELPERS)
- xdp_sample_pkts-objs := xdp_sample_pkts_user.o $(TRACE_HELPERS)
- ibumad-objs := bpf_load.o ibumad_user.o $(TRACE_HELPERS)
--hbm-objs := bpf_load.o hbm.o $(CGROUP_HELPERS)
-+hbm-objs := bpf_load.o hbm.o $(CGROUP_HELPERS) $(TRACE_HELPERS)
+@@ -82,7 +82,7 @@ test_overhead-objs := bpf_load.o test_overhead_user.o
+ test_cgrp2_array_pin-objs := test_cgrp2_array_pin.o
+ test_cgrp2_attach-objs := test_cgrp2_attach.o
+ test_cgrp2_sock-objs := test_cgrp2_sock.o
+-test_cgrp2_sock2-objs := bpf_load.o test_cgrp2_sock2.o
++test_cgrp2_sock2-objs := test_cgrp2_sock2.o
+ xdp1-objs := xdp1_user.o
+ # reuse xdp1 source intentionally
+ xdp2-objs := xdp1_user.o
+diff --git a/samples/bpf/test_cgrp2_sock2.c b/samples/bpf/test_cgrp2_sock2.c
+index a9277b118c33..518526c7ce16 100644
+--- a/samples/bpf/test_cgrp2_sock2.c
++++ b/samples/bpf/test_cgrp2_sock2.c
+@@ -20,9 +20,9 @@
+ #include <net/if.h>
+ #include <linux/bpf.h>
+ #include <bpf/bpf.h>
++#include <bpf/libbpf.h>
  
- # Tell kbuild to always build the programs
- always-y := $(tprogs-y)
-diff --git a/samples/bpf/hbm.c b/samples/bpf/hbm.c
-index 400e741a56eb..b9f9f771dd81 100644
---- a/samples/bpf/hbm.c
-+++ b/samples/bpf/hbm.c
-@@ -48,6 +48,7 @@
+ #include "bpf_insn.h"
+-#include "bpf_load.h"
  
- #include "bpf_load.h"
- #include "bpf_rlimit.h"
-+#include "trace_helpers.h"
- #include "cgroup_helpers.h"
- #include "hbm.h"
- #include "bpf_util.h"
-@@ -65,51 +66,12 @@ bool no_cn_flag;
- bool edt_flag;
- 
- static void Usage(void);
--static void read_trace_pipe2(void);
- static void do_error(char *msg, bool errno_flag);
- 
--#define DEBUGFS "/sys/kernel/debug/tracing/"
--
- struct bpf_object *obj;
- int bpfprog_fd;
- int cgroup_storage_fd;
- 
--static void read_trace_pipe2(void)
--{
--	int trace_fd;
--	FILE *outf;
--	char *outFname = "hbm_out.log";
--
--	trace_fd = open(DEBUGFS "trace_pipe", O_RDONLY, 0);
--	if (trace_fd < 0) {
--		printf("Error opening trace_pipe\n");
--		return;
--	}
--
--//	Future support of ingress
--//	if (!outFlag)
--//		outFname = "hbm_in.log";
--	outf = fopen(outFname, "w");
--
--	if (outf == NULL)
--		printf("Error creating %s\n", outFname);
--
--	while (1) {
--		static char buf[4097];
--		ssize_t sz;
--
--		sz = read(trace_fd, buf, sizeof(buf) - 1);
--		if (sz > 0) {
--			buf[sz] = 0;
--			puts(buf);
--			if (outf != NULL) {
--				fprintf(outf, "%s\n", buf);
--				fflush(outf);
--			}
--		}
--	}
--}
--
- static void do_error(char *msg, bool errno_flag)
+ static int usage(const char *argv0)
  {
- 	if (errno_flag)
-@@ -392,8 +354,15 @@ static int run_bpf_prog(char *prog, int cg_id)
- 		fclose(fout);
+@@ -32,37 +32,66 @@ static int usage(const char *argv0)
+ 
+ int main(int argc, char **argv)
+ {
+-	int cg_fd, ret, filter_id = 0;
++	int cg_fd, err, ret = EXIT_FAILURE, filter_id = 0, prog_cnt = 0;
++	const char *link_pin_path = "/sys/fs/bpf/test_cgrp2_sock2";
++	struct bpf_link *link = NULL;
++	struct bpf_program *progs[2];
++	struct bpf_program *prog;
++	struct bpf_object *obj;
+ 
+ 	if (argc < 3)
+ 		return usage(argv[0]);
+ 
++	if (argc > 3)
++		filter_id = atoi(argv[3]);
++
+ 	cg_fd = open(argv[1], O_DIRECTORY | O_RDONLY);
+ 	if (cg_fd < 0) {
+ 		printf("Failed to open cgroup path: '%s'\n", strerror(errno));
+-		return EXIT_FAILURE;
++		return ret;
  	}
  
--	if (debugFlag)
--		read_trace_pipe2();
-+	if (debugFlag) {
-+		char *out_fname = "hbm_out.log";
-+		/* Future support of ingress */
-+		// if (!outFlag)
-+		//	out_fname = "hbm_in.log";
-+
-+		read_trace_pipe2(out_fname);
-+	}
-+
- 	return rc;
- err:
- 	rc = 1;
-diff --git a/tools/testing/selftests/bpf/trace_helpers.c b/tools/testing/selftests/bpf/trace_helpers.c
-index 1bbd1d9830c8..b7c184e109e8 100644
---- a/tools/testing/selftests/bpf/trace_helpers.c
-+++ b/tools/testing/selftests/bpf/trace_helpers.c
-@@ -11,8 +11,6 @@
- #include <sys/mman.h>
- #include "trace_helpers.h"
- 
--#define DEBUGFS "/sys/kernel/debug/tracing/"
+-	if (load_bpf_file(argv[2]))
+-		return EXIT_FAILURE;
 -
- #define MAX_SYMS 300000
- static struct ksym syms[MAX_SYMS];
- static int sym_cnt;
-@@ -136,3 +134,34 @@ void read_trace_pipe(void)
- 		}
+-	printf("Output from kernel verifier:\n%s\n-------\n", bpf_log_buf);
++	obj = bpf_object__open_file(argv[2], NULL);
++	if (libbpf_get_error(obj)) {
++		printf("ERROR: opening BPF object file failed\n");
++		return ret;
++	}
+ 
+-	if (argc > 3)
+-		filter_id = atoi(argv[3]);
++	bpf_object__for_each_program(prog, obj) {
++		progs[prog_cnt] = prog;
++		prog_cnt++;
++	}
+ 
+ 	if (filter_id >= prog_cnt) {
+ 		printf("Invalid program id; program not found in file\n");
+-		return EXIT_FAILURE;
++		goto cleanup;
++	}
++
++	/* load BPF program */
++	if (bpf_object__load(obj)) {
++		printf("ERROR: loading BPF object file failed\n");
++		goto cleanup;
  	}
+ 
+-	ret = bpf_prog_attach(prog_fd[filter_id], cg_fd,
+-			      BPF_CGROUP_INET_SOCK_CREATE, 0);
+-	if (ret < 0) {
+-		printf("Failed to attach prog to cgroup: '%s'\n",
+-		       strerror(errno));
+-		return EXIT_FAILURE;
++	link = bpf_program__attach_cgroup(progs[filter_id], cg_fd);
++	if (libbpf_get_error(link)) {
++		printf("ERROR: bpf_program__attach failed\n");
++		link = NULL;
++		goto cleanup;
+ 	}
+ 
+-	return EXIT_SUCCESS;
++	err = bpf_link__pin(link, link_pin_path);
++	if (err < 0) {
++		printf("err : %d\n", err);
++		goto cleanup;
++	}
++
++	ret = EXIT_SUCCESS;
++
++cleanup:
++	if (ret != EXIT_SUCCESS)
++		bpf_link__destroy(link);
++
++	bpf_object__close(obj);
++	return ret;
  }
+diff --git a/samples/bpf/test_cgrp2_sock2.sh b/samples/bpf/test_cgrp2_sock2.sh
+index 0f396a86e0cb..6a3dbe642b2b 100755
+--- a/samples/bpf/test_cgrp2_sock2.sh
++++ b/samples/bpf/test_cgrp2_sock2.sh
+@@ -1,6 +1,9 @@
+ #!/bin/bash
+ # SPDX-License-Identifier: GPL-2.0
+ 
++BPFFS=/sys/fs/bpf
++LINK_PIN=$BPFFS/test_cgrp2_sock2
 +
-+void read_trace_pipe2(char *filename)
-+{
-+	int trace_fd;
-+	FILE *outf;
-+
-+	trace_fd = open(DEBUGFS "trace_pipe", O_RDONLY, 0);
-+	if (trace_fd < 0) {
-+		printf("Error opening trace_pipe\n");
-+		return;
-+	}
-+
-+	outf = fopen(filename, "w");
-+	if (!outf)
-+		printf("Error creating %s\n", filename);
-+
-+	while (1) {
-+		static char buf[4096];
-+		ssize_t sz;
-+
-+		sz = read(trace_fd, buf, sizeof(buf) - 1);
-+		if (sz > 0) {
-+			buf[sz] = 0;
-+			puts(buf);
-+			if (outf) {
-+				fprintf(outf, "%s\n", buf);
-+				fflush(outf);
-+			}
-+		}
-+	}
+ function config_device {
+ 	ip netns add at_ns0
+ 	ip link add veth0 type veth peer name veth0b
+@@ -21,16 +24,22 @@ function config_cgroup {
+ 	echo $$ >> /tmp/cgroupv2/foo/cgroup.procs
+ }
+ 
++function config_bpffs {
++	if mount | grep $BPFFS > /dev/null; then
++		echo "bpffs already mounted"
++	else
++		echo "bpffs not mounted. Mounting..."
++		mount -t bpf none $BPFFS
++	fi
 +}
-diff --git a/tools/testing/selftests/bpf/trace_helpers.h b/tools/testing/selftests/bpf/trace_helpers.h
-index f62fdef9e589..68c23bf55897 100644
---- a/tools/testing/selftests/bpf/trace_helpers.h
-+++ b/tools/testing/selftests/bpf/trace_helpers.h
-@@ -2,6 +2,8 @@
- #ifndef __TRACE_HELPER_H
- #define __TRACE_HELPER_H
  
-+#define DEBUGFS "/sys/kernel/debug/tracing/"
+ function attach_bpf {
+-	test_cgrp2_sock2 /tmp/cgroupv2/foo sock_flags_kern.o $1
++	./test_cgrp2_sock2 /tmp/cgroupv2/foo sock_flags_kern.o $1
+ 	[ $? -ne 0 ] && exit 1
+ }
+ 
+ function cleanup {
+-	if [ -d /tmp/cgroupv2/foo ]; then
+-		test_cgrp2_sock -d /tmp/cgroupv2/foo
+-	fi
++	rm -rf $LINK_PIN
+ 	ip link del veth0b
+ 	ip netns delete at_ns0
+ 	umount /tmp/cgroupv2
+@@ -42,6 +51,7 @@ cleanup 2>/dev/null
+ set -e
+ config_device
+ config_cgroup
++config_bpffs
+ set +e
+ 
+ #
+@@ -62,6 +72,9 @@ if [ $? -eq 0 ]; then
+ 	exit 1
+ fi
+ 
++rm -rf $LINK_PIN
++sleep 1                 # Wait for link detach
 +
- #include <bpf/libbpf.h>
- 
- struct ksym {
-@@ -17,5 +19,6 @@ long ksym_get_addr(const char *name);
- int kallsyms_find(const char *sym, unsigned long long *addr);
- 
- void read_trace_pipe(void);
-+void read_trace_pipe2(char *filename);
- 
- #endif
+ #
+ # Test 2 - fail ping
+ #
 -- 
 2.25.1
 
