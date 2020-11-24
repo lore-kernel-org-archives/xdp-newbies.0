@@ -2,63 +2,63 @@ Return-Path: <xdp-newbies-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD578C63798
-	for <xdp-newbies@archiver.kernel.org>; Tue, 24 Nov 2020 09:03:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DCE2C64E7D
+	for <xdp-newbies@archiver.kernel.org>; Tue, 24 Nov 2020 09:03:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 61CB22076E
-	for <xdp-newbies@archiver.kernel.org>; Tue, 24 Nov 2020 09:03:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D383D2076E
+	for <xdp-newbies@archiver.kernel.org>; Tue, 24 Nov 2020 09:03:52 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dKu27BjE"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FZ5wkOcf"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730979AbgKXJDW (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Tue, 24 Nov 2020 04:03:22 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48766 "EHLO
+        id S1731027AbgKXJDq (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Tue, 24 Nov 2020 04:03:46 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48834 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730963AbgKXJDV (ORCPT
+        with ESMTP id S1731020AbgKXJDo (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 24 Nov 2020 04:03:21 -0500
-Received: from mail-pf1-x442.google.com (mail-pf1-x442.google.com [IPv6:2607:f8b0:4864:20::442])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C059C0613D6;
-        Tue, 24 Nov 2020 01:03:21 -0800 (PST)
-Received: by mail-pf1-x442.google.com with SMTP id n137so7818462pfd.3;
-        Tue, 24 Nov 2020 01:03:21 -0800 (PST)
+        Tue, 24 Nov 2020 04:03:44 -0500
+Received: from mail-pl1-x642.google.com (mail-pl1-x642.google.com [IPv6:2607:f8b0:4864:20::642])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5913AC0617A6;
+        Tue, 24 Nov 2020 01:03:44 -0800 (PST)
+Received: by mail-pl1-x642.google.com with SMTP id s2so10365388plr.9;
+        Tue, 24 Nov 2020 01:03:44 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=wiLd0/TSwe2nuoLJss8waB08tybiqKtSb+1THieScy0=;
-        b=dKu27BjEBhXB/oREyktx+6rQX5UrULhoij+0lIf4zJV4igyu8rF5ItzD2SJF91Lme1
-         CewIye0LpSP8UU4C1ncnwAR5P3GyYmq6xzoDBwrsPzOrJronmxcZW/aeV2QgdWnMlQXV
-         CUgzxioP3IR+fUMk9m7sWiRtL+rNO+GHMZJMn5MNZh6GJlqQNYjo5y78QuyszCCv6CT/
-         Ug5ANkcfUkr5yp0l8NLJOYmDuyRquAHUuUnRkbOY/9aW82A8po/m2fJZE0uozMW6o8xy
-         i45rps3aFebsMreJV29F7cInYkSqsgCassOyqFZZc4DtnYeHukN5Eh7NO2UUa6KCaYDc
-         UoLA==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=Y4w/C+u9mn3PS9LuGNFM8q1NWwoA/E6dAzHcv8xL7lg=;
+        b=FZ5wkOcfMOLqIjyfk+GGcyNEEHS1l/7bkOrqkqb0q1l1Y6RTJgPfCNXMh3mqkG9BL9
+         sol9W18pSf2+q+hQNVni0fR9WCxpZIDMYjgqYkMAfNHP4qGHGy6RhiIK3Iv4CM/qpnaH
+         PLrMkDgvvlt5EPwMHAl0PpGqDmoxK+JqWGJxb4795vxhi0TKFGKosm97/rMGahTLS97w
+         BoNhNPFwGfooB/CKCEw8AkgoQ+iSb3zJKg76tT/PAdB5hWqcrcf/janZ+IPuOelaY9pC
+         DiIC4/ziPfGNyl9DKoWKseyU1zmAacdLvi75+CvvOBkiYLUgDWXHNkTFDqDaZvTR4eNP
+         DeGg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=wiLd0/TSwe2nuoLJss8waB08tybiqKtSb+1THieScy0=;
-        b=CQCufjr++Cl12dpfxdf7TPBy2Mf5BfpVbtzO1HlMeuRtuFG+yFYYDibSOAayrAP7w0
-         mVcp+PIYOBJqoeAK5BnCnFsrt42mLkw5PkPzIOA7DowrrrsXyHTshTAFunmNRHk+HjzH
-         ivap0GQ3YdRbcY7BO+y2fTPQy1vOs3gE8ccFdtzFeRLpD/CW4/cgUeuLSF2rFFcsM/Ix
-         Hdr+yYduOYogv2FMlHDdPuTP3jV+J8fy4MGfDpu9F2gF8kaMb6MT7lIC57TL1GZM5LCo
-         Ev6Rm7pXyoZyN/2eudDR3zvwd3CfCOmYN66RsoAskZlIQDYxldxODNHbHuExsz/R79hO
-         osVQ==
-X-Gm-Message-State: AOAM531pV94mz4+YtvewL5+TrjiMvALCSv8Vr1cPENY33YNgPO3p53Dz
-        ESnA758kksJzD/SgH1aREpQru/hHavkg
-X-Google-Smtp-Source: ABdhPJx/L8pqKN8Hysfiagr9yYREtEj4YyUcM2LdRFuyfHpkYe5/BY53sfyWrPhgKP+8yax+ChtLlg==
-X-Received: by 2002:a63:e:: with SMTP id 14mr2889143pga.253.1606208600851;
-        Tue, 24 Nov 2020 01:03:20 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=Y4w/C+u9mn3PS9LuGNFM8q1NWwoA/E6dAzHcv8xL7lg=;
+        b=EhSWjKkx+Ve8k/MSlLtNMkOClULiHohlMQe9lv4INFz9WNL4dsAUrNQA8C1LkUQT24
+         RQ9RthfEFCTFB24jdzCpRdw7sB4uP3CJ2aHedfOXfUisoS9i/El6je9ZUGplPF1mQaW1
+         WRnsqIJGq+x7AhggATNSxELbrUS4s7GopbIxTfnedSL4SNYI0CzdMm7e8oHgyjv5+jIY
+         7gvUttohy9Q2jl1omap+/Mmjvk6UqnyO7FMJaGi2zupIVrEOsRAaA0PBoj+ztjp9TasK
+         wZ/DSJVUxdJQLcBJKlJwEyuTwC8QM/bhjGcjFXMk7VgHd/sAC5Xi6suT7kNZzFQe9fLu
+         IhOA==
+X-Gm-Message-State: AOAM533yzc9T2fSy+xxwrmEIeB2hAIjM8YMa27YIOOIehw8jpdOcKo9x
+        TWsaavvU50tuWVvYpj2xFg==
+X-Google-Smtp-Source: ABdhPJz2fxe5wTtAa/Nwq9+iT00pAlFKB1rlTywyktjwPkDCK/tilwbKnAErTzg45cSnl8TlWc7+kw==
+X-Received: by 2002:a17:902:ba8b:b029:d7:e6da:cd21 with SMTP id k11-20020a170902ba8bb02900d7e6dacd21mr3115536pls.38.1606208623901;
+        Tue, 24 Nov 2020 01:03:43 -0800 (PST)
 Received: from localhost.localdomain ([182.209.58.45])
-        by smtp.gmail.com with ESMTPSA id n68sm14084345pfn.161.2020.11.24.01.03.16
+        by smtp.gmail.com with ESMTPSA id n68sm14084345pfn.161.2020.11.24.01.03.39
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 24 Nov 2020 01:03:20 -0800 (PST)
+        Tue, 24 Nov 2020 01:03:43 -0800 (PST)
 From:   "Daniel T. Lee" <danieltimlee@gmail.com>
 To:     Daniel Borkmann <daniel@iogearbox.net>,
         Alexei Starovoitov <ast@kernel.org>,
@@ -75,67 +75,183 @@ To:     Daniel Borkmann <daniel@iogearbox.net>,
         John Fastabend <john.fastabend@gmail.com>
 Cc:     bpf@vger.kernel.org, netdev@vger.kernel.org,
         Xdp <xdp-newbies@vger.kernel.org>
-Subject: [PATCH bpf-next v3 0/7] bpf: remove bpf_load loader completely
-Date:   Tue, 24 Nov 2020 09:03:03 +0000
-Message-Id: <20201124090310.24374-1-danieltimlee@gmail.com>
+Subject: [PATCH bpf-next v3 5/7] samples: bpf: refactor test_overhead program with libbpf
+Date:   Tue, 24 Nov 2020 09:03:08 +0000
+Message-Id: <20201124090310.24374-6-danieltimlee@gmail.com>
 X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20201124090310.24374-1-danieltimlee@gmail.com>
+References: <20201124090310.24374-1-danieltimlee@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-Numerous refactoring that rewrites BPF programs written with bpf_load
-to use the libbpf loader was finally completed, resulting in BPF
-programs using bpf_load within the kernel being completely no longer
-present.
+This commit refactors the existing program with libbpf bpf loader.
+Since the kprobe, tracepoint and raw_tracepoint bpf program can be
+attached with single bpf_program__attach() interface, so the
+corresponding function of libbpf is used here.
 
-This patchset refactors remaining bpf programs with libbpf and
-completely removes bpf_load, an outdated bpf loader that is difficult
-to keep up with the latest kernel BPF and causes confusion.
+Rather than specifying the number of cpus inside the code, this commit
+uses the number of available cpus with _SC_NPROCESSORS_ONLN.
 
+Signed-off-by: Daniel T. Lee <danieltimlee@gmail.com>
+Acked-by: Andrii Nakryiko <andrii@kernel.org>
+---
 Changes in v2:
- - drop 'move tracing helpers to trace_helper' patch
- - add link pinning to prevent cleaning up on process exit
- - add static at global variable and remove unused variable
- - change to destroy link even after link__pin()
- - fix return error code on exit
- - merge commit with changing Makefile
+ - add static at global variable and drop {}
+ 
+ samples/bpf/Makefile             |  2 +-
+ samples/bpf/test_overhead_user.c | 82 +++++++++++++++++++++++---------
+ 2 files changed, 60 insertions(+), 24 deletions(-)
 
-Changes in v3:
- - cleanup bpf_link, bpf_object and cgroup fd both on success and error
-
-Daniel T. Lee (7):
-  samples: bpf: refactor hbm program with libbpf
-  samples: bpf: refactor test_cgrp2_sock2 program with libbpf
-  samples: bpf: refactor task_fd_query program with libbpf
-  samples: bpf: refactor ibumad program with libbpf
-  samples: bpf: refactor test_overhead program with libbpf
-  samples: bpf: fix lwt_len_hist reusing previous BPF map
-  samples: bpf: remove bpf_load loader completely
-
- samples/bpf/.gitignore           |   3 +
- samples/bpf/Makefile             |  20 +-
- samples/bpf/bpf_load.c           | 667 -------------------------------
- samples/bpf/bpf_load.h           |  57 ---
- samples/bpf/do_hbm_test.sh       |  32 +-
- samples/bpf/hbm.c                | 111 ++---
- samples/bpf/hbm_kern.h           |   2 +-
- samples/bpf/ibumad_kern.c        |  26 +-
- samples/bpf/ibumad_user.c        |  71 +++-
- samples/bpf/lwt_len_hist.sh      |   2 +
- samples/bpf/task_fd_query_user.c | 101 +++--
- samples/bpf/test_cgrp2_sock2.c   |  61 ++-
- samples/bpf/test_cgrp2_sock2.sh  |  21 +-
- samples/bpf/test_lwt_bpf.sh      |   0
- samples/bpf/test_overhead_user.c |  82 ++--
- samples/bpf/xdp2skb_meta_kern.c  |   2 +-
- 16 files changed, 350 insertions(+), 908 deletions(-)
- delete mode 100644 samples/bpf/bpf_load.c
- delete mode 100644 samples/bpf/bpf_load.h
- mode change 100644 => 100755 samples/bpf/lwt_len_hist.sh
- mode change 100644 => 100755 samples/bpf/test_lwt_bpf.sh
-
+diff --git a/samples/bpf/Makefile b/samples/bpf/Makefile
+index 09a249477554..25380e04897e 100644
+--- a/samples/bpf/Makefile
++++ b/samples/bpf/Makefile
+@@ -78,7 +78,7 @@ lathist-objs := lathist_user.o
+ offwaketime-objs := offwaketime_user.o $(TRACE_HELPERS)
+ spintest-objs := spintest_user.o $(TRACE_HELPERS)
+ map_perf_test-objs := map_perf_test_user.o
+-test_overhead-objs := bpf_load.o test_overhead_user.o
++test_overhead-objs := test_overhead_user.o
+ test_cgrp2_array_pin-objs := test_cgrp2_array_pin.o
+ test_cgrp2_attach-objs := test_cgrp2_attach.o
+ test_cgrp2_sock-objs := test_cgrp2_sock.o
+diff --git a/samples/bpf/test_overhead_user.c b/samples/bpf/test_overhead_user.c
+index 94f74112a20e..819a6fe86f89 100644
+--- a/samples/bpf/test_overhead_user.c
++++ b/samples/bpf/test_overhead_user.c
+@@ -18,10 +18,14 @@
+ #include <time.h>
+ #include <sys/resource.h>
+ #include <bpf/bpf.h>
+-#include "bpf_load.h"
++#include <bpf/libbpf.h>
+ 
+ #define MAX_CNT 1000000
+ 
++static struct bpf_link *links[2];
++static struct bpf_object *obj;
++static int cnt;
++
+ static __u64 time_get_ns(void)
+ {
+ 	struct timespec ts;
+@@ -115,20 +119,54 @@ static void run_perf_test(int tasks, int flags)
+ 	}
+ }
+ 
++static int load_progs(char *filename)
++{
++	struct bpf_program *prog;
++	int err = 0;
++
++	obj = bpf_object__open_file(filename, NULL);
++	err = libbpf_get_error(obj);
++	if (err < 0) {
++		fprintf(stderr, "ERROR: opening BPF object file failed\n");
++		return err;
++	}
++
++	/* load BPF program */
++	err = bpf_object__load(obj);
++	if (err < 0) {
++		fprintf(stderr, "ERROR: loading BPF object file failed\n");
++		return err;
++	}
++
++	bpf_object__for_each_program(prog, obj) {
++		links[cnt] = bpf_program__attach(prog);
++		err = libbpf_get_error(links[cnt]);
++		if (err < 0) {
++			fprintf(stderr, "ERROR: bpf_program__attach failed\n");
++			links[cnt] = NULL;
++			return err;
++		}
++		cnt++;
++	}
++
++	return err;
++}
++
+ static void unload_progs(void)
+ {
+-	close(prog_fd[0]);
+-	close(prog_fd[1]);
+-	close(event_fd[0]);
+-	close(event_fd[1]);
++	while (cnt)
++		bpf_link__destroy(links[--cnt]);
++
++	bpf_object__close(obj);
+ }
+ 
+ int main(int argc, char **argv)
+ {
+ 	struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
+-	char filename[256];
+-	int num_cpu = 8;
++	int num_cpu = sysconf(_SC_NPROCESSORS_ONLN);
+ 	int test_flags = ~0;
++	char filename[256];
++	int err = 0;
+ 
+ 	setrlimit(RLIMIT_MEMLOCK, &r);
+ 
+@@ -145,38 +183,36 @@ int main(int argc, char **argv)
+ 	if (test_flags & 0xC) {
+ 		snprintf(filename, sizeof(filename),
+ 			 "%s_kprobe_kern.o", argv[0]);
+-		if (load_bpf_file(filename)) {
+-			printf("%s", bpf_log_buf);
+-			return 1;
+-		}
++
+ 		printf("w/KPROBE\n");
+-		run_perf_test(num_cpu, test_flags >> 2);
++		err = load_progs(filename);
++		if (!err)
++			run_perf_test(num_cpu, test_flags >> 2);
++
+ 		unload_progs();
+ 	}
+ 
+ 	if (test_flags & 0x30) {
+ 		snprintf(filename, sizeof(filename),
+ 			 "%s_tp_kern.o", argv[0]);
+-		if (load_bpf_file(filename)) {
+-			printf("%s", bpf_log_buf);
+-			return 1;
+-		}
+ 		printf("w/TRACEPOINT\n");
+-		run_perf_test(num_cpu, test_flags >> 4);
++		err = load_progs(filename);
++		if (!err)
++			run_perf_test(num_cpu, test_flags >> 4);
++
+ 		unload_progs();
+ 	}
+ 
+ 	if (test_flags & 0xC0) {
+ 		snprintf(filename, sizeof(filename),
+ 			 "%s_raw_tp_kern.o", argv[0]);
+-		if (load_bpf_file(filename)) {
+-			printf("%s", bpf_log_buf);
+-			return 1;
+-		}
+ 		printf("w/RAW_TRACEPOINT\n");
+-		run_perf_test(num_cpu, test_flags >> 6);
++		err = load_progs(filename);
++		if (!err)
++			run_perf_test(num_cpu, test_flags >> 6);
++
+ 		unload_progs();
+ 	}
+ 
+-	return 0;
++	return err;
+ }
 -- 
 2.25.1
 
