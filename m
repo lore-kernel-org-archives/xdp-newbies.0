@@ -2,119 +2,162 @@ Return-Path: <xdp-newbies-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-7.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_NONE autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4472C432C3
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5ADA2C4332B
 	for <xdp-newbies@archiver.kernel.org>; Wed,  3 Mar 2021 02:01:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B9F8264E6C
+	by mail.kernel.org (Postfix) with ESMTP id 38A1764E6C
 	for <xdp-newbies@archiver.kernel.org>; Wed,  3 Mar 2021 02:01:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232481AbhCCBxb (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Tue, 2 Mar 2021 20:53:31 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39948 "EHLO
+        id S235337AbhCCBv3 (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Tue, 2 Mar 2021 20:51:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53050 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238176AbhCCBgY (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 2 Mar 2021 20:36:24 -0500
-Received: from mail-il1-x12e.google.com (mail-il1-x12e.google.com [IPv6:2607:f8b0:4864:20::12e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 15892C06178B
-        for <xdp-newbies@vger.kernel.org>; Tue,  2 Mar 2021 17:33:46 -0800 (PST)
-Received: by mail-il1-x12e.google.com with SMTP id g9so19897255ilc.3
-        for <xdp-newbies@vger.kernel.org>; Tue, 02 Mar 2021 17:33:46 -0800 (PST)
+        with ESMTP id S1447352AbhCBN3G (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 2 Mar 2021 08:29:06 -0500
+Received: from mail-pj1-x102f.google.com (mail-pj1-x102f.google.com [IPv6:2607:f8b0:4864:20::102f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 32C19C061A2A
+        for <xdp-newbies@vger.kernel.org>; Tue,  2 Mar 2021 05:28:25 -0800 (PST)
+Received: by mail-pj1-x102f.google.com with SMTP id c19so1934963pjq.3
+        for <xdp-newbies@vger.kernel.org>; Tue, 02 Mar 2021 05:28:25 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc:content-transfer-encoding;
-        bh=jG/l/GjC2trJKV6T6GkZHV/70MXLMmBwWWaLdYH3iSo=;
-        b=fcHr9tFcTiU0SwHHEznl4CoqvaRP1VQXBWql778MWqlA8WK8NhljrwM5tFKy+fwddc
-         KpupKZM6Q+QTS4P7jc+sFdRIhJnMCucSY+pPqmPU/uxKu6V8LDyKPBhB2/bKiOzw9ifs
-         vBFk/C9mHWwhO81hHi+iYHpsRt6E7Y5UvfwdFIcN6QpvRVbiTuHAyBS+AOuhfX/LNN8b
-         2KPxce3UsgtmA7KLNoLNsPBJO11T2xG32jFwddo8vfBWAbyKnTDhsShqdpaSfPzzVH3M
-         X3GHa0XaNhBfNcLH3EfyMlB3ajTHYsOW1ZGVDOzISL48B1qm8YDEIrHJd6n+K/AzvKhm
-         t7iA==
+         :cc;
+        bh=uTl1w+P56sPYXDsVtU19vdFxI4XW+z1iHre4Dl3jxHo=;
+        b=drCnH/DbpeCaKQtf7eI8OIQeJIeBfQVf336wt98Bnnt1ujCvbowYEfGxeHduWXmlNt
+         aNwDDGK+u/EoZlQe5vR6xOdtSqBQP4DAT/aUEp8aRarIyT5gaEKzGXIPoOEEEAb2zXlq
+         JspAmwm6oEHokROorEQcB3K4xUk1UjW2kjWV50bE/amYTyvu0afBFr6smEXW5pl4XxzQ
+         lQdgtcsi5WTfOMdVxlYt/IgrjibdMuG3XZn7qoqmOof5cpvoYCy9ogooVW1iHGIzPn/f
+         KsPNk744ASuC8tx7xgrINVw79mzYCVIpvtWQ44TaVNqQ1Gq7bJHRjqLnbPAHst7aQYrF
+         tF3g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc:content-transfer-encoding;
-        bh=jG/l/GjC2trJKV6T6GkZHV/70MXLMmBwWWaLdYH3iSo=;
-        b=pGyXlt6LrfWXjtMU33s2k/BT1WZHZy76nCltYV7GJn3ExDXuFSo7K5mU44jBSf/qOy
-         mI8mmXYei1UQqvfiXk1T7HaDS99azvqqZmNKmT6cqZ6kNn/m9k+foBE6eJEnmiBwjwaI
-         IUo1XNgCV0IGHvle9/frMm76FRLomGhoW4gLZhWE+dJPFK3J0GeEWDF3ryKfLSNn0jya
-         79z9+ePYSsiJo/8oAw+i4oJAL2q5KcgHtNwgBuuWrEmbLZdoNkAHAkqV1lZmcyX4zL19
-         sIUOL3JPcfWPw+8OV1knEzcUPpdm3VNZpyR1V3kIYtTJryETrduTv8z0kU3LGmq3sg4T
-         tpeg==
-X-Gm-Message-State: AOAM530T19dDe0r3nwhwdwQzmQUmkeaYRXCo1hqYhqWpF86KM9KLXByx
-        7Np3nBtq0Enu096QsRnNSzNpcB1Js40pkuNBSfTc4DM53Og=
-X-Google-Smtp-Source: ABdhPJxYW23oyjeHKdPku40nMDKx9bAfTeeDN34EDkb/RXLUS4z7CqHm0bTsKh0W62ZmVsISG29fYgc/uU1zmo0LXhg=
-X-Received: by 2002:a05:6e02:f06:: with SMTP id x6mr18635645ilj.287.1614735225504;
- Tue, 02 Mar 2021 17:33:45 -0800 (PST)
+         :message-id:subject:to:cc;
+        bh=uTl1w+P56sPYXDsVtU19vdFxI4XW+z1iHre4Dl3jxHo=;
+        b=Pj1i3vTprRydoZM54nbZfWwd1TyVHv2Lml/RQ/FFC1I/3wswZxxnogXLl1DG5AW32A
+         BhF8NgD6nXX/H5gRI84BpQSUOlyazTktT3LkyuSI6RxMlsajrue9pn8vCryS5p6iTQzs
+         ExKLgrmB6gVmJQ1FPfPu7ciibmQdhL1DZg5KmEfaJshb8JUaTb9Rtfq7ceSmJA4FOpLa
+         g0CispnkiVhSCd0j14mAa3wXdF5AQC6ikETCrlEAfZHo0o8q9c0ZBewfaQS3P3bJ7OPe
+         mFdSmWZH+UnPLdwpOeZreB69SAcWiuZgEBWby66Oa86VR0+jTltiRneknDoYUcJXPNLt
+         +E7w==
+X-Gm-Message-State: AOAM530xq7jekL5WiLKtU+K31UuEkpTyLskyEcQfG+ijbrOt7jxMF9jG
+        5PnG5UKOhf+7VYXPGsu5lLuarpqCoeOJrJUSBq4zzMoV8ao=
+X-Google-Smtp-Source: ABdhPJysug/880qxAoUu62Dcbxf66Sry1jQi4RX30l9WFwDou9kLwdkZb1pW3PxrfeQnIs586TKvr69p+GQ9euE0MPk=
+X-Received: by 2002:a17:90a:ce92:: with SMTP id g18mr4560042pju.52.1614691704735;
+ Tue, 02 Mar 2021 05:28:24 -0800 (PST)
 MIME-Version: 1.0
-References: <CADutbzUJrgLQvhyd7EGd2EQSJv13rQkCHFpfMJwJkAtYhGLtdw@mail.gmail.com>
- <87pn0jvswj.fsf@toke.dk> <CAH3MdRUSKRNgRphaVGM3sXuUgPAWv2hZo_G7FBMANa58qO7G4A@mail.gmail.com>
- <CADutbzWo9KO9TBcR4HpmuBBB1DFLSAGte3d_wASFFJpTWFitmQ@mail.gmail.com>
-In-Reply-To: <CADutbzWo9KO9TBcR4HpmuBBB1DFLSAGte3d_wASFFJpTWFitmQ@mail.gmail.com>
-From:   Y Song <ys114321@gmail.com>
-Date:   Tue, 2 Mar 2021 17:33:09 -0800
-Message-ID: <CAH3MdRVpX2Npern-s+ZnR9YW-7BRNm_cmv6xAoHMY2w2Tctx5w@mail.gmail.com>
-Subject: Re: Query on eBPF Map iterator in Kernel space
-To:     Shwetha Vittal <cs19resch01001@iith.ac.in>
-Cc:     =?UTF-8?B?VG9rZSBIw7hpbGFuZC1Kw7hyZ2Vuc2Vu?= <toke@redhat.com>,
-        Xdp <xdp-newbies@vger.kernel.org>
+References: <acb3dbc2-c725-d977-8441-15e06acb27cb@gflclan.com>
+In-Reply-To: <acb3dbc2-c725-d977-8441-15e06acb27cb@gflclan.com>
+From:   Srivats P <pstavirs@gmail.com>
+Date:   Tue, 2 Mar 2021 18:58:12 +0530
+Message-ID: <CANzUK5-_n_2kg0mAFpDFU8+z_Lp5ErhUq_CczyXhVnsK+4RgfA@mail.gmail.com>
+Subject: Re: Putting Into Account Packet End (ctx->data_end)
+To:     Christian Deacon <gamemann@gflclan.com>
+Cc:     xdp-newbies@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-On Tue, Mar 2, 2021 at 4:55 PM Shwetha Vittal <cs19resch01001@iith.ac.in> w=
-rote:
+On Mon, Mar 1, 2021 at 9:40 PM Christian Deacon <gamemann@gflclan.com> wrote:
 >
-> Sure thanks. I have created a hashmap. I will try with the new
-> proposed API  long bpf_for_each_map_elem(struct bpf_map *map, void
-> *callback_fn, void *callback_ctx, u64 flags) from bpf-next repository.
+> Hey everyone,
+>
+> I wasn't sure if this belonged on the BPF mailing list or XDP Newbies.
+> However, I figured I'd send it to the XDP Newbies list first since the
+> project I'm making involves XDP.
+>
+> In my project, I'm trying to create a pointer that puts in account the
+> ctx->data_end pointer. The new pointer is an unsigned 32-bit integer
+> that is suppose to represent an IPv4 address. Here's an example of the code.
+>
+> ```
+> void *data_end = (void *)(long)ctx->data_end;
+>
+> //uint32_t *icmpdata = data_end - sizeof(uint32_t);
+> uint32_t *icmpdata = data_end;
+> icmpdata -= sizeof(uint32_t);
+>
+> if (icmpdata + sizeof(uint32_t) > (uint32_t *)data_end)
+> {
+>      return XDP_DROP;
+> }
+> ```
+>
+> I'm trying to replace the last four bytes of the packet with this IPv4
+> address. When I do this, I receive the following BPF verifier error when
+> running the XDP program.
+>
+> ```
+> R7 invalid mem access 'pkt_end'
+> processed 909 insns (limit 100000000) max_states_per_insn 3 total_states
+> 30 peak_states 30 mark_read 25
+> ```
+>
+> To my understanding, this is due to accessing the packet end (data_end).
+> However, I'm curious why this is prohibited if we're trying to go back
+> four bytes into memory.
+>
+> I've also tried calculating the length of the packet and using ctx->data
+> like the following.
+>
+> ```
+> void *data = (void *)(long)ctx->data;
+>
+> unsigned int len = (ctx->data_end - ctx->data);
+>
+> uint32_t *icmpdata = data + len;
+> icmpdata -= sizeof(uint32_t);
+>
+> if (icmpdata + sizeof(uint32_t) > (uint32_t *)data_end)
+> {
+>      return XDP_DROP;
+> }
+> ```
+>
+> However, this states the offset is outside of the packet.
+>
+> ```
+> invalid access to packet, off=-16 size=4, R2(id=56,off=-16,r=0)
+> R2 offset is outside of the packet
+> processed 931 insns (limit 100000000) max_states_per_insn 3 total_states
+> 29 peak_states 29 mark_read 24
+> ```
+>
+> I'm sure there is something I'm doing wrong with the check. With that
+> said, I believe I found the verifier check it's running into below.
+>
+> https://github.com/torvalds/linux/blob/master/kernel/bpf/verifier.c#L2882
+>
+> It looks like the `mem_size` argument is 0 and offset is below 0 which
+> is causing it to fail. I'm not sure why, but I'd assume it's because the
+> verifier believes `len` could be negative. Though, I tried adding checks
+> for `len` and ran into the same issue.
+>
+> The XDP project I'm working on is a basic layer 3/4 forwarding program
+> that does source port mapping when forwarding the packets. I have it
+> working for TCP/UDP packets. However, for ICMP, I have nothing to keep
+> track of within the headers. Therefore, I'm trying to add four bytes to
+> the packet and appending the client's IPv4 address to the end of the
+> packet before forwarding. When the packet comes back, I parse the last
+> four bytes of the packet which is suppose to indicate the client IP
+> address and remove the last four bytes of the packet. Below is the
+> source code at the moment.
+>
+> https://github.com/gamemann/XDP-Forwarding/blob/master/src/xdp_prog.c#L181
+>
+> I hope this is enough information, but if isn't, please let me know. I
+> also apologize if this is something silly I'm missing/not understanding.
+>
+> Thank you for your time!
+>
 
-Great. Let us know if you hit any issues or have any suggestions. Thanks!
+See https://lore.kernel.org/bpf/CANzUK5-g9wLiwUF88em4uVzMja_aR4xj9yzMS_ZObNKjvX6C6g@mail.gmail.com/
 
->
-> Thanks
-> Shwetha
->
-> On Tue, Mar 2, 2021 at 11:55 AM Y Song <ys114321@gmail.com> wrote:
-> >
-> > On Mon, Mar 1, 2021 at 6:44 AM Toke H=C3=B8iland-J=C3=B8rgensen <toke@r=
-edhat.com> wrote:
-> > >
-> > > Shwetha Vittal <cs19resch01001@iith.ac.in> writes:
-> > >
-> > > > Hi,
-> > > >
-> > > > Is there any way to iterate through eBPF Map elements in kernel spa=
-ce.
-> > > > I know that there is one at user space bpf_map_get_next_key(). But =
-it
-> > > > doesn't work when tried in kernel space. I have a requirement to fi=
-nd
-> > > > the record in the eBPF map which has the least value in kernel spac=
-e
-> > > > and pick it for further packet processing and therefore need to
-> > > > iterate through eBF Map .
-> > >
-> > > There will be soon:
-> > > https://lore.kernel.org/bpf/20210226204920.3884074-1-yhs@fb.com/
-> >
-> > What kind of maps are you trying to iterate? The above patch set
-> > supports hash and array maps. Also, the above patch set has been
-> > merged into bpf-next repo. Feel free to experiment with it!
-> >
-> > >
-> > > -Toke
-> > >
->
-> --
->
->
-> Disclaimer:- This footer text is to convey that this email is sent by one
-> of the users of IITH. So, do not mark it as SPAM.
+Srivats
