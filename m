@@ -2,162 +2,119 @@ Return-Path: <xdp-newbies-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIM_INVALID,
-	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0B6CC43333
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E4472C432C3
 	for <xdp-newbies@archiver.kernel.org>; Wed,  3 Mar 2021 02:01:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8A82464E75
+	by mail.kernel.org (Postfix) with ESMTP id B9F8264E6C
 	for <xdp-newbies@archiver.kernel.org>; Wed,  3 Mar 2021 02:01:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233648AbhCCBwK (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Tue, 2 Mar 2021 20:52:10 -0500
-Received: from mail-109-mta206.mxroute.com ([136.175.109.206]:34193 "EHLO
-        mail-109-mta206.mxroute.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1839099AbhCBQFf (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 2 Mar 2021 11:05:35 -0500
-Received: from filter004.mxroute.com ([149.28.56.236] filter004.mxroute.com)
- (Authenticated sender: mN4UYu2MZsgR)
- by mail-109-mta206.mxroute.com (ZoneMTA) with ESMTPSA id 177f3a0e1db00008a7.001
- for <xdp-newbies@vger.kernel.org>
- (version=TLSv1/SSLv3 cipher=ECDHE-RSA-AES128-GCM-SHA256);
- Tue, 02 Mar 2021 15:49:03 +0000
-X-Zone-Loop: df8840353c02454995cde2590934712ed02eac946e0d
-X-Originating-IP: [149.28.56.236]
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=gflclan.com
-        ; s=default; h=Content-Transfer-Encoding:Content-Type:In-Reply-To:
-        MIME-Version:Date:Message-ID:From:References:Cc:To:Subject:Sender:Reply-To:
-        Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
-        Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:
-        List-Subscribe:List-Post:List-Owner:List-Archive;
-        bh=USrysK96mKgKzPqe89cN5xbhbyUJstl0zssJEJ769ZU=; b=Jkzvj21FAa4LouTyKD8JTW7nTT
-        8ytTZO4ILWsjdoziU1K/PoVLOcud7CEQueKzUWM6I4hwl6Hq2LqY14GRwTrHN97+E0gy4Lj7hVjtv
-        XVYFBIuhb4kJ0b4Vfm6il+3b0KVCmPQwlIl1ExPp93wIItLr9yzpNJtmwAS4xj6VKQbaiJ4jnpTLQ
-        QFWWopNVsqAa4+90PXjTiNXJukG4hygwWwKeHnLulPZPMcBoO65lNg08uUIeR422oSQLhd0oXlAFa
-        YXmwDk5gqFNUNPB7DZuNYtl7GXswiUHkI6Kv1AjTcfGYeE7/az4fY8X6CcBs9wVldseneJGKhn98S
-        xZQCifig==;
-Subject: Re: Putting Into Account Packet End (ctx->data_end)
-To:     Srivats P <pstavirs@gmail.com>
-Cc:     xdp-newbies@vger.kernel.org
-References: <acb3dbc2-c725-d977-8441-15e06acb27cb@gflclan.com>
- <CANzUK5-_n_2kg0mAFpDFU8+z_Lp5ErhUq_CczyXhVnsK+4RgfA@mail.gmail.com>
-From:   Christian Deacon <gamemann@gflclan.com>
-Message-ID: <906b7091-123b-76cc-6951-19ccbd96e812@gflclan.com>
-Date:   Tue, 2 Mar 2021 09:49:00 -0600
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.7.1
+        id S232481AbhCCBxb (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Tue, 2 Mar 2021 20:53:31 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39948 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S238176AbhCCBgY (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Tue, 2 Mar 2021 20:36:24 -0500
+Received: from mail-il1-x12e.google.com (mail-il1-x12e.google.com [IPv6:2607:f8b0:4864:20::12e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 15892C06178B
+        for <xdp-newbies@vger.kernel.org>; Tue,  2 Mar 2021 17:33:46 -0800 (PST)
+Received: by mail-il1-x12e.google.com with SMTP id g9so19897255ilc.3
+        for <xdp-newbies@vger.kernel.org>; Tue, 02 Mar 2021 17:33:46 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=jG/l/GjC2trJKV6T6GkZHV/70MXLMmBwWWaLdYH3iSo=;
+        b=fcHr9tFcTiU0SwHHEznl4CoqvaRP1VQXBWql778MWqlA8WK8NhljrwM5tFKy+fwddc
+         KpupKZM6Q+QTS4P7jc+sFdRIhJnMCucSY+pPqmPU/uxKu6V8LDyKPBhB2/bKiOzw9ifs
+         vBFk/C9mHWwhO81hHi+iYHpsRt6E7Y5UvfwdFIcN6QpvRVbiTuHAyBS+AOuhfX/LNN8b
+         2KPxce3UsgtmA7KLNoLNsPBJO11T2xG32jFwddo8vfBWAbyKnTDhsShqdpaSfPzzVH3M
+         X3GHa0XaNhBfNcLH3EfyMlB3ajTHYsOW1ZGVDOzISL48B1qm8YDEIrHJd6n+K/AzvKhm
+         t7iA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=jG/l/GjC2trJKV6T6GkZHV/70MXLMmBwWWaLdYH3iSo=;
+        b=pGyXlt6LrfWXjtMU33s2k/BT1WZHZy76nCltYV7GJn3ExDXuFSo7K5mU44jBSf/qOy
+         mI8mmXYei1UQqvfiXk1T7HaDS99azvqqZmNKmT6cqZ6kNn/m9k+foBE6eJEnmiBwjwaI
+         IUo1XNgCV0IGHvle9/frMm76FRLomGhoW4gLZhWE+dJPFK3J0GeEWDF3ryKfLSNn0jya
+         79z9+ePYSsiJo/8oAw+i4oJAL2q5KcgHtNwgBuuWrEmbLZdoNkAHAkqV1lZmcyX4zL19
+         sIUOL3JPcfWPw+8OV1knEzcUPpdm3VNZpyR1V3kIYtTJryETrduTv8z0kU3LGmq3sg4T
+         tpeg==
+X-Gm-Message-State: AOAM530T19dDe0r3nwhwdwQzmQUmkeaYRXCo1hqYhqWpF86KM9KLXByx
+        7Np3nBtq0Enu096QsRnNSzNpcB1Js40pkuNBSfTc4DM53Og=
+X-Google-Smtp-Source: ABdhPJxYW23oyjeHKdPku40nMDKx9bAfTeeDN34EDkb/RXLUS4z7CqHm0bTsKh0W62ZmVsISG29fYgc/uU1zmo0LXhg=
+X-Received: by 2002:a05:6e02:f06:: with SMTP id x6mr18635645ilj.287.1614735225504;
+ Tue, 02 Mar 2021 17:33:45 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <CANzUK5-_n_2kg0mAFpDFU8+z_Lp5ErhUq_CczyXhVnsK+4RgfA@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Language: en-US
-X-AuthUser: gamemann@gflclan.com
+References: <CADutbzUJrgLQvhyd7EGd2EQSJv13rQkCHFpfMJwJkAtYhGLtdw@mail.gmail.com>
+ <87pn0jvswj.fsf@toke.dk> <CAH3MdRUSKRNgRphaVGM3sXuUgPAWv2hZo_G7FBMANa58qO7G4A@mail.gmail.com>
+ <CADutbzWo9KO9TBcR4HpmuBBB1DFLSAGte3d_wASFFJpTWFitmQ@mail.gmail.com>
+In-Reply-To: <CADutbzWo9KO9TBcR4HpmuBBB1DFLSAGte3d_wASFFJpTWFitmQ@mail.gmail.com>
+From:   Y Song <ys114321@gmail.com>
+Date:   Tue, 2 Mar 2021 17:33:09 -0800
+Message-ID: <CAH3MdRVpX2Npern-s+ZnR9YW-7BRNm_cmv6xAoHMY2w2Tctx5w@mail.gmail.com>
+Subject: Re: Query on eBPF Map iterator in Kernel space
+To:     Shwetha Vittal <cs19resch01001@iith.ac.in>
+Cc:     =?UTF-8?B?VG9rZSBIw7hpbGFuZC1Kw7hyZ2Vuc2Vu?= <toke@redhat.com>,
+        Xdp <xdp-newbies@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-Hey Srivats,
-
-
-This works and thank you!
-
-
-On 3/2/2021 7:28 AM, Srivats P wrote:
-> On Mon, Mar 1, 2021 at 9:40 PM Christian Deacon <gamemann@gflclan.com> wrote:
->> Hey everyone,
->>
->> I wasn't sure if this belonged on the BPF mailing list or XDP Newbies.
->> However, I figured I'd send it to the XDP Newbies list first since the
->> project I'm making involves XDP.
->>
->> In my project, I'm trying to create a pointer that puts in account the
->> ctx->data_end pointer. The new pointer is an unsigned 32-bit integer
->> that is suppose to represent an IPv4 address. Here's an example of the code.
->>
->> ```
->> void *data_end = (void *)(long)ctx->data_end;
->>
->> //uint32_t *icmpdata = data_end - sizeof(uint32_t);
->> uint32_t *icmpdata = data_end;
->> icmpdata -= sizeof(uint32_t);
->>
->> if (icmpdata + sizeof(uint32_t) > (uint32_t *)data_end)
->> {
->>       return XDP_DROP;
->> }
->> ```
->>
->> I'm trying to replace the last four bytes of the packet with this IPv4
->> address. When I do this, I receive the following BPF verifier error when
->> running the XDP program.
->>
->> ```
->> R7 invalid mem access 'pkt_end'
->> processed 909 insns (limit 100000000) max_states_per_insn 3 total_states
->> 30 peak_states 30 mark_read 25
->> ```
->>
->> To my understanding, this is due to accessing the packet end (data_end).
->> However, I'm curious why this is prohibited if we're trying to go back
->> four bytes into memory.
->>
->> I've also tried calculating the length of the packet and using ctx->data
->> like the following.
->>
->> ```
->> void *data = (void *)(long)ctx->data;
->>
->> unsigned int len = (ctx->data_end - ctx->data);
->>
->> uint32_t *icmpdata = data + len;
->> icmpdata -= sizeof(uint32_t);
->>
->> if (icmpdata + sizeof(uint32_t) > (uint32_t *)data_end)
->> {
->>       return XDP_DROP;
->> }
->> ```
->>
->> However, this states the offset is outside of the packet.
->>
->> ```
->> invalid access to packet, off=-16 size=4, R2(id=56,off=-16,r=0)
->> R2 offset is outside of the packet
->> processed 931 insns (limit 100000000) max_states_per_insn 3 total_states
->> 29 peak_states 29 mark_read 24
->> ```
->>
->> I'm sure there is something I'm doing wrong with the check. With that
->> said, I believe I found the verifier check it's running into below.
->>
->> https://github.com/torvalds/linux/blob/master/kernel/bpf/verifier.c#L2882
->>
->> It looks like the `mem_size` argument is 0 and offset is below 0 which
->> is causing it to fail. I'm not sure why, but I'd assume it's because the
->> verifier believes `len` could be negative. Though, I tried adding checks
->> for `len` and ran into the same issue.
->>
->> The XDP project I'm working on is a basic layer 3/4 forwarding program
->> that does source port mapping when forwarding the packets. I have it
->> working for TCP/UDP packets. However, for ICMP, I have nothing to keep
->> track of within the headers. Therefore, I'm trying to add four bytes to
->> the packet and appending the client's IPv4 address to the end of the
->> packet before forwarding. When the packet comes back, I parse the last
->> four bytes of the packet which is suppose to indicate the client IP
->> address and remove the last four bytes of the packet. Below is the
->> source code at the moment.
->>
->> https://github.com/gamemann/XDP-Forwarding/blob/master/src/xdp_prog.c#L181
->>
->> I hope this is enough information, but if isn't, please let me know. I
->> also apologize if this is something silly I'm missing/not understanding.
->>
->> Thank you for your time!
->>
-> See https://lore.kernel.org/bpf/CANzUK5-g9wLiwUF88em4uVzMja_aR4xj9yzMS_ZObNKjvX6C6g@mail.gmail.com/
+On Tue, Mar 2, 2021 at 4:55 PM Shwetha Vittal <cs19resch01001@iith.ac.in> w=
+rote:
 >
-> Srivats
+> Sure thanks. I have created a hashmap. I will try with the new
+> proposed API  long bpf_for_each_map_elem(struct bpf_map *map, void
+> *callback_fn, void *callback_ctx, u64 flags) from bpf-next repository.
+
+Great. Let us know if you hit any issues or have any suggestions. Thanks!
+
+>
+> Thanks
+> Shwetha
+>
+> On Tue, Mar 2, 2021 at 11:55 AM Y Song <ys114321@gmail.com> wrote:
+> >
+> > On Mon, Mar 1, 2021 at 6:44 AM Toke H=C3=B8iland-J=C3=B8rgensen <toke@r=
+edhat.com> wrote:
+> > >
+> > > Shwetha Vittal <cs19resch01001@iith.ac.in> writes:
+> > >
+> > > > Hi,
+> > > >
+> > > > Is there any way to iterate through eBPF Map elements in kernel spa=
+ce.
+> > > > I know that there is one at user space bpf_map_get_next_key(). But =
+it
+> > > > doesn't work when tried in kernel space. I have a requirement to fi=
+nd
+> > > > the record in the eBPF map which has the least value in kernel spac=
+e
+> > > > and pick it for further packet processing and therefore need to
+> > > > iterate through eBF Map .
+> > >
+> > > There will be soon:
+> > > https://lore.kernel.org/bpf/20210226204920.3884074-1-yhs@fb.com/
+> >
+> > What kind of maps are you trying to iterate? The above patch set
+> > supports hash and array maps. Also, the above patch set has been
+> > merged into bpf-next repo. Feel free to experiment with it!
+> >
+> > >
+> > > -Toke
+> > >
+>
+> --
+>
+>
+> Disclaimer:- This footer text is to convey that this email is sent by one
+> of the users of IITH. So, do not mark it as SPAM.
