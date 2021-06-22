@@ -2,101 +2,153 @@ Return-Path: <xdp-newbies-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.0 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_2 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 28E1CC2B9F4
-	for <xdp-newbies@archiver.kernel.org>; Tue, 22 Jun 2021 15:36:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C031C2B9F4
+	for <xdp-newbies@archiver.kernel.org>; Tue, 22 Jun 2021 20:22:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 09ED06100A
-	for <xdp-newbies@archiver.kernel.org>; Tue, 22 Jun 2021 15:36:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 153F461370
+	for <xdp-newbies@archiver.kernel.org>; Tue, 22 Jun 2021 20:22:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231987AbhFVPiZ (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Tue, 22 Jun 2021 11:38:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33162 "EHLO
+        id S230232AbhFVUYj (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Tue, 22 Jun 2021 16:24:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42074 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231964AbhFVPiX (ORCPT
+        with ESMTP id S230032AbhFVUYi (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 22 Jun 2021 11:38:23 -0400
-Received: from smtp1.tecnico.ulisboa.pt (smtp1.tecnico.ulisboa.pt [IPv6:2001:690:2100:1::15])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8212CC061574
-        for <xdp-newbies@vger.kernel.org>; Tue, 22 Jun 2021 08:36:07 -0700 (PDT)
-Received: from localhost (localhost.localdomain [127.0.0.1])
-        by smtp1.tecnico.ulisboa.pt (Postfix) with ESMTP id 53E286008826;
-        Tue, 22 Jun 2021 16:36:02 +0100 (WEST)
-X-Virus-Scanned: by amavisd-new-2.11.0 (20160426) (Debian) at
-        tecnico.ulisboa.pt
-Received: from smtp1.tecnico.ulisboa.pt ([127.0.0.1])
-        by localhost (smtp1.tecnico.ulisboa.pt [127.0.0.1]) (amavisd-new, port 10025)
-        with LMTP id WWtFVaXJccYv; Tue, 22 Jun 2021 16:35:59 +0100 (WEST)
-Received: from mail1.tecnico.ulisboa.pt (mail1.ist.utl.pt [193.136.128.10])
-        by smtp1.tecnico.ulisboa.pt (Postfix) with ESMTPS id A369D600881B;
-        Tue, 22 Jun 2021 16:35:59 +0100 (WEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tecnico.ulisboa.pt;
-        s=mail; t=1624376159;
-        bh=dE9UvCoZAlCrR5FFauR+OEeeongAWMURVc958VgevVc=;
-        h=Date:From:To:Cc:Subject:In-Reply-To:References;
-        b=ZMewrRScotoFAbm2WZFdNQWmnG/EStQ5pCC7G2m/t+ypNNduPLpGxQrB5OI1rZn32
-         jPrhECCL9b5j7GKrV58WAplUXPk6AtouqmkHbnbHCf6Ry4bu/YzM/gvVOU9xSL85yg
-         6xUzs8RGm0A6OeKuAbXZ3B1qcjMTdD6wOn+u0hkc=
-Received: from webmail.tecnico.ulisboa.pt (webmail3.tecnico.ulisboa.pt [IPv6:2001:690:2100:1::912f:b135])
-        (Authenticated sender: ist426067)
-        by mail1.tecnico.ulisboa.pt (Postfix) with ESMTPSA id 6825D36006E;
-        Tue, 22 Jun 2021 16:35:59 +0100 (WEST)
-Received: from a79-168-76-74.cpe.netcabo.pt ([79.168.76.74])
- via vs1.ist.utl.pt ([2001:690:2100:1::33])
- by webmail.tecnico.ulisboa.pt
- with HTTP (HTTP/1.1 POST); Tue, 22 Jun 2021 16:35:59 +0100
+        Tue, 22 Jun 2021 16:24:38 -0400
+X-Greylist: delayed 68048 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 22 Jun 2021 13:22:21 PDT
+Received: from telegrapho.inexo.com.br (unknown [IPv6:2001:12c4:f0da:5e:216:3eff:feff:56a4])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 1E7D0C061574
+        for <xdp-newbies@vger.kernel.org>; Tue, 22 Jun 2021 13:22:21 -0700 (PDT)
+Received: by telegrapho.inexo.com.br (Postfix, from userid 1001)
+        id 69D316690B7F; Tue, 22 Jun 2021 17:22:17 -0300 (-03)
+DKIM-Filter: OpenDKIM Filter v2.11.0 telegrapho.inexo.com.br 69D316690B7F
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=inexo.com.br;
+        s=mail; t=1624393337;
+        bh=oRUub3NDkCqZvDbSjpJhHjMUD3BWt6ENVAlHKo/xZF4=;
+        h=Date:From:To:Subject:From;
+        b=OCrRbAbTKQ1eNE9EaDEi3jS0qZG+RX1aIhueu8DHgH1PluhO08MDDQrjqoSme+gaD
+         PS78XwC5BAN51uQnBapba2wEO2l3e78mGESBdk8OjqVUdB7ajCpEw2TgKsJehyZEEw
+         TcTBPjAG9CqUvTJLnbz9TJOlMKE1XupFuXa8aGYr8YsoyJb0z3JLkG9rj+3wuGLSOO
+         2t4wEIpwOuooLhCJUd878jnX6HV25WcBrubRm7LXfkDJSrV94OuYhDQTu6+G9c30dm
+         6O8D8sW8YMPsBZ+Fsk5ozeuq35n02ohCW/ndHU2N3NSWCHnbeCm/PQGsM+0dzau6gw
+         SPCa2wv54QngA==
+Received: from babalu (unknown [187.17.36.69])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by telegrapho.inexo.com.br (Postfix) with ESMTPSA id 29FA76690B7B
+        for <xdp-newbies@vger.kernel.org>; Tue, 22 Jun 2021 17:22:17 -0300 (-03)
+DKIM-Filter: OpenDKIM Filter v2.11.0 telegrapho.inexo.com.br 29FA76690B7B
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=inexo.com.br;
+        s=mail; t=1624393337;
+        bh=oRUub3NDkCqZvDbSjpJhHjMUD3BWt6ENVAlHKo/xZF4=;
+        h=Date:From:To:Subject:From;
+        b=OCrRbAbTKQ1eNE9EaDEi3jS0qZG+RX1aIhueu8DHgH1PluhO08MDDQrjqoSme+gaD
+         PS78XwC5BAN51uQnBapba2wEO2l3e78mGESBdk8OjqVUdB7ajCpEw2TgKsJehyZEEw
+         TcTBPjAG9CqUvTJLnbz9TJOlMKE1XupFuXa8aGYr8YsoyJb0z3JLkG9rj+3wuGLSOO
+         2t4wEIpwOuooLhCJUd878jnX6HV25WcBrubRm7LXfkDJSrV94OuYhDQTu6+G9c30dm
+         6O8D8sW8YMPsBZ+Fsk5ozeuq35n02ohCW/ndHU2N3NSWCHnbeCm/PQGsM+0dzau6gw
+         SPCa2wv54QngA==
+Date:   Tue, 22 Jun 2021 17:22:16 -0300
+From:   "Ethy H. Brito" <ethy.brito@inexo.com.br>
+To:     "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+Subject: xdp_iphash_to_cpu_cmdline: Error loading BTF: Invalid argument(22)
+Message-ID: <20210622172216.79c6b3f2@babalu>
+Organization: InterNexo Ltda.
+X-Mailer: Claws Mail 3.16.0 (GTK+ 2.24.32; x86_64-pc-linux-gnu)
 MIME-Version: 1.0
-Date:   Tue, 22 Jun 2021 16:35:59 +0100
-From:   =?UTF-8?Q?Sebasti=C3=A3o_Santos_Boavida_Amaro?= 
-        <sebastiao.amaro@tecnico.ulisboa.pt>
-To:     =?UTF-8?Q?Toke_H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-Cc:     xdp-newbies@vger.kernel.org
-Subject: Re: XDP in virtual Ethernet devices
-In-Reply-To: <874kehd90a.fsf@toke.dk>
-References: <9a3f2989ee83a43263efc9fce02fe63b@tecnico.ulisboa.pt>
- <874kehd90a.fsf@toke.dk>
-Message-ID: <00b3a957e3d1dc3a0b22ef62cd0eddd8@tecnico.ulisboa.pt>
-X-Sender: sebastiao.amaro@tecnico.ulisboa.pt
-User-Agent: Roundcube Webmail/1.3.15
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-Thank you for the reply!
-After experimenting more the problem is not related to docker 
-specifically but to the docker networks. When I run the same experiment 
-outside a docker network I am able to capture packets, however, when the 
-containers are deployed in a docker network I cannot capture packets. 
-Does anyone know why this might happen? Or was able to capture the 
-packets of docker containers inside networks?
-Best Regards,
-Sebastião Amaro
 
-A 2021-06-01 14:12, Toke Høiland-Jørgensen escreveu:
-> Sebastião Santos Boavida Amaro
-> <sebastiao.amaro@tecnico.ulisboa.pt> writes:
-> 
->> Hello!
->> I am trying to use xdp_stats[1] (this program prints packets
->> passed/dropped) on the ethernet devices created by docker
->> containers(veth). I have iperf exchanging messages between containers
->> but xdp_stats does not capture any of the packets (XDP_PASS values do
->> not change) and CPU usage goes to 100%. It works fine on my laptop's
->> network device, but I have these issues with the docker network 
->> devices
->> and I don't understand why.
-> 
-> I don't think there's anything special about the veth devices Docker
-> creates; so my immediate thought would be that this is due to
-> differences in the kernel versions you're running on your laptop vs on
-> docker. Some more details on this would be required to say anything
-> more, though...
-> 
-> -Toke
+Hi
+
+Runing "# ./xdp_iphash_to_cpu --dev eth1 --all-cpus --wan" returns 2 loading errors:
+
+----------------------8<----------------------------------
+libbpf: Error loading BTF: Invalid argument(22)
+libbpf: magic: 0xeb9f
+version: 1
+flags: 0x0
+hdr_len: 24
+type_off: 0
+type_len: 492
+str_off: 492
+str_len: 1724
+btf_total_size: 2240
+[1] PTR (anon) type_id=2
+[2] STRUCT xdp_md size=20 vlen=5
+	data type_id=3 bits_offset=0
+	data_end type_id=3 bits_offset=32
+	data_meta type_id=3 bits_offset=64
+	ingress_ifindex type_id=3 bits_offset=96
+	rx_queue_index type_id=3 bits_offset=128
+[3] TYPEDEF __u32 type_id=4
+[4] INT unsigned int size=4 bits_offset=0 nr_bits=32 encoding=(none)
+[5] FUNC_PROTO (anon) return=6 args=(1 ctx)
+[6] INT int size=4 bits_offset=0 nr_bits=32 encoding=SIGNED
+[7] FUNC xdp_program type_id=5 vlen != 0
+
+libbpf: Error loading ELF section .BTF: -22. Ignored and continue.
+TC workaround for mapname: map_ifindex_type map_fd:5
+Added CPU:0 queue_size:192
+Added CPU:1 queue_size:192
+Added CPU:2 queue_size:192
+Added CPU:3 queue_size:192
+Added CPU:4 queue_size:192
+Added CPU:5 queue_size:192
+Added CPU:6 queue_size:192
+Added CPU:7 queue_size:192
+Added CPU:8 queue_size:192
+Added CPU:9 queue_size:192
+Added CPU:10 queue_size:192
+Added CPU:11 queue_size:192
+Added CPU:12 queue_size:192
+Added CPU:13 queue_size:192
+Added CPU:14 queue_size:192
+Added CPU:15 queue_size:192
+Documentation:
+ XDP: Lookup IPv4 and redirect to CPU hash
+
+This program loads the XDP eBPF program into the kernel.
+Use the cmdline tool for add/removing dest IPs to the hash
+
+ - Attached to device:eth1 (ifindex:4) prog_id:73
+----------------------------------8<-------------------------------
+
+Since the XDP program was correctly listed by "bpftool net", I continued an added just ONE ip
+
+# ./xdp_iphash_to_cpu_cmdline --add --ip 1.2.3.4 --classid 1:1234 --cpu 1
+key: 0x4030201
+WARN: Looks like map_txq_config --base-setup is missing
+WARN: Fixing, doing map_txq_config --base-setup
+iphash_modify() IP:1.2.3.4 key:0x4030201 TC-handle:0x11234
+
+listed the map
+
+# ./xdp_iphash_to_cpu_cmdline --list
+{
+"1.2.3.4" : { "cpu" : 1, "tc_maj" : "1" , "tc_min" : "1234" }}
+
+
+And right after I tried to remove the program from XDP:
+
+# ./xdp_iphash_to_cpu --dev eth1 --remove
+Removing XDP program on ifindex:4 device:eth1
+ERR: Clear ifindex type failed 
+INFO: not cleanup pinned map file:/sys/fs/bpf/tc/globals/map_ip_hash (use 'rm')
+
+All seems to be rigth despite the errors.
+Are all these errors and warnings serious problems? Should I worry? 
+
+Hints??
+
+Regards
+
+Ethy
