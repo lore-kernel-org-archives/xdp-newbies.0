@@ -2,118 +2,71 @@ Return-Path: <xdp-newbies-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 49492C433EF
-	for <xdp-newbies@archiver.kernel.org>; Tue, 15 Feb 2022 18:54:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 322CAC433F5
+	for <xdp-newbies@archiver.kernel.org>; Thu, 17 Mar 2022 13:14:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232633AbiBOSyR (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Tue, 15 Feb 2022 13:54:17 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:58430 "EHLO
+        id S234325AbiCQNPm (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Thu, 17 Mar 2022 09:15:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38008 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238973AbiBOSyR (ORCPT
+        with ESMTP id S234415AbiCQNPk (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Tue, 15 Feb 2022 13:54:17 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 24F708D68E
-        for <xdp-newbies@vger.kernel.org>; Tue, 15 Feb 2022 10:54:04 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1644951244;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=MTAmssfl3UGG6Z2RcE0A26KoIlLxK11Ro1X44XU8qdE=;
-        b=aQM7mgjuhXfywd4VMgirYV8LNHmlEr0Gdsq+BNYHb9oKRvWXSsuodWgEsiycLMc2c23Rf7
-        7mj733WuAvx2mXbH7KzqC0jO8hmSD53jf9LqYxMDz6ZnnoNIevAjlqcrNllO+rBChZoHGD
-        E3KVVBZleXsUsZq+FCbYZiRW19ZMS6k=
-Received: from mail-ej1-f70.google.com (mail-ej1-f70.google.com
- [209.85.218.70]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-576-n4W15XlEOmGLtEWWVTUgFA-1; Tue, 15 Feb 2022 13:54:02 -0500
-X-MC-Unique: n4W15XlEOmGLtEWWVTUgFA-1
-Received: by mail-ej1-f70.google.com with SMTP id q3-20020a17090676c300b006a9453c33b0so7668791ejn.13
-        for <xdp-newbies@vger.kernel.org>; Tue, 15 Feb 2022 10:54:02 -0800 (PST)
+        Thu, 17 Mar 2022 09:15:40 -0400
+Received: from mail-pg1-x532.google.com (mail-pg1-x532.google.com [IPv6:2607:f8b0:4864:20::532])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A96EB18A792
+        for <xdp-newbies@vger.kernel.org>; Thu, 17 Mar 2022 06:14:23 -0700 (PDT)
+Received: by mail-pg1-x532.google.com with SMTP id 6so2632000pgg.0
+        for <xdp-newbies@vger.kernel.org>; Thu, 17 Mar 2022 06:14:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=/qhArArbXhNMCGkgJ6NaQpa8A592+UMEjPqh5islJWk=;
+        b=I+VB7VNqUyW81n3/kzGyQBNn39gUeg4NrIAjFRMf+SgG30OTSIATEcQVkrARCe6iZf
+         QFdvX/67mGJBkGY8P/oQlo9IGp1xnOrkNqEc83atL6tDnOMTYerQconh/i2LfHyJPxYK
+         uqK9eVJNO1tRUUo1yGt+4Gooy8V7CnBnGI9WwTgouWfcpzMTPkAhMQe6Ts2HvIyKC5ZZ
+         er3ho6eRso8AQQeUd/NfFyi/JVMv9KY8AB6WKxBR79spZgPQILFBdTTi3JmyDsYeNazo
+         PESvw1yVE26mr1gs6IXMhuzdZxi57uf4gduZthqqPe9xp1WCIXmFkblk96wkpw+FsW5R
+         vKWA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:in-reply-to:references:date
-         :message-id:mime-version;
-        bh=MTAmssfl3UGG6Z2RcE0A26KoIlLxK11Ro1X44XU8qdE=;
-        b=FEtu731iR6cr2SF6ENvHXRcrflbcYIIeslTjmoqkEc8tgQNRQengM7+AAvBzdvCrB2
-         pIq2yD5EaQnBgLE5R5pidGQgH7DMWg57z0pIX+WWOYdyftVOL0WGqh9XwqkcYtC61dT4
-         Hs92wjOKTwCH0BkksWwX/D0x9J+zCj+/IhkMe4JqBGcvBgIRs3ygIZxIx3/GaH78EjVb
-         JF/r6ktSGr5S34F6lqwe/kFSUsQgH3pWV7iU+G3eal62vFsVQFg60c+ZTYEIgYHZkkaI
-         bRR4KoV0Gln3aF5Qali4Fx2s0ClEi6TijKAKAEMM5K5A9h86eLZ6cynB6N21SMwHMSU0
-         KxxA==
-X-Gm-Message-State: AOAM532X+j0DpDcgSrlu+tadwEOfS4Z9DzNzUd1VRF69hm/CQx4ayO7z
-        J55aANGCSt6tBe/uYHxrTT+xUElw4MlORK1eecgJcL8TV1hrboS0Ry90ornDCj55hks4lyZXvNW
-        TM4eVkAllacRYNOkVZKGdnjk=
-X-Received: by 2002:a05:6402:1806:: with SMTP id g6mr296354edy.259.1644951240917;
-        Tue, 15 Feb 2022 10:54:00 -0800 (PST)
-X-Google-Smtp-Source: ABdhPJwtXJkhjPWWMqxw9pcstJBsjE2An8PVVYwUxNGudYn9k2E7/+WNW/vz6UDcEeST7vZ0wyNXZQ==
-X-Received: by 2002:a05:6402:1806:: with SMTP id g6mr296330edy.259.1644951240529;
-        Tue, 15 Feb 2022 10:54:00 -0800 (PST)
-Received: from alrua-x1.borgediget.toke.dk ([45.145.92.2])
-        by smtp.gmail.com with ESMTPSA id l9sm9829495ejn.164.2022.02.15.10.53.59
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 15 Feb 2022 10:53:59 -0800 (PST)
-Received: by alrua-x1.borgediget.toke.dk (Postfix, from userid 1000)
-        id 35FF812E4C2; Tue, 15 Feb 2022 19:53:59 +0100 (CET)
-From:   Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-To:     Sophia Yoo <sy6@princeton.edu>
-Cc:     xdp-newbies@vger.kernel.org
-Subject: Re: XDP_REDIRECT not working in XDP_DRV_MODE with Intel xgbe driver
-In-Reply-To: <CANLN0e7=Z8rHxmB5WEs4jFdaQ8sL2n_ckE-wcyURnfQHvgo45w@mail.gmail.com>
-References: <CANLN0e4cm__UeAP+TgxHH+Pg0f0aU6jN9-CCPf=O4crsonuynA@mail.gmail.com>
- <877d9x7168.fsf@toke.dk>
- <CANLN0e6d-=3SjX_VEOOVmPBfCy74KCSTwBCTFxyxEgczpQTwTA@mail.gmail.com>
- <874k516q32.fsf@toke.dk>
- <CANLN0e6ersLvCSZSbxt6Roy2qJV2C90Y12RmEwQNtwyX2tURwQ@mail.gmail.com>
- <87mtis5fju.fsf@toke.dk>
- <CANLN0e7=Z8rHxmB5WEs4jFdaQ8sL2n_ckE-wcyURnfQHvgo45w@mail.gmail.com>
-X-Clacks-Overhead: GNU Terry Pratchett
-Date:   Tue, 15 Feb 2022 19:53:59 +0100
-Message-ID: <87k0dw55bs.fsf@toke.dk>
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=/qhArArbXhNMCGkgJ6NaQpa8A592+UMEjPqh5islJWk=;
+        b=whfAABI7DKoMvc7NB6wJiuuoWaSIlkYWM6YfaAmc3+fEXgz79AVwRPifJAtDie5R25
+         kK7ogMEWlTVTXfqLdcr3EXSVC41jJM4t+GzAKw4581L4gWFT5NWSp8Zz7TqGUyqMgKkf
+         FWPRsrNLmhLC7XrUrK7Xwz80J+2M2+9l1g4bSbXpbFx59+6+QHE9Kq9hDmtqB1drkrbY
+         Un9zB1kcdPrRGI28YA1UqlEQ++1jDdn1hlWIj99xhrH8pzX4nXDmUYfMzAm8c60IxVw1
+         /MkHHW4is9ROqfgGv73pMX6tGQdaw4Y13VQsyIz1r8sEAeJHim3BLqljVdlgqvoIU4gP
+         9n6A==
+X-Gm-Message-State: AOAM533hroCtirxzQt5w8TszYfRq4KCyOJ0fbvRNG0YUdwc6WPKNkVAQ
+        /ZGORASYtxtLA+f1+aPTJOGcCSQCUa5eQAveugrYzVcIFy0=
+X-Google-Smtp-Source: ABdhPJwMFkZE5V8uNAiW/Y+vJVfUHN9rpRJkEp1WHdWZk8mObR7vkUaEdcKbI/Su9SICxQ1eMS6umr5pAqa0GFfNCpQ=
+X-Received: by 2002:a63:101:0:b0:36c:6d40:5688 with SMTP id
+ 1-20020a630101000000b0036c6d405688mr3660521pgb.554.1647522862940; Thu, 17 Mar
+ 2022 06:14:22 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+From:   Srivats P <pstavirs@gmail.com>
+Date:   Thu, 17 Mar 2022 18:43:41 +0530
+Message-ID: <CANzUK5919hyHSJf63nWJ2wefG57AKAB7W=D0AkUFKdP9s2BH+w@mail.gmail.com>
+Subject: Jumbo frames with Huge pages
+To:     Xdp <xdp-newbies@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-Sophia Yoo <sy6@princeton.edu> writes:
+Hi,
 
->> > This is a real use case as part of a larger design I am working on.
->> > However, given that redirect from TC egress to XDP_DRV_MODE ingress
->> > fundamentally doesn't work, I am rethinking other options to the
->> > design. Alternatively, it seems that support for XDP_REDIRECT from
->> > egress to ingress is currently in the works, although I don't believe
->> > the patch has yet been applied to the mainstream kernel.
->>
->> Huh, really? Haven't seen that, got a link?
->
-> This is where I saw the discussion for adding XDP support in the
-> egress path https://lwn.net/Articles/818591/, which if I am
-> understanding correctly is also proposing to add the XDP_REDIRECT
-> support on egress.
+XDP does not allow jumbo frames due to the requirement of frameSize < pageSize.
 
-Ah, right, that series. There was extensive discussion on a later
-version:
+I'm also aware of the ongoing work related to scatter-gather
+(multi-buffers) to support jumbo frames with XDP.
 
-https://lore.kernel.org/r/20200513014607.40418-1-dsahern@kernel.org
+I'm wondering if jumbo frames can be more simply supported by using
+AF_XDP with huge pages (instead of multi-buffers)? If so, are jumbo
+frames supported in both Rx and Tx directions? I assume this support
+is likely driver specific?
 
-we ended up dropping it in favour of having programs in devmap entries.
-So that effort is abandoned, and I don't think you'll get very far
-experimenting with that series.
+Any info on using huge pages to support jumbo frames is appreciated.
 
-> (Also, for completeness sake, this is the man page
-> for bpf_redirect() that says currently XDP only supports redirection
-> from ingress to egress, and does not have egress to ingress
-> redirection. https://man7.org/linux/man-pages/man7/bpf-helpers.7.html)
-> Do you have any insight into whether/when this XDP_REDIRECT
-> functionality on egress will be added to the kernel?
-
-It may happen eventually (there are use cases for some kind of egress
-hook), but whether it will end up covering data coming from the host (as
-opposed to XDP-forwarded traffic) is less certain, cf the discussion I
-linked above... As for a timeline, just as soon as someone sits down and
-adds it :)
-
--Toke
-
+Thanks in advance,
+Srivats
