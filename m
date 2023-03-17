@@ -2,39 +2,38 @@ Return-Path: <xdp-newbies-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83F94C6FD19
-	for <xdp-newbies@archiver.kernel.org>; Thu, 16 Mar 2023 08:38:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 57091C74A5B
+	for <xdp-newbies@archiver.kernel.org>; Fri, 17 Mar 2023 08:56:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229717AbjCPIiD (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Thu, 16 Mar 2023 04:38:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51884 "EHLO
+        id S231252AbjCQI4O (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Fri, 17 Mar 2023 04:56:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37816 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229617AbjCPIiC (ORCPT
+        with ESMTP id S229978AbjCQI4J (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Thu, 16 Mar 2023 04:38:02 -0400
-X-Greylist: delayed 343 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 16 Mar 2023 01:38:00 PDT
-Received: from mail.craftsplex.pl (mail.craftsplex.pl [162.19.155.126])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 656145FEC
-        for <xdp-newbies@vger.kernel.org>; Thu, 16 Mar 2023 01:38:00 -0700 (PDT)
-Received: by mail.craftsplex.pl (Postfix, from userid 1002)
-        id 9FD4D23B63; Thu, 16 Mar 2023 08:31:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=craftsplex.pl;
-        s=mail; t=1678955528;
-        bh=PcMncQpBfIZCnTOfZJY5G1G+gaLn4c9QPfFvoXrE4rA=;
+        Fri, 17 Mar 2023 04:56:09 -0400
+X-Greylist: delayed 463 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 17 Mar 2023 01:55:43 PDT
+Received: from mail.useflow.pl (mail.useflow.pl [89.46.75.95])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C8CBF211D7
+        for <xdp-newbies@vger.kernel.org>; Fri, 17 Mar 2023 01:55:43 -0700 (PDT)
+Received: by mail.useflow.pl (Postfix, from userid 1001)
+        id 821A761AC7; Fri, 17 Mar 2023 08:46:29 +0000 (GMT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=useflow.pl; s=mail;
+        t=1679042818; bh=kqPAYsKSjYBfj9YHlwAD/unmOtuhvRHs5JzaE8P9z5U=;
         h=Date:From:To:Subject:From;
-        b=zNTNL6m/LoViT2qAEsGTsZpCDac3dYDI1aq3DzljOpfaPlwsX5g0F+cnGZKYXU+RR
-         +qM5CXJTMQNyFfX+XP1AyYLJrmyrVLg281WJ/TtdZ9odvFj5LVGj8FaQOOZiZmDDZd
-         IVBJwFYB5EGiX8eYCBX3oe02Q6+PEBVeq8lL4aNvn9hDVsDvRK5bA5d9zsXpJFCjWx
-         DtyXF+mvd+UqYfiogNTxMnWFNGkR73moItnr1I6uy5Hh/Pj/hy4mMyeb+fBLCgW0hc
-         6lr6nf2y0WlluKe7I/J7BqtqZiTIQyzOb9BZYWPcHbmJcMKuvH3eWskIdMuYbx47jF
-         CJDQMDnxk5+aA==
-Received: by mail.craftsplex.pl for <xdp-newbies@vger.kernel.org>; Thu, 16 Mar 2023 08:31:07 GMT
-Message-ID: <20230316074500-0.1.4y.i70z.0.c7z5a9wm7u@craftsplex.pl>
-Date:   Thu, 16 Mar 2023 08:31:07 GMT
-From:   "Kamil Tralewski" <kamil.tralewski@craftsplex.pl>
+        b=TaPngCSVMVrReunUOdrcvY7WrTa8RYQBuHRK5nI6+1sQ0/n9udtKDui6CauseipQH
+         wbtbBdAmMgBxW8y5iCAHMCfzcE5yMM+O40rD52lfNfcMPEWlVY2uG+LhN0h2vrr8dl
+         WSE94IqJhPH+yzRWHfp3XkF9N8F7zQpDopuBMXeqUBduI5VzvtlZGDGCpB2/9kB+a3
+         sFV5XOUP1XbQYLv0D7gyAlq3XnUEGVae+8e9oR0ZbLm8E83Y8BeM1v22ewVpdnyfKH
+         ARIidTqKVMzGbOI0el81a1F+b+4ZA+/eiJZ7dfCG/YRBL7QVBbPiNQ/WnW9+g93RdD
+         Q4C9Fmp2LX9cw==
+Received: by mail.useflow.pl for <xdp-newbies@vger.kernel.org>; Fri, 17 Mar 2023 08:46:01 GMT
+Message-ID: <20230317074502-0.1.7d.783p.0.o6ncj29yll@useflow.pl>
+Date:   Fri, 17 Mar 2023 08:46:01 GMT
+From:   "Bartosz Holender" <bartosz.holender@useflow.pl>
 To:     <xdp-newbies@vger.kernel.org>
-Subject: =?UTF-8?Q?S=C5=82owa_kluczowe_do_wypozycjonowania?=
-X-Mailer: mail.craftsplex.pl
+Subject: =?UTF-8?Q?Pompy_ciep=C5=82a?=
+X-Mailer: mail.useflow.pl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
@@ -44,16 +43,14 @@ X-Mailing-List: xdp-newbies@vger.kernel.org
 
 Dzie=C5=84 dobry,
 
-zapozna=C5=82em si=C4=99 z Pa=C5=84stwa ofert=C4=85 i z przyjemno=C5=9Bci=
-=C4=85 przyznaj=C4=99, =C5=BCe przyci=C4=85ga uwag=C4=99 i zach=C4=99ca d=
-o dalszych rozm=C3=B3w.=20
+dostarczamy pompy ciep=C5=82a, kt=C3=B3re s=C4=85 jednym z najbardziej en=
+ergooszcz=C4=99dnych i 100% ekologicznych sposob=C3=B3w na ogrzanie budyn=
+ku, wody u=C5=BCytkowej oraz ch=C5=82odzenie pomieszcze=C5=84 w czasie up=
+a=C5=82=C3=B3w.=20
 
-Pomy=C5=9Bla=C5=82em, =C5=BCe mo=C5=BCe m=C3=B3g=C5=82bym mie=C4=87 sw=C3=
-=B3j wk=C5=82ad w Pa=C5=84stwa rozw=C3=B3j i pom=C3=B3c dotrze=C4=87 z t=C4=
-=85 ofert=C4=85 do wi=C4=99kszego grona odbiorc=C3=B3w. Pozycjonuj=C4=99 =
-strony www, dzi=C4=99ki czemu generuj=C4=85 =C5=9Bwietny ruch w sieci.
+Czy s=C4=85 Pa=C5=84stwo zainteresowani wst=C4=99pn=C4=85 weryfikacj=C4=85=
+ urz=C4=85dze=C5=84 dla swojego domu?
 
-Mo=C5=BCemy porozmawia=C4=87 w najbli=C5=BCszym czasie?
 
 Pozdrawiam
-Kamil Tralewski
+Bartosz Holender
