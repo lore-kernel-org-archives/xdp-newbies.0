@@ -2,55 +2,115 @@ Return-Path: <xdp-newbies-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 57091C74A5B
-	for <xdp-newbies@archiver.kernel.org>; Fri, 17 Mar 2023 08:56:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D17BC6FD1F
+	for <xdp-newbies@archiver.kernel.org>; Sun, 19 Mar 2023 22:08:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231252AbjCQI4O (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Fri, 17 Mar 2023 04:56:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37816 "EHLO
+        id S230242AbjCSWIj (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Sun, 19 Mar 2023 18:08:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33920 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229978AbjCQI4J (ORCPT
+        with ESMTP id S230288AbjCSWIi (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 17 Mar 2023 04:56:09 -0400
-X-Greylist: delayed 463 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 17 Mar 2023 01:55:43 PDT
-Received: from mail.useflow.pl (mail.useflow.pl [89.46.75.95])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C8CBF211D7
-        for <xdp-newbies@vger.kernel.org>; Fri, 17 Mar 2023 01:55:43 -0700 (PDT)
-Received: by mail.useflow.pl (Postfix, from userid 1001)
-        id 821A761AC7; Fri, 17 Mar 2023 08:46:29 +0000 (GMT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=useflow.pl; s=mail;
-        t=1679042818; bh=kqPAYsKSjYBfj9YHlwAD/unmOtuhvRHs5JzaE8P9z5U=;
-        h=Date:From:To:Subject:From;
-        b=TaPngCSVMVrReunUOdrcvY7WrTa8RYQBuHRK5nI6+1sQ0/n9udtKDui6CauseipQH
-         wbtbBdAmMgBxW8y5iCAHMCfzcE5yMM+O40rD52lfNfcMPEWlVY2uG+LhN0h2vrr8dl
-         WSE94IqJhPH+yzRWHfp3XkF9N8F7zQpDopuBMXeqUBduI5VzvtlZGDGCpB2/9kB+a3
-         sFV5XOUP1XbQYLv0D7gyAlq3XnUEGVae+8e9oR0ZbLm8E83Y8BeM1v22ewVpdnyfKH
-         ARIidTqKVMzGbOI0el81a1F+b+4ZA+/eiJZ7dfCG/YRBL7QVBbPiNQ/WnW9+g93RdD
-         Q4C9Fmp2LX9cw==
-Received: by mail.useflow.pl for <xdp-newbies@vger.kernel.org>; Fri, 17 Mar 2023 08:46:01 GMT
-Message-ID: <20230317074502-0.1.7d.783p.0.o6ncj29yll@useflow.pl>
-Date:   Fri, 17 Mar 2023 08:46:01 GMT
-From:   "Bartosz Holender" <bartosz.holender@useflow.pl>
-To:     <xdp-newbies@vger.kernel.org>
-Subject: =?UTF-8?Q?Pompy_ciep=C5=82a?=
-X-Mailer: mail.useflow.pl
+        Sun, 19 Mar 2023 18:08:38 -0400
+Received: from mail-wm1-x335.google.com (mail-wm1-x335.google.com [IPv6:2a00:1450:4864:20::335])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF5C21207A
+        for <xdp-newbies@vger.kernel.org>; Sun, 19 Mar 2023 15:08:28 -0700 (PDT)
+Received: by mail-wm1-x335.google.com with SMTP id m35so6333966wms.4
+        for <xdp-newbies@vger.kernel.org>; Sun, 19 Mar 2023 15:08:28 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=fr24.com; s=google; t=1679263707;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=VF6kF1o1a7cu8qLgevPU4rykmBSUA6+nY/q/8AQKG+s=;
+        b=W5Ge3+1yMdXtDqoI1dsxoAzFmUHVHc3DWSKGGAq4YRBPegmZ5ByBDYS8IVaWKXQSN0
+         Vxjg/hV8MD2+X16iYhT/iozVqmuIoKt7rCNFr2uGZK9w63czAdpXXZctbfWM5NKiYW82
+         8IpsFKlj2/211WI+6vNa0u0MfnOrRZQUE6GfDVyuGz8oZdAAZ3e4IWRZJA6mLcoW/M7V
+         VaJAgtCegrYxyKEuZf5DflMyrBF/Wh72nTNdedzzKiLKTkOoFJVYE+9fnK2DFa+G2oNH
+         ds7YJX2zz/Dfc5V2+/XEmLiP1ahR1a0nkq/zaXr7MQ8o2HDYtxxHQ2hKyi0AR/fgXw9F
+         PClQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112; t=1679263707;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=VF6kF1o1a7cu8qLgevPU4rykmBSUA6+nY/q/8AQKG+s=;
+        b=tZGKnbKoyo33EoS1xjUC0hVRSLl0cytZw7UV9Rmm8yHqzVM34AiuEcMBALFmBPnhUp
+         t/gafY03sqCDZXeTdi5ijoZMZhOV7L13fh0+oaBwXb6J97hgbkZnka0m4LeFoEWGfqI2
+         Fq0YW0676DXfy8um8GBNLfYm3jgnZmIniPvBfShAMwBvaIhPjnpAStKjAY4O3RfPl8K9
+         i42y7p7kSNnTR5tZLinWu89l2fuCd/Z3u3jSVl1O3JyrMbpmkF5u5uH8IlRh92Q/CPJH
+         1fqsWRgNBFyJLZ+ovx4ojVEnr1X4r6BGbwSjUmzsmixQ1XmuLTput5spVHqKchQ5VGh+
+         2NDg==
+X-Gm-Message-State: AO0yUKVtEMWFj0RdLsNNpY+60Cm/Z/XtQ1Ug4SeQUDxLvFQ9jsTrs8Wb
+        1V6AqIg402qjFfuOejyb/r4ZGyoRDVwBQ31kYwNckg==
+X-Google-Smtp-Source: AK7set+/YtdgmNKKUtllWNIFhiiVqf/gAREFbBw+6Whcm54QaD6Jicfa7Lbr4HFEPYRcFydRJF4pdQ==
+X-Received: by 2002:a7b:c416:0:b0:3ed:e2e6:8ddb with SMTP id k22-20020a7bc416000000b003ede2e68ddbmr1905440wmi.35.1679263707154;
+        Sun, 19 Mar 2023 15:08:27 -0700 (PDT)
+Received: from sky20.lan (bl20-118-143.dsl.telepac.pt. [2.81.118.143])
+        by smtp.googlemail.com with ESMTPSA id t25-20020a1c7719000000b003ecc64edf7esm8631636wmi.39.2023.03.19.15.08.26
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 19 Mar 2023 15:08:26 -0700 (PDT)
+From:   =?UTF-8?q?Nuno=20Gon=C3=A7alves?= <nunog@fr24.com>
+To:     xdp-newbies@vger.kernel.org, magnus.karlsson@intel.com
+Cc:     =?UTF-8?q?Nuno=20Gon=C3=A7alves?= <nunog@fr24.com>
+Subject: [PATCH] xsk: allow remap of fill and/or completion rings
+Date:   Sun, 19 Mar 2023 22:08:11 +0000
+Message-Id: <20230319220811.165506-1-nunog@fr24.com>
+X-Mailer: git-send-email 2.40.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-Dzie=C5=84 dobry,
+The remap of fill and completion rings was frowned upon as they
+control the usage of UMEM which does not support concurrent use.
+At the same time this would disallow the remap of this rings
+into another process.
 
-dostarczamy pompy ciep=C5=82a, kt=C3=B3re s=C4=85 jednym z najbardziej en=
-ergooszcz=C4=99dnych i 100% ekologicznych sposob=C3=B3w na ogrzanie budyn=
-ku, wody u=C5=BCytkowej oraz ch=C5=82odzenie pomieszcze=C5=84 w czasie up=
-a=C5=82=C3=B3w.=20
+A possible use case is that the user wants to transfer the socket/
+UMEM ownerwhip to another process (via SYS_pidfd_getfd) and so
+would need to also remap this rings.
 
-Czy s=C4=85 Pa=C5=84stwo zainteresowani wst=C4=99pn=C4=85 weryfikacj=C4=85=
- urz=C4=85dze=C5=84 dla swojego domu?
+This will have no impact on current usages and just relaxes the
+remap limitation.
 
+Signed-off-by: Nuno Gonçalves <nunog@fr24.com>
+---
+ net/xdp/xsk.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-Pozdrawiam
-Bartosz Holender
+diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
+index 2ac58b282b5eb..2af4ff64b22bd 100644
+--- a/net/xdp/xsk.c
++++ b/net/xdp/xsk.c
+@@ -1300,10 +1300,11 @@ static int xsk_mmap(struct file *file, struct socket *sock,
+ {
+ 	loff_t offset = (loff_t)vma->vm_pgoff << PAGE_SHIFT;
+ 	unsigned long size = vma->vm_end - vma->vm_start;
++	int state = READ_ONCE(xs->state);
+ 	struct xdp_sock *xs = xdp_sk(sock->sk);
+ 	struct xsk_queue *q = NULL;
+ 
+-	if (READ_ONCE(xs->state) != XSK_READY)
++	if (!(state == XSK_READY || state == XSK_BOUND))
+ 		return -EBUSY;
+ 
+ 	if (offset == XDP_PGOFF_RX_RING) {
+@@ -1314,9 +1315,11 @@ static int xsk_mmap(struct file *file, struct socket *sock,
+ 		/* Matches the smp_wmb() in XDP_UMEM_REG */
+ 		smp_rmb();
+ 		if (offset == XDP_UMEM_PGOFF_FILL_RING)
+-			q = READ_ONCE(xs->fq_tmp);
++			q = READ_ONCE(state == XSK_READY ? xs->fq_tmp :
++							   xs->pool->fq);
+ 		else if (offset == XDP_UMEM_PGOFF_COMPLETION_RING)
+-			q = READ_ONCE(xs->cq_tmp);
++			q = READ_ONCE(state == XSK_READY ? xs->cq_tmp :
++							   xs->pool->cq);
+ 	}
+ 
+ 	if (!q)
+-- 
+2.40.0
+
