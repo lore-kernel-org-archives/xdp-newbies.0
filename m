@@ -2,104 +2,81 @@ Return-Path: <xdp-newbies-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5C4FC77B61
-	for <xdp-newbies@archiver.kernel.org>; Fri, 28 Apr 2023 10:44:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DE3F6C77B78
+	for <xdp-newbies@archiver.kernel.org>; Thu,  4 May 2023 17:35:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230198AbjD1KoO (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Fri, 28 Apr 2023 06:44:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40254 "EHLO
+        id S229714AbjEDRf7 (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Thu, 4 May 2023 13:35:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34830 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230106AbjD1KoN (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 28 Apr 2023 06:44:13 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 778D45275
-        for <xdp-newbies@vger.kernel.org>; Fri, 28 Apr 2023 03:43:30 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1682678609;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=Gu1hHykQrtGKW1JwkJJV58wm3pYGn8aA02a3wNDAc+4=;
-        b=ayXIpiThDpDAkNdlsW6snCEYhbH3WlM82O8lN07E8T2/2BMqRe7a1EmmNv4+xtTMR7yPWm
-        lIgldIuSe0ek5u4fcTB4wI6bpTjGcjcXsI373poOc3XyxdhWVqv3cI62QYzX9McGxtHnU3
-        14ChSeJM9tdKpvXpQ2t3nRh5wt8k7lU=
-Received: from mail-ed1-f71.google.com (mail-ed1-f71.google.com
- [209.85.208.71]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-607-9b7ADzjmM-GLhIrm_TYy_g-1; Fri, 28 Apr 2023 06:43:28 -0400
-X-MC-Unique: 9b7ADzjmM-GLhIrm_TYy_g-1
-Received: by mail-ed1-f71.google.com with SMTP id 4fb4d7f45d1cf-5068e922bcaso9114991a12.1
-        for <xdp-newbies@vger.kernel.org>; Fri, 28 Apr 2023 03:43:28 -0700 (PDT)
+        with ESMTP id S229459AbjEDRf6 (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 4 May 2023 13:35:58 -0400
+Received: from mail-lf1-x12a.google.com (mail-lf1-x12a.google.com [IPv6:2a00:1450:4864:20::12a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE08940CF
+        for <xdp-newbies@vger.kernel.org>; Thu,  4 May 2023 10:35:56 -0700 (PDT)
+Received: by mail-lf1-x12a.google.com with SMTP id 2adb3069b0e04-4f00d41df22so11625737e87.1
+        for <xdp-newbies@vger.kernel.org>; Thu, 04 May 2023 10:35:56 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1683221755; x=1685813755;
+        h=cc:to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=QJChVOUgE7/YqZzrEYlFu/bQja0RuhvRqEqYFgLcEfM=;
+        b=EwYvitvwJWd5XIi75dQtFLYPMRFIizAa1RvuwQu0FYy8qsEIr4T18X/s3zFaabJOSa
+         udoYh7g/NUlYldMwUyKaRD0YJU2l8Siwxz7/AsOhlfsVaZsG2h4PJnUkjNgQsAHht872
+         KyMsXbBIW4gasyybRPAZW0CdYY5+FK2WgNwUCQAM0tLcRzTQTowsf3qNuMrnatR1FyHa
+         RyluvGVO/xbQ2fVO2Nzlu/yeF5gW33TCMAnma80FlBqom85Lb3/a/eS+TfcEADdHhbJt
+         RgEcKdXjDBgNnvcGwYdE+0xTS9tEW3ekcfcWjxfTLs0/ykRcQHI7OLMpWazfcfLYXpwf
+         5yZw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1682678607; x=1685270607;
-        h=mime-version:message-id:date:references:in-reply-to:subject:to:from
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=Gu1hHykQrtGKW1JwkJJV58wm3pYGn8aA02a3wNDAc+4=;
-        b=RkOMi5R6rz3BMxGsEWg52MbXlHfGLVhrLOUtXLZLY+308H6ScNg9q+tl1Vb1VEpDr3
-         EvsUtgk5QOLDnNb6McZjaLgXZPixbOzQ6ZfPhhf170e66w+brYLBXN3QN937QTYE/ehr
-         VIcHxQKueaqh92UHjkcLASn6cvTmrocVNaWFEIgqupnBN+rXU9o4BFa1QVETjLTMWS4V
-         mRLBT3UqqMkcXnbMDXceHaBGizZ2rJbJtukF0jWqhcSHnm/ZPpRzFbwyNM/2+BBNURrH
-         rkMLBhMkB4mYGjAJoJjI6j5EhV5fzBpAPEhF7FQh1WwhWJRu8Ky/4JrQK/sxT0Zzh43K
-         7LdQ==
-X-Gm-Message-State: AC+VfDxFD71vQ1MMkIEUGvBcG5Zu8SdIKrhfA32HOih3aNIdrEEgygwD
-        gve8hW4XVINTufw4sPPOaqFf1wOgDB67LQ7cpTHAqYqkIKTJ3erQnZ3x3s//Mgd8LtQ7UsWwyxt
-        gFQb89WBqEmi4PfvBYkq5Py8=
-X-Received: by 2002:a17:907:26c3:b0:8b8:c06e:52d8 with SMTP id bp3-20020a17090726c300b008b8c06e52d8mr4837729ejc.36.1682678606760;
-        Fri, 28 Apr 2023 03:43:26 -0700 (PDT)
-X-Google-Smtp-Source: ACHHUZ5ufhqcgvB7sK3JVFAWUPsn4K7G78w9yty14U9Gw0m7jJM+FgJHtlt8EH1xU2GamQbKiFj94g==
-X-Received: by 2002:a17:907:26c3:b0:8b8:c06e:52d8 with SMTP id bp3-20020a17090726c300b008b8c06e52d8mr4837693ejc.36.1682678605793;
-        Fri, 28 Apr 2023 03:43:25 -0700 (PDT)
-Received: from alrua-x1.borgediget.toke.dk ([2a0c:4d80:42:443::2])
-        by smtp.gmail.com with ESMTPSA id gn2-20020a1709070d0200b009545230e682sm10784528ejc.91.2023.04.28.03.43.25
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 28 Apr 2023 03:43:25 -0700 (PDT)
-Received: by alrua-x1.borgediget.toke.dk (Postfix, from userid 1000)
-        id 7974CADCA4E; Fri, 28 Apr 2023 12:43:24 +0200 (CEST)
-From:   Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
-To:     ctxspi@gmail.com, xdp-newbies@vger.kernel.org
-Subject: Re: Ebpf map question
-In-Reply-To: <CAAVAo4MCYB9LKeDVJ=5Eaiy2gJ00bEvbvnE6PzQEc=U67WPQ4A@mail.gmail.com>
-References: <CAAVAo4MCYB9LKeDVJ=5Eaiy2gJ00bEvbvnE6PzQEc=U67WPQ4A@mail.gmail.com>
-X-Clacks-Overhead: GNU Terry Pratchett
-Date:   Fri, 28 Apr 2023 12:43:24 +0200
-Message-ID: <87pm7o70dv.fsf@toke.dk>
+        d=1e100.net; s=20221208; t=1683221755; x=1685813755;
+        h=cc:to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=QJChVOUgE7/YqZzrEYlFu/bQja0RuhvRqEqYFgLcEfM=;
+        b=AinKR0I45j3uToVJpj+TQzUxHrH6TLWMAz6vAxYR3DAjqw9t+SOeouaIJikYQr/A8k
+         zXoOMUixoG2K9+ys51pIVQqbvr88nX6LDMLcU2jcH0Pa5Xot5kz+u+I4ObtmKq3uYati
+         iFdm3cC3PgL1E11oV6vuc3uQy0ndj6k4LvCKq46fRj6dSfUAx+hI+JrR5T33zR4OjOwV
+         phELJwre1yK1H1srrHayGSUh6Imj/KUH4zn3xgWI7+sSrDlHJtIRg+nyMQ9TiH8GEaaH
+         VqEbE51d0QvFmeN6ZQb6+q3yE8ik0Wf28j8dGdtlYsmMUSVnH2hqxt72pkDVgc7vP5OF
+         vRfw==
+X-Gm-Message-State: AC+VfDzfxLqw4UI3ODU5nlWxsiDWqrL6sehIehHEuumCbb4Cbz4KsLeU
+        m0iYzLFuODq+fqDYy2ukGCi5gskIzKxVKArI3og9tyXvif6MiA==
+X-Google-Smtp-Source: ACHHUZ7KNsGyVvWpQW/CHkbbVHq/o8jEwDMdBVWGHy3K/WhGAaYQx4qz/H0nNtSE8bMUZzRzVxiIeyIXuO4tqr0dIrU=
+X-Received: by 2002:a2e:a488:0:b0:2a8:b792:d7cd with SMTP id
+ h8-20020a2ea488000000b002a8b792d7cdmr1168825lji.4.1683221754839; Thu, 04 May
+ 2023 10:35:54 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+From:   team lnx <teamlnxi8@gmail.com>
+Date:   Thu, 4 May 2023 10:35:43 -0700
+Message-ID: <CAOLRUnCCoHQLd_kyfrZ7QvVKD2D2TmxxUaZf17ZijP1qU5z3mw@mail.gmail.com>
+Subject: XDP Redirect - Ping fail
+To:     xdp-newbies@vger.kernel.org
+Cc:     =?UTF-8?B?VG9rZSBIw7hpbGFuZC1Kw7hyZ2Vuc2Vu?= <toke@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-Marco <ctxspi@gmail.com> writes:
+Hello,
 
-> Hi
->
-> Assuming to have this struct:
->
-> struct hash_elem {
->     int cnt;
->     };
->
-> and kernel space program want read cnt value:
->
-> struct hash_elem *val = bpf_map_lookup_elem(&hash_map, &key);
->
->     if (val)
->    {
->
-> # time fraction
->
->     bpf_printk("My value %d", val->cnt);
->     }
->
-> What happens if the hash_map is a pinned map and in the same time
-> space of 'time fraction" a user program deletes the element of the
-> key?
-> What happen at val pointer?
+I see a ping not working in below topology with xdp redirect
 
-The val pointer is RCU-protected so it will stick around until the end
-of your BPF program's execution. However, it's up to your own code to
-protect against concurrent *updates* of the value...
+                               --------------------------------------
+IFACE1 <--------->  |  IFACE2                  IFACE3 |
+<------------------> IFACE4
+                              ----------------------------------------
 
--Toke
+IFACE2 and IFACE3 are on same host machine
 
+IFACE1 and IFACE2 are  on static ip
+IFACE3 and IFACE4 are on dynamic ip, IFACE4 runs dhcp server
+
+steps
+1. assign static ip between IFACE1 and IFACE2 (ex: 172.168.2.x)
+2. dynamic ip between IFACE3 and IFACE4 (ex: 192.168.2.x)
+3. Run xdp redirect on IFACE2 and IFACE3
+4. start ping from IFACE1 to IFACE4
+
+Are some of the assumptions not right here leading to ping failure ?
+
+Regards,
+teamlnx
