@@ -2,37 +2,39 @@ Return-Path: <xdp-newbies-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F9CEC7EE2F
-	for <xdp-newbies@archiver.kernel.org>; Thu,  1 Jun 2023 08:11:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B3D26EB64DA
+	for <xdp-newbies@archiver.kernel.org>; Wed, 14 Jun 2023 08:20:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232029AbjFAIL6 (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Thu, 1 Jun 2023 04:11:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32858 "EHLO
+        id S243174AbjFNIUK (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Wed, 14 Jun 2023 04:20:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50634 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231893AbjFAIL5 (ORCPT
-        <rfc822;xdp-newbies@vger.kernel.org>); Thu, 1 Jun 2023 04:11:57 -0400
-Received: from mail.craftsplex.pl (mail.craftsplex.pl [162.19.155.126])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7CC85F2
-        for <xdp-newbies@vger.kernel.org>; Thu,  1 Jun 2023 01:11:52 -0700 (PDT)
-Received: by mail.craftsplex.pl (Postfix, from userid 1002)
-        id 0941124530; Thu,  1 Jun 2023 08:11:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=craftsplex.pl;
-        s=mail; t=1685607110;
-        bh=PcMncQpBfIZCnTOfZJY5G1G+gaLn4c9QPfFvoXrE4rA=;
+        with ESMTP id S238969AbjFNIUJ (ORCPT
+        <rfc822;xdp-newbies@vger.kernel.org>);
+        Wed, 14 Jun 2023 04:20:09 -0400
+X-Greylist: delayed 570 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 14 Jun 2023 01:20:06 PDT
+Received: from mail.lastcratebiz.pl (mail.lastcratebiz.pl [80.211.102.173])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF6BD1984
+        for <xdp-newbies@vger.kernel.org>; Wed, 14 Jun 2023 01:20:06 -0700 (PDT)
+Received: by mail.lastcratebiz.pl (Postfix, from userid 1001)
+        id 9E9C1832A4; Wed, 14 Jun 2023 09:10:30 +0100 (BST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=lastcratebiz.pl;
+        s=mail; t=1686730233;
+        bh=WISZpg6BRUaD5+emHkOS1lEORD1c4ArlD2Alqh0IZqE=;
         h=Date:From:To:Subject:From;
-        b=KdpbUF2b2O5DdpBqnG3yVfls6mM8Shhwsc/NYAhGe99YvLPLXk6O8k9yA4KhOmIYO
-         LbtgpKmYMcQg+024ubthex28Vp7+Uzw5pA1eTXw9gV6wjP+2hv+xSmpqFQa6YWYHAc
-         8B1CZ/pAtmmt6HDzZHKzuq5kEJeybrr/kpZ/8EU8yJQAko7J/uZ32zx7HgAi3IsKpa
-         MTXqaOsYb58v3VWL+/KkIV1spKJL3UhPITceDwLrPPWRSi6YAnBQ8edLpGrgqRhzcC
-         gDl3rc1bHBcyrXKx/UvjlsRcJVVoJR76RaiPfcy58QhS6wm5mMYfIj359tp1wmwWSl
-         sfJ+BsLYWg8CQ==
-Received: by mail.craftsplex.pl for <xdp-newbies@vger.kernel.org>; Thu,  1 Jun 2023 08:10:39 GMT
-Message-ID: <20230601064500-0.1.6h.z776.0.bmsfotdnr3@craftsplex.pl>
-Date:   Thu,  1 Jun 2023 08:10:39 GMT
-From:   "Kamil Tralewski" <kamil.tralewski@craftsplex.pl>
+        b=Ho1A6rJwH4ZmzaPpH84mozBL6bzcF6e/LJx58aJHazthTfj3vR/f1rarxrb1WqFm3
+         BFEt2EQ/+SfpJCh3HDfgSNt9sKUXEQMdr452RNfKhRZB+EIw8PPin0JSxQWEHaTnrJ
+         uZg0GGhNMTesxest7pZaEYQSjkBdpD7pmH+41LbAUERZxxmoHP1kWlG9vCbwmwRrDm
+         FbXIe34dRd9gFWtadsCeh/XSXCO1bUqSM8/6IYtMVTjYhnadGV7lZhYT0qmQBHX48i
+         s60fsvU5DA++KM5JuEnsVh0ETAU0ONiSRFTeIpZy1sZC2D3rqqqvHF3U6Ppx/XJFKA
+         bpNkM/QYwEeNQ==
+Received: by mail.lastcratebiz.pl for <xdp-newbies@vger.kernel.org>; Wed, 14 Jun 2023 08:10:28 GMT
+Message-ID: <20230614074500-0.1.6t.a0cf.0.v2ql7kn7eo@lastcratebiz.pl>
+Date:   Wed, 14 Jun 2023 08:10:28 GMT
+From:   "Adam Hoksa" <adam.hoksa@lastcratebiz.pl>
 To:     <xdp-newbies@vger.kernel.org>
-Subject: =?UTF-8?Q?S=C5=82owa_kluczowe_do_wypozycjonowania?=
-X-Mailer: mail.craftsplex.pl
+Subject: Pomoc prawna
+X-Mailer: mail.lastcratebiz.pl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
@@ -42,16 +44,18 @@ X-Mailing-List: xdp-newbies@vger.kernel.org
 
 Dzie=C5=84 dobry,
 
-zapozna=C5=82em si=C4=99 z Pa=C5=84stwa ofert=C4=85 i z przyjemno=C5=9Bci=
-=C4=85 przyznaj=C4=99, =C5=BCe przyci=C4=85ga uwag=C4=99 i zach=C4=99ca d=
-o dalszych rozm=C3=B3w.=20
+jestem zainteresowany wsp=C3=B3=C5=82prac=C4=85 z Pa=C5=84stwa firm=C4=85=
+=2E
 
-Pomy=C5=9Bla=C5=82em, =C5=BCe mo=C5=BCe m=C3=B3g=C5=82bym mie=C4=87 sw=C3=
-=B3j wk=C5=82ad w Pa=C5=84stwa rozw=C3=B3j i pom=C3=B3c dotrze=C4=87 z t=C4=
-=85 ofert=C4=85 do wi=C4=99kszego grona odbiorc=C3=B3w. Pozycjonuj=C4=99 =
-strony www, dzi=C4=99ki czemu generuj=C4=85 =C5=9Bwietny ruch w sieci.
+Obs=C5=82uguje przedsi=C4=99biorc=C3=B3w w zakresie kompleksowego wsparci=
+a prawnego w rozszerzonym zakresie. Dzi=C4=99ki wieloletniej praktyce i w=
+sp=C3=B3=C5=82pracy z dzia=C5=82alno=C5=9Bciami Pa=C5=84stwa formatu jest=
+em w stanie wypracowa=C4=87 korzystne rozwi=C4=85zania pod wzgl=C4=99dem =
+prawnym, podatkowym i organizacyjnym.
 
-Mo=C5=BCemy porozmawia=C4=87 w najbli=C5=BCszym czasie?
+Mo=C5=BCemy si=C4=99 spotka=C4=87 b=C4=85d=C5=BA porozmawia=C4=87 telefon=
+icznie?
+
 
 Pozdrawiam
-Kamil Tralewski
+Adam Hoksa
