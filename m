@@ -2,39 +2,39 @@ Return-Path: <xdp-newbies-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 98FF1EB64DA
-	for <xdp-newbies@archiver.kernel.org>; Fri, 14 Jul 2023 08:19:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E67B2EB64DA
+	for <xdp-newbies@archiver.kernel.org>; Wed, 19 Jul 2023 08:56:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234425AbjGNITr (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Fri, 14 Jul 2023 04:19:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40312 "EHLO
+        id S229872AbjGSI4N (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Wed, 19 Jul 2023 04:56:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46998 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234889AbjGNITq (ORCPT
+        with ESMTP id S229561AbjGSI4N (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Fri, 14 Jul 2023 04:19:46 -0400
-X-Greylist: delayed 470 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 14 Jul 2023 01:19:43 PDT
-Received: from mail.wellcurbiz.pl (mail.wellcurbiz.pl [185.176.222.80])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E185C5
-        for <xdp-newbies@vger.kernel.org>; Fri, 14 Jul 2023 01:19:43 -0700 (PDT)
-Received: by mail.wellcurbiz.pl (Postfix, from userid 1001)
-        id 0C3AA612E0; Fri, 14 Jul 2023 08:11:01 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=wellcurbiz.pl;
-        s=mail; t=1689322266;
-        bh=A03WSR0YBC/gibZRjjnSj1oczaw0iMm6s/gVJSxdO0w=;
+        Wed, 19 Jul 2023 04:56:13 -0400
+X-Greylist: delayed 535 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 19 Jul 2023 01:56:09 PDT
+Received: from mail.cassleycruden.pl (mail.cassleycruden.pl [217.61.97.118])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 78464136
+        for <xdp-newbies@vger.kernel.org>; Wed, 19 Jul 2023 01:56:09 -0700 (PDT)
+Received: by mail.cassleycruden.pl (Postfix, from userid 1001)
+        id 50E7283619; Wed, 19 Jul 2023 09:46:15 +0100 (BST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=cassleycruden.pl;
+        s=mail; t=1689756376;
+        bh=Bm7kvP9mjtgWMDTk0x3n9fvdJasu+xrGpL0E8vcP3ks=;
         h=Date:From:To:Subject:From;
-        b=kVCBWr74zMqSmb5g8NI0lTwDgEuimV3MZW2AoIv3qYbNSOtItuB/SizDyQ9vygC0R
-         BTZRrh/Go0U8Oeahip8QbWoMXI0+tBHqH2dWFmHFA4qGAJN7M58hPptHdAE+3cy51m
-         k9zmc+DsFjbohPcIqB01bd58BJfqoWO5TUvv7/QvU/UlIxzaFxUu25ASvkyEAuIL7G
-         SDXeBCtX1CLpKP9v8KENGh0m4uIn3e8kw7DRyFjJ6YlWDfyRCAFv3VwEmP7Cz/5dbd
-         rGdfbAUEdWhft/sbuP1E/LJI/L2T7eYlqtRlvnqIbJEJLEMti0GrORLDz1CTf9qQgH
-         MPuEqzu0Pnm4A==
-Received: by mail.wellcurbiz.pl for <xdp-newbies@vger.kernel.org>; Fri, 14 Jul 2023 08:10:49 GMT
-Message-ID: <20230714064500-0.1.37.evm9.0.3qqobgin6r@wellcurbiz.pl>
-Date:   Fri, 14 Jul 2023 08:10:49 GMT
-From:   "Grzegorz Larek" <grzegorz.larek@wellcurbiz.pl>
+        b=WyIckShWNTxUmGdj2EQ5jObxZZxARlnuq82utd2iUzkC1AvzfCKts/3C3WpYj0J4t
+         fqE3TAdm4G6iJ2xCSB8nafYzL0//h9m8YqYuTHKgveFVmML9+ZFlKniyWpG1j4793f
+         RZh7VaGf7S0QmQuYNIQ/QiFCAeLdgb4rPu6dVlL7q/cgAGfWrjYCIzHv1jxbAKumHP
+         c46Sg48QVTNpYnPwqh4s3dev3+MJYaNyGQ3RZx/6lcCIFTtRK0C+8dIUvg9GBF6Xx7
+         GM3v4/o9pDbA10VDaqHDMz01uc9ADIiA3OskhzcGrhyJOhClmXYwtsONLdaKGtMEZC
+         M5V+9bzfVjDDw==
+Received: by mail.cassleycruden.pl for <xdp-newbies@vger.kernel.org>; Wed, 19 Jul 2023 08:45:26 GMT
+Message-ID: <20230719090623-0.1.6a.chae.0.28ps0sc6z5@cassleycruden.pl>
+Date:   Wed, 19 Jul 2023 08:45:26 GMT
+From:   "Adrian Giermata" <adrian.giermata@cassleycruden.pl>
 To:     <xdp-newbies@vger.kernel.org>
-Subject: Dedykowana centrala.
-X-Mailer: mail.wellcurbiz.pl
+Subject: Nieaktywna strona www
+X-Mailer: mail.cassleycruden.pl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
@@ -42,20 +42,22 @@ Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-Dzie=C5=84 dobry,
+Dzie=C5=84 dobry!
 
-chcieliby Pa=C5=84stwo usprawni=C4=87 kontakt z Klientem jednocze=C5=9Bni=
-e zmniejszaj=C4=85c koszty po=C5=82=C4=85cze=C5=84 telefonicznych?
+w=C5=82a=C5=9Bnie zako=C5=84czy=C5=82em budow=C4=99 nowej strony internet=
+owej dla firmy dzia=C5=82aj=C4=85cej w Pa=C5=84stwa bran=C5=BCy.
 
-Za pomoc=C4=85 prostej platformy mog=C4=85 Pa=C5=84stwo szybko i bez zak=C5=
-=82=C3=B3ce=C5=84 kontaktowa=C4=87 si=C4=99 z Klientami poprzez telefon, =
-e-mail, sms, czat czy formularz do zamawiania rozm=C3=B3w telefonicznych =
-bezpo=C5=9Brednio ze strony www.=20
+Dzi=C4=99ki nowoczesnym funkcjonalno=C5=9Bciom i niestandardowej kreacji =
+umocni=C5=82em mark=C4=99 tej firmy dodaj=C4=85c jej warto=C5=9Bci i to=C5=
+=BCsamo=C5=9Bci, kt=C3=B3rej szukaj=C4=85 Klienci.
 
-Chcieliby Pa=C5=84stwo szerzej zapozna=C4=87 si=C4=99 z funkcjonalno=C5=9B=
-ciami rozwi=C4=85zania?
+Z przyjemno=C5=9Bci=C4=85 mog=C4=99 odwiedzi=C4=87 siedzib=C4=99 Pa=C5=84=
+stwa firmy i przedstawi=C4=87 swoje portfolio lub mog=C4=99 zadzwoni=C4=87=
+ i pozna=C4=87 Pa=C5=84stwa oczekiwania, wtedy wsp=C3=B3lnie przeanalizuj=
+emy potencja=C5=82 wsp=C3=B3=C5=82pracy.=20
+
+Czy moja propozycja wydaje si=C4=99 atrakcyjna?
 
 
 Pozdrawiam
-Grzegorz Larek
-Key Account Manager
+Adrian Giermata
