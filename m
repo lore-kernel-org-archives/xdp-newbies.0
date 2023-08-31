@@ -2,93 +2,109 @@ Return-Path: <xdp-newbies-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C46CC83F1A
-	for <xdp-newbies@archiver.kernel.org>; Wed, 30 Aug 2023 18:56:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7913EC83F10
+	for <xdp-newbies@archiver.kernel.org>; Thu, 31 Aug 2023 09:44:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344040AbjH3S4f (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
-        Wed, 30 Aug 2023 14:56:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45320 "EHLO
+        id S1343601AbjHaJoE (ORCPT <rfc822;xdp-newbies@archiver.kernel.org>);
+        Thu, 31 Aug 2023 05:44:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46228 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244796AbjH3ODe (ORCPT
+        with ESMTP id S1343672AbjHaJn6 (ORCPT
         <rfc822;xdp-newbies@vger.kernel.org>);
-        Wed, 30 Aug 2023 10:03:34 -0400
-Received: from mail-lj1-x236.google.com (mail-lj1-x236.google.com [IPv6:2a00:1450:4864:20::236])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E4B15FC
-        for <xdp-newbies@vger.kernel.org>; Wed, 30 Aug 2023 07:03:31 -0700 (PDT)
-Received: by mail-lj1-x236.google.com with SMTP id 38308e7fff4ca-2bcc187e0b5so86291511fa.1
-        for <xdp-newbies@vger.kernel.org>; Wed, 30 Aug 2023 07:03:31 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1693404210; x=1694009010; darn=vger.kernel.org;
-        h=to:message-id:subject:date:mime-version:from
-         :content-transfer-encoding:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=7SYwuvlBigznlg95SFndHP39p7WJ4tG2r7pv9WNtHGo=;
-        b=StJcG9Xd0OVE+ujCI82zAaWEZRpiTYVDvB6kH8FwWRNxgmP4RpKo1gw5JLWWiOrNxm
-         9QSbpJm5A5A0j+AtIRcEjdUTOA3lvEfYdCHh17qbYNzZZtrr5PyD5TgaUdKB5aFa4Lzy
-         rlszJdfNozIMIXL6Qqa1JQGyiZuqxPJr5sEvRmDatSVyRDTEPvqksLtfpvTHqlnCiNiK
-         tiWnCuRtxkg4xQTKWyTS6kPqPqnId4PxJL+6tYkM4EDVuHqF19fH6agPSM6azQca8c1Q
-         3OiIjfBcWDeaYW6424hlcQ3Cv7ldSr0AmUt/rGv2RJTfZ8IaEyaaWwhLYjSjFqQ5oLmg
-         qYRA==
+        Thu, 31 Aug 2023 05:43:58 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 258D0CF3
+        for <xdp-newbies@vger.kernel.org>; Thu, 31 Aug 2023 02:43:08 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1693474987;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=BnXGZYR/WSJ3bOx7Da1jU9wAwk0OIQrHvdk5BRS0vUw=;
+        b=d+2xu8HIl39N2YUWOrLo0GCtdGKaRjVDRaSPGZ1d+tBK+nuTPrRtzryDiCOmuzk7Osy3pA
+        xfgVdfpMt7v3b5SFQ4v2a4XYly8keL612G2FSownrWETT9mRpwWpRBPSNPhbR+VeLCYTW4
+        /var4FzYei17FQVOlTUA2wr3/UebJD4=
+Received: from mail-ed1-f71.google.com (mail-ed1-f71.google.com
+ [209.85.208.71]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-306-VfnUGtMzOUeT1rPw9mxixQ-1; Thu, 31 Aug 2023 05:43:05 -0400
+X-MC-Unique: VfnUGtMzOUeT1rPw9mxixQ-1
+Received: by mail-ed1-f71.google.com with SMTP id 4fb4d7f45d1cf-52a38baa269so468453a12.2
+        for <xdp-newbies@vger.kernel.org>; Thu, 31 Aug 2023 02:43:05 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1693404210; x=1694009010;
-        h=to:message-id:subject:date:mime-version:from
-         :content-transfer-encoding:x-gm-message-state:from:to:cc:subject
+        d=1e100.net; s=20221208; t=1693474984; x=1694079784;
+        h=content-transfer-encoding:mime-version:message-id:date:references
+         :in-reply-to:subject:to:from:x-gm-message-state:from:to:cc:subject
          :date:message-id:reply-to;
-        bh=7SYwuvlBigznlg95SFndHP39p7WJ4tG2r7pv9WNtHGo=;
-        b=FWHxVzt0dqXxcMlj/W3aOP/+DeyajIegRzGy2pxYRdn4Qr9oGnLFbTxXW6ahrXbVBu
-         ztv68NNXHGM01LD6pAWxvF9nk+9K4YA3VxG98IYqHwWgpyAmw3bs7rPa1VKdDqgUpxJ1
-         q9F19yMXoo2Muzc/F+PWtQOnyDypb6gyeIu26AA0jhnXX5HVCG9nmeuiI932WErD7QAq
-         NXIxtN8tG5LumUBwAC7zf65VfIEvvQNgmy0S7PGBSS3fikYiXAADLN9cPrWwAz1LJkCA
-         N3xZJu1IRiZ3a4ZMDvn2uyI3fqPo2djZZpZUv+B0JB3KoW5eI6lJ6nk9n074dOleJkfP
-         WBjw==
-X-Gm-Message-State: AOJu0YyG1sUWZRz6t3hg/CAO69Y6sqr9gT+P8nd1VqeT3NBRRwSfAgbY
-        Xn5RsfFIuBRjDyYGBGANjQYffVAx2G0=
-X-Google-Smtp-Source: AGHT+IF884DAnyjBOZ8HaRZUj622avfNwgAh8AXMKAUf/85t0GUJFYfd/sOFgOrAqZmn+vze7uHxHA==
-X-Received: by 2002:a05:6512:3b06:b0:4fd:cbd6:d2ff with SMTP id f6-20020a0565123b0600b004fdcbd6d2ffmr2122200lfv.33.1693404209570;
-        Wed, 30 Aug 2023 07:03:29 -0700 (PDT)
-Received: from smtpclient.apple (2001-1c00-1437-6f00-ac78-060a-5c90-ae60.cable.dynamic.v6.ziggo.nl. [2001:1c00:1437:6f00:ac78:60a:5c90:ae60])
-        by smtp.gmail.com with ESMTPSA id v21-20020aa7d655000000b0051e22660835sm6775558edr.46.2023.08.30.07.03.28
-        for <xdp-newbies@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 30 Aug 2023 07:03:29 -0700 (PDT)
+        bh=BnXGZYR/WSJ3bOx7Da1jU9wAwk0OIQrHvdk5BRS0vUw=;
+        b=P1H6K9EMJMWKjq/T2THGjcue4SyY7/5u4TM6RSINXzywYyQGUITv/vAYcpj4qmfsPn
+         JUeFERwk1jbuE/UrEYcJhV8XnDySwvi0hJPVT7gkzBHUFO3ldU5j/GYrS5/jNSEiYV9K
+         lZIN7gvSbk3dh/duBWudKjQkqWOX5EIpvLA2bmhjLoVs4Do92el1QWYGv5znV9vgZ7I0
+         71ItDminlJBKfkAJiJub2ZZ/YWyLshMit8HAfy03Xt+QE0Pu0Jg65CChbkDpgK16ihTU
+         6GMZ2/igzZVMOjqrTeWYBWBgwQhPmujN60n3c3/sVA/kucWiDz0Pawq8SBsnk26PndWW
+         Z6Sg==
+X-Gm-Message-State: AOJu0Yy0AlwRfK+e65unHaj2kLyLOLq5N/yA3suXFf7nkoqC1GZPjcEs
+        MvAHmI1veEg+DtR6ZQgLl5dbkovsIhnuS7vsIxir+WmfG6m+JZUCjDyrFVEoT7pABkJ6uFGs6Er
+        3V45FWibngKm7uHGvi4i7t78=
+X-Received: by 2002:aa7:c414:0:b0:51e:ed6:df38 with SMTP id j20-20020aa7c414000000b0051e0ed6df38mr3668862edq.13.1693474984403;
+        Thu, 31 Aug 2023 02:43:04 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IGpjjaaEODnhPnbl0VyzQuQFzhmGc73dLaP83xqduBCpPVAFYCWCUV9UqjFk6Sq6Rv6h8DEcA==
+X-Received: by 2002:aa7:c414:0:b0:51e:ed6:df38 with SMTP id j20-20020aa7c414000000b0051e0ed6df38mr3668852edq.13.1693474983971;
+        Thu, 31 Aug 2023 02:43:03 -0700 (PDT)
+Received: from alrua-x1.borgediget.toke.dk ([2a0c:4d80:42:443::2])
+        by smtp.gmail.com with ESMTPSA id x2-20020aa7dac2000000b005272523b162sm577620eds.69.2023.08.31.02.43.03
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 31 Aug 2023 02:43:03 -0700 (PDT)
+Received: by alrua-x1.borgediget.toke.dk (Postfix, from userid 1000)
+        id 0F8C2D8216D; Thu, 31 Aug 2023 11:43:03 +0200 (CEST)
+From:   Toke =?utf-8?Q?H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+To:     Rene Vrolijk <rrvrolijk@gmail.com>, xdp-newbies@vger.kernel.org
+Subject: Re: XDP use for data diodes
+In-Reply-To: <0CF95803-5B47-4793-9FE4-F20F3312D075@gmail.com>
+References: <0CF95803-5B47-4793-9FE4-F20F3312D075@gmail.com>
+X-Clacks-Overhead: GNU Terry Pratchett
+Date:   Thu, 31 Aug 2023 11:43:03 +0200
+Message-ID: <878r9rv97c.fsf@toke.dk>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-From:   Rene Vrolijk <rrvrolijk@gmail.com>
-Mime-Version: 1.0 (1.0)
-Date:   Wed, 30 Aug 2023 16:03:27 +0200
-Subject: XDP use for data diodes
-Message-Id: <0CF95803-5B47-4793-9FE4-F20F3312D075@gmail.com>
-To:     xdp-newbies@vger.kernel.org
-X-Mailer: iPad Mail (19H364)
 Precedence: bulk
 List-ID: <xdp-newbies.vger.kernel.org>
 X-Mailing-List: xdp-newbies@vger.kernel.org
 
-Hi,
+Rene Vrolijk <rrvrolijk@gmail.com> writes:
 
-I have a question about the use of XDP. A little warning upfront, i=E2=80=99=
-m not a programmer or network manager so my question could be strange. Sorry=
- for that.
+> Hi,
+>
+> I have a question about the use of XDP. A little warning upfront, i=E2=80=
+=99m
+> not a programmer or network manager so my question could be strange.
+> Sorry for that.
+>
+> I created a Github to teach people about the basics of data diodes on
+> https://github.com/vrolijk/osdd Via this git i explain student in 2
+> hours the basics and how to to get their hands on a data diode,
+> insight in UDP packetloss with normal operating systems, setup Ubuntu
+> to use as a proxy and send data with three different use cases. All
+> with publicly available hard and software and with complicated
+> scripting.
+>
+> My (noob) question:
+> There is a major issue when using Ubuntu and packetloss in the
+> Linuxkernel. Is it possible to use XDP to prevent packetloss when
+> sending data over an unidirectional connection between 2 Ubuntu
+> machines via a data diode? Is it possible to help me (and the
+> students) via an example how to configure this on the 2 machines?
 
-I created a Github to teach people about the basics of data diodes on https:=
-//github.com/vrolijk/osdd=20
-Via this git i explain student in 2 hours the basics and how to to get their=
- hands on a data diode, insight in UDP packetloss with normal operating syst=
-ems, setup Ubuntu to use as a proxy and send data with three different use c=
-ases. All with publicly available hard and software and with complicated scr=
-ipting.
+While XDP can help alleviate some causes of packet loss, it is always
+possible to overwhelm a receiver. And XDP is certainly not noob
+friendly, so I'm not sure I'd recommend it as a tool for people who are
+just starting out experimenting with network programming.
 
-My (noob) question:
-There is a major issue when using Ubuntu and  packetloss in the Linuxkernel.=
- Is it possible to use XDP to prevent packetloss when sending data over an u=
-nidirectional connection between 2 Ubuntu machines via a data diode?=20
-Is it possible to help me (and the students) via an example how to configure=
- this on the 2 machines?=20
+The XDP tutorial is probably still the best resource we have for getting
+started with XDP, so I'd suggest you take a look at that:
+https://github.com/xdp-project/xdp-tutorial
 
-The main idea for the workshop is having a noob proof example so the student=
- has a working example and can continue with his own more advanced setup or u=
-se-case.
-
-Regards,=20
-Rene Vrolijk
+-Toke
 
