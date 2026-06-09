@@ -1,45 +1,46 @@
 Received: from www62.your-server.de (www62.your-server.de [213.133.104.62])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F38B13AEF33;
-	Tue, 31 Mar 2026 12:57:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A2FA331ED7;
+	Tue,  9 Jun 2026 21:33:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.133.104.62
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774961837; cv=none; b=oqQNTRdx8zfsPTgXE+cF2MfijW5P+8X0uM4Bh1cZMar4yQGpNcKzHlXh1Kqv++e3rH3ayVDZeWvfWQFw59gPgS8KLRcqlPaT96lBMPvseyhez/tBtjOxzJMygnTEZMVHV085hBug845RfFfPYJTnXYfleombItiJT1Os2GxRTy8=
+	t=1781040792; cv=none; b=b3PzwTMR7cYppEv1UmtPt+c7QQJt0J9NLLFGPNoMxnj5or/+dA5fnlIL4ewXLzDNKa4fQy9UtYH3lut6M7gO+QFj3oGI2nFoErdoQfUJBMdd1IFIo4lXTKZnLVH4CjWMG4ENwbhCWT1VfYZ2dZ581/d3Cu+io3loUUDoz5t4bqg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774961837; c=relaxed/simple;
+	s=arc-20240116; t=1781040792; c=relaxed/simple;
 	bh=0U25bYtFjVVWOw0Fyb+E9vbcnPC+AThYCcohTtmdMdk=;
-	h=Message-ID:Date:MIME-Version:To:Cc:From:Subject:Content-Type; b=jKOOfa/E3heUIAD3jL2OjUHXGDUvqMhCUoA4PkYdYDbaCbKB4cHWuwWFNo3IhXYWqZGkA2ceVvbgukELshJsM6gxuFKL4hBsBnVdgDq/Pt7Zkk5h+UjFVTAnDs0Obxe4029SzrfcoBniz2KjeBO0sf/gqDuSNY89EdJJfr2yVSM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=iogearbox.net; spf=pass smtp.mailfrom=iogearbox.net; dkim=pass (2048-bit key) header.d=iogearbox.net header.i=@iogearbox.net header.b=YShCU8gQ; arc=none smtp.client-ip=213.133.104.62
+	h=Message-ID:Date:MIME-Version:Subject:References:To:Cc:From:
+	 In-Reply-To:Content-Type; b=KutLS56g9MPaq36v0tXqF8ZMlceBaZvYJ9NZ4uKzyR7EZjBG1lsbdqh3busVPTlEgB7XAEXdKq3AtK9ZVyutolUyAze60V4PE2ICGDEpC7airvpiclv9X2lOhC6S0zr/20FjlnN9AvDTh/niIzEk8YOSjRofUVQSnuhQJf0K1gA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=iogearbox.net; spf=pass smtp.mailfrom=iogearbox.net; dkim=pass (2048-bit key) header.d=iogearbox.net header.i=@iogearbox.net header.b=aGA+FBIN; arc=none smtp.client-ip=213.133.104.62
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=iogearbox.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iogearbox.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=iogearbox.net header.i=@iogearbox.net header.b="YShCU8gQ"
+	dkim=pass (2048-bit key) header.d=iogearbox.net header.i=@iogearbox.net header.b="aGA+FBIN"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=iogearbox.net; s=default2302; h=Content-Transfer-Encoding:Content-Type:
-	Subject:From:Cc:To:MIME-Version:Date:Message-ID:Sender:Reply-To:Content-ID:
-	Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
-	:Resent-Message-ID:In-Reply-To:References;
-	bh=wt6DiEMteCEm1lhgoNFvSLYoFznRlgRcQ6OPddERu2k=; b=YShCU8gQvPDkVEjKYzf3B+jHjU
-	RXAJwAU+tJQO3JKFQqadVzLm1K/PW1hSpzdiA0ZwD/5js9IjvA14tyB8E/vUH3ldBbL0Rg/SK5tbQ
-	cKzqzylen2SjjOB9WDUd3SczzO3F0MMfD7wRQVi3ONW9DK59+rosVLyAPwSiQKiiRcxYXuMMxeBOV
-	1YI03Z8ID2oqD3DOO04P5qFSXQ2v5i2VvgHMTKexSei+eq1DUUY0cHgzFljgPf8XGEHMVq3aZgXS/
-	GyXDfKHtdp5+Z7iFKowGFa78L5zrN8jqB1KmVm06SbQI4gCwpAKMLgNV6gP2poiJr0Hetclnr5QW1
-	QD858xQA==;
-Received: from sslproxy02.your-server.de ([78.47.166.47])
+	In-Reply-To:From:Cc:To:References:Subject:MIME-Version:Date:Message-ID:Sender
+	:Reply-To:Content-ID:Content-Description:Resent-Date:Resent-From:
+	Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID;
+	bh=wt6DiEMteCEm1lhgoNFvSLYoFznRlgRcQ6OPddERu2k=; b=aGA+FBINxai7B0CF5Izgd26grh
+	W4Kfv5lzahDijsb4M/72A6kv0zuOcFf3OrVxRSRCGZVT8P1O2SXkeVkw9SmNZObDsxCs4toU3cWxd
+	Uycc7mA3LSF9eVHY4cR8dul580uoKNP4bNl7SAyzt50vAvhsopIxj02QTEAph+bdpR0h/1lQHPWjM
+	LJzYrxOwGZBxK/zDOoVXBX1OzAZInf97jsqFEJ1yirLVdC8DbdMYaOU0QllKk3h5VYMEM+QpffFgL
+	RwidqeHsyMLljpbHj+9bJy7OdFwXSDpl2arRq+m/o9fo6BBJ/dBdpeUnoSd+U5htzz61Wx/z1KUUY
+	twWKignw==;
+Received: from sslproxy05.your-server.de ([78.46.172.2])
 	by www62.your-server.de with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
 	(Exim 4.96.2)
 	(envelope-from <daniel@iogearbox.net>)
-	id 1w7YeY-000EQY-3B;
-	Tue, 31 Mar 2026 14:57:07 +0200
+	id 1wX44K-000N6B-1J;
+	Tue, 09 Jun 2026 23:33:08 +0200
 Received: from localhost ([127.0.0.1])
-	by sslproxy02.your-server.de with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
+	by sslproxy05.your-server.de with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
 	(Exim 4.96)
 	(envelope-from <daniel@iogearbox.net>)
-	id 1w7YeY-000EU1-1U;
-	Tue, 31 Mar 2026 14:57:06 +0200
-Message-ID: <70b21729-7c07-49a8-ace7-c67ec985ba8c@iogearbox.net>
-Date: Tue, 31 Mar 2026 14:57:06 +0200
+	id 1wX44J-000Gh6-1V;
+	Tue, 09 Jun 2026 23:33:08 +0200
+Message-ID: <474fdcb2-5372-4d8b-9231-f686e74c62b2@iogearbox.net>
+Date: Tue, 9 Jun 2026 23:33:07 +0200
 Precedence: bulk
 X-Mailing-List: xdp-newbies@vger.kernel.org
 List-Id: <xdp-newbies.vger.kernel.org>
@@ -47,11 +48,12 @@ List-Subscribe: <mailto:xdp-newbies+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:xdp-newbies+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
+Subject: [REMINDER] LPC 2026 BPF Track CFP
 Content-Language: en-US
-To: bpf@vger.kernel.org
-Cc: xdp-newbies@vger.kernel.org
+References: <70b21729-7c07-49a8-ace7-c67ec985ba8c@iogearbox.net>
+To: "open list:BPF [RINGBUF]" <bpf@vger.kernel.org>
+Cc: Xdp <xdp-newbies@vger.kernel.org>
 From: Daniel Borkmann <daniel@iogearbox.net>
-Subject: [ANNOUNCEMENT] LPC 2026 BPF Track CFP
 Autocrypt: addr=daniel@iogearbox.net; keydata=
  xsFNBGNAkI0BEADiPFmKwpD3+vG5nsOznvJgrxUPJhFE46hARXWYbCxLxpbf2nehmtgnYpAN
  2HY+OJmdspBntWzGX8lnXF6eFUYLOoQpugoJHbehn9c0Dcictj8tc28MGMzxh4aK02H99KA8
@@ -95,9 +97,11 @@ Autocrypt: addr=daniel@iogearbox.net; keydata=
  rUD9YI1Je/WifL/HbIubHCCdK8/N7rblgUrZJMG3W+7vAvZsOh/6VTZeP4wCe7Gs/cJhE2gI
  DmGcR+7rQvbFQC4zQxEjo8fNaTwjpzLM9NIp4vG9SDIqAm20MXzLBAeVkofixCsosUWUODxP
  owLbpg7pFRJGL9YyEHpS7MGPb3jSLzucMAFXgoI8rVqoq6si2sxr2l0VsNH5o3NgoAgJNIg=
+In-Reply-To: <70b21729-7c07-49a8-ace7-c67ec985ba8c@iogearbox.net>
+X-Forwarded-Message-Id: <70b21729-7c07-49a8-ace7-c67ec985ba8c@iogearbox.net>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-X-Virus-Scanned: Clear (ClamAV 1.4.3/27957/Tue Mar 31 08:24:30 2026)
+X-Virus-Scanned: Clear (ClamAV 1.4.3/28026/Tue Jun  9 08:25:31 2026)
 
 We are pleased to announce the Call for Proposals (CFP) for the BPF track at
 the 2026 edition of the Linux Plumbers Conference (LPC), which is taking place
