@@ -1,105 +1,167 @@
-Received: from mail-lj1-f170.google.com (mail-lj1-f170.google.com [209.85.208.170])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1792788139;
+	b=FX5kfQTIl5hwa0DDgx92WF/hnZ7rBYrGK/hhLqq+0QhCLLU70PHWHy8kwYfCh2WmNug9
+	 QraTWQuF4067rWqjnsmeMIUwctoShNQYcD0T3ZfwtEwJ5NUkqwaxpdIzq2Ea0tMopIh+9
+	 zCzWncZGniyqvwJWaWIMMkvUHaf02lGX+Soy1U0nTolNOekaQM8FrI/cEHNrIghg2VVxX
+	 Lw2c7TP96LYAykRtEVcUuqDuCN8uaf666f35yYffgAfhNTxW/UNnxy7DZmGUypPREOYlJ
+	 OuVx7WkJcAET20xVWEoEBYskyO+fsqDAjMCGQ1gABrYMPqfR6iqB61r6xDpDkKxLGdA==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792788139;
+	h=Received:DKIM-Signature:Message-ID:Date:MIME-Version:User-Agent:From:
+	 Content-Language:To:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=RDAVCEYLkQJBBRbumbtY/fhsVSlKrCr9KDBRRoeX0ww=;
+	b=BthKTuaffKbH2oLdYxWz6T/PH9GJ3DB3JghqQJOoIFDduIBjZ+inGsiN8/ZP58vIySBU
+	 xiQxuTxbzX0YFBm7aarrLiVPtdpgKP53x7a5YxB7eae1c8oN9mZuDVVOQtsXJ746d0rbs
+	 dzCPIEnPvZ6zt9v91hmbwUaZ6q9lZjmYeG2bdkGBY/vqqExCIiUVomqFrBRNnmCJglPtM
+	 oZopWlHhgDxCPvuCPBi4VmY2dliUQWWt8vG7pDggiyn3ZZxF6wlE4zexaVFfgfJsy5ySe
+	 ODCxUsuzAZKj763TOmXJ3+W7GWwasssd/g8jSQY+cXpstj1w9MtTi6alMc5OfVjx6vA==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=okNBZMzG;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4352224679C
-	for <xdp-newbies@vger.kernel.org>; Tue, 13 Oct 2026 22:12:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.170
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791929547; cv=pass; b=IYyyJqC2kb0qcuGu/ggD6FPFMVn/FUI5mImkrJT3khvfvOAVQlHVC0OBMQ+JBmFWiV/NbgvhU6ky6LQTceyXZ4Jy7ScABN/Lg7EeO/jKUjA3ip+dTdSlzj+TPnO0tyfL5joPjSWIglyPW536M04OYKZTOnjoShGs+rZOwgaRMxc=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791929547; c=relaxed/simple;
-	bh=pyKYzYCyh9ueYuZnX7v5fscC/rAj1BL903QgBzEMovM=;
-	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=PJa8FhUygrneBvQhoHKap6sE2cp+EXsxF3BjUirAvx7EoQx/ZzsFth2YOoFTH8j9oIboCdO3VtJqWkMakIUxlO4NZmfoIG6amStl/QvTOWN9iYXH6QyfmHLNq3gilMdo2VMYyPWFSHV4S0pnRFnMcUJ45m6u8dkrTDmx8yYlnwo=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=JagfcRNR; arc=pass smtp.client-ip=209.85.208.170
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD6C860A2602;
+	Fri, 23 Oct 2026 20:42:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JagfcRNR"
-Received: by mail-lj1-f170.google.com with SMTP id 38308e7fff4ca-3aae898c0afso3583831fa.1
-        for <xdp-newbies@vger.kernel.org>; Tue, 13 Oct 2026 15:12:25 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1791929544; cv=none;
-        d=google.com; s=arc-20260327;
-        b=rHyuXHBWcFw1ftkwnXnVrgWqoU9qSXIBVulam2saum9OcJ1mKDQldgdc348mGRiHW2
-         4uRS2j6XGsz2ZP69+k/RU15Z+b/403Thev/RU+VVxk6Otyn3daK3YTibNh1/vszWicep
-         rr88t0Xb4/DxNQbYZHZj+allRyzHHFYJ4MCljmi1yqmsSAWxkOWpSJhZ5LofLhKYMWUu
-         Q/ePbOtvYrbm5bunX0ffJN3wlOQCzwaugWqjTqvXoDMj1SXzItBmsnRTRTj+x4zwVUt2
-         S9M4wO9kiUGyOGKZrsSqhzXrbW3ZyFZJAecdPTc0nOue0Kpzg16VW6kr0Rpi6X9O1P2T
-         FGng==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=to:subject:message-id:date:from:mime-version:dkim-signature;
-        bh=pyKYzYCyh9ueYuZnX7v5fscC/rAj1BL903QgBzEMovM=;
-        fh=TgbYq5UfoE+cqa8MtroVnPnEXUEdTl+LI2AU+LrumBQ=;
-        b=gaKWH45tiCsjq5pG/ULfFXC11IZa0MO2PUDWqerUC2C7ot1OeB1IusUGqU04wy72Gx
-         5VjbUzRAlKEN06adMXpQFNO3fAyFJqJZqPbEQqZ3kKrtBcVnCoMcv9J0D3U+pGF+3TF9
-         nk3INxu9rsgpoZiV6TloUCkaPRq6MqfYV+iDdwDLoxinpitb7HNlIcmiO1QkBe67DL07
-         Q8rx3npWY/4pZ0dBA+0gp/N7gIiy/tmtG/vAdh8OijttMa4EZYSUGns3Kk/Yaua8Psen
-         9ZSenymd/cElwn2gYGEdkUaSpYLVlKLHeEY45C/YuUri2rhKf6zDNkHjqxrsFb+781jh
-         Jm2A==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791929544; x=1792534344; darn=vger.kernel.org;
-        h=content-type:to:subject:message-id:date:from:mime-version:from:to
-         :cc:subject:date:message-id:reply-to:content-type;
-        bh=pyKYzYCyh9ueYuZnX7v5fscC/rAj1BL903QgBzEMovM=;
-        b=JagfcRNRyBbeC0RFuE5+GumKAWSuPKh47bUyfSOLmgSboPKZt1dtNnlo6+k5mqH5us
-         QH0FvINmFWoJ5fXEVv83urtwY5QVIDr2HO3zdf49ihs6v8Il8qRKEKczZXOvI1Ys6XqI
-         /n1bd/g+i9QptPU4bP5UZ1EYQmzWFUxl4n5diNTBvIlKFOWxIqIFuWwYhiPdh8+YpaFz
-         t+0LCb2eNkcZDForB+ZV1UWVQqlyj29zrJqBwFY3yfv7+cAAf8utMss5r456CBBZrzoK
-         zA4V4zvafiPyww9jH2PJxJMtXpVUqk20L3GRjH86n5B5pHDVCZ32L3jjgS20k7dgllRp
-         u62A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791929544; x=1792534344;
-        h=content-type:to:subject:message-id:date:from:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=pyKYzYCyh9ueYuZnX7v5fscC/rAj1BL903QgBzEMovM=;
-        b=pRvAphuVndQXcb2rsxMazQLl9bpirb+QCB/iA59LhSjbtowElz4dhFvxWwAlPsPEGV
-         djaBB34682nYX5YTzLcTHKvvwISkL2OdPSQnMcZOwa3DU8AnQBHz9rxMmlevB6iFvtUX
-         F0M6GqonRs9QHmOa/Ay/nV/NzN18+FkW12OtByxWeyaNPCSpPxH+/wSKdEJ1g0/igBSj
-         9LyFVBEttRB11xUOKhUyiF2PdtAXAIUjdpnPNC+QjyepQPtJlqhSgppk2TzLWMq5w8Ha
-         8OZYX+slLAtzQ+AQdF0Td0ca6uW9kh4KBDhx1RjF/YFOZ303sn/6+MJyUnTIEDolKwFU
-         NEZw==
-X-Gm-Message-State: AFq9FYKIhBL9723itg8/TrRmYmsh6FOYdcfL5SwAfEreJCfz+tzUYPhr
-	GVnVCWeelk62XYCzlIDibSvvANf0qv2iFLspJpWQd+Fw/pUrQ+dvqkB+sW1+BSSXr17FvfpLz/1
-	r+hoEkoddlkLwe6Dq4XBrWUvCS7Uq2Sq+JHEN
-X-Gm-Gg: AYBFou0CY7fMfrtgsJ0FfhmS5uqSJxdg5PrvuKmEcCfcXfb6iyTw1bJpX0VWhuwQf88
-	HLNWAnRepwMRLF3E8sArj+TIFh2HrX3T8HPx9Fhuw5tpmEM6vI370r6c3WnJA7WYu+p9/0iJmhN
-	cB05bIQetu60VRYIgnphodQha4S9XKxXXLLNSBjeBFFgqYycLUT073tU6VU2153xbLToYODXdrF
-	IYhucawhO1299yJy5h0ibzSiTGwLLrPXINzxCv2DyKFIxejm8BItQw2jFXUxazQTvFsntkh9SqC
-	DAjvfGy6QpkuzMiajhuc80+RclIJcVDxmQsgzhEh4AMzD1GYdvq8sy9F52dfVn313HWIR+z9Akl
-	0W9T7uxKEUCA=
-X-Received: by 2002:a2e:bc1b:0:b0:3a6:70bf:622e with SMTP id
- 38308e7fff4ca-3a9c515cfa9mr32651021fa.4.1791929544092; Tue, 13 Oct 2026
- 15:12:24 -0700 (PDT)
-Precedence: bulk
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=okNBZMzG
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 06F891F01825;
+	Fri, 23 Oct 2026 20:42:12 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792788133;
+	bh=RDAVCEYLkQJBBRbumbtY/fhsVSlKrCr9KDBRRoeX0ww=;
+	h=Date:From:To:Subject;
+	b=okNBZMzGvcK2PtPk3QkrUlBS4ywbUv9DTixj8EduMAFZCHTsUlV73vs4rkZDfy08K
+	 13teZ2bhhsqQlqFZmOYU+SRRY2usH3kl1O5xl4nBewEwGoP/Qjiz31ii8ddL7LLu4c
+	 4mTaWI8SRPtxjOIuN43S34v+qkbleHilfwf2/WTZtXojqQizPjEDeBR+rV3uPQYAPF
+	 Otzt3IuGByCkPMYg1gmC7ioCahlC/ApzESThbh2Mjwlk4UGUdDvB9YkXfBiCyDeiZq
+	 v2dqqmAue2u9/4rR+GTiSTr51Zw2BBOl8Ggq1SgNR0FaTRlT8M4m/XTNM16zq9cE7R
+	 QKlurrjXTDdkg==
+Message-ID: <77d9c4a3-1c12-4693-b706-da6194d87fde@kernel.org>
+Date: Fri, 23 Oct 2026 21:42:11 +0100
 X-Mailing-List: xdp-newbies@vger.kernel.org
 List-Id: <xdp-newbies.vger.kernel.org>
+List-Post: <mailto:xdp-newbies@vger.kernel.org>
+List-Help: <mailto:xdp-newbies+help@vger.kernel.org>
 List-Subscribe: <mailto:xdp-newbies+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:xdp-newbies+unsubscribe@vger.kernel.org>
+List-Owner: <mailto:xdp-newbies+owner@vger.kernel.org>
+Precedence: list
 MIME-Version: 1.0
-From: Srinidhi Krishna <srinidhikrishna.mec@gmail.com>
-Date: Wed, 14 Oct 2026 00:12:10 +0200
-X-Gm-Features: AclHuK_bgZn-XLDkF5m1Sk_Pv-VVJ8UCqN7295UuAt2NfR0OjQptMFkdRbkvVgY
-Message-ID: <CA+zECWyxVwCYyfbPJtT2fNWkxkLT+i+uyfrRPXtUE6re9BXfvA@mail.gmail.com>
-Subject: Interested in contributing to xdp-project
-To: xdp-newbies@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla Thunderbird
+From: Quentin Monnet <qmo@kernel.org>
+Content-Language: en-GB
+To: bpf <bpf@vger.kernel.org>,
+ "xdp-newbies@vger.kernel.org" <xdp-newbies@vger.kernel.org>
+Subject: FOSDEM 2027 eBPF Devroom Call for Participation
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Hello,
+We are delighted to announce the Call for Participation for the third
+eBPF Devroom at FOSDEM!
 
-I recently had the opportunity to work on Real-Time Test Bench which
-introduced me to XDP. Since then I have been learning more about XDP
-and am currently interested in contributing to xdp-tools.
+Mark the Dates
+--------------
 
-I had gone through the
-https://xdp-project.net/#outline-container-Important-medium-term-tasks
-list and felt one of the issues in the BPF selftest could be a good
-starting point.
+* November 23rd, 2026: Submission deadline
+* December 7th, 2026: Announcement of accepted talks and schedule
+* January 30th, 2027 (Saturday): eBPF Devroom at FOSDEM
 
-Please let me know if this is something that still needs to be done,
-else I would be interested in taking similar issues as a first step.
+eBPF at FOSDEM
+--------------
 
+FOSDEM is a free, community-organized event focusing on open source, and
+aiming at gathering open source software developers and communities to
+meet, learn, and share. It takes place annually in Brussels, Belgium.
+After hosting a number of eBPF-related talks in various devrooms over
+the years, FOSDEM 2027 welcomes a devroom dedicated to eBPF for the
+third time! This devroom aims at gathering talks about various aspects
+of eBPF, ideally on multiple platforms.
 
-Best,
-Srinidhi
+Topics of Interest
+------------------
+
+FOSDEM is an event centered on free and open-source software
+development, and brings the opportunity to reach a large audience of
+knowledgeable, highly technical open-source software activists. If you
+have something to present about eBPF, we would love for you to consider
+submitting a proposal to the Devroom.
+
+The projects or technologies discussed in the talks MUST be open-source.
+
+Topics of interest for the Devroom include (but are not limited to):
+
+* eBPF development: recent or proposed features (on Linux, on other
+  platforms, or even cross-platform), such as:
+    * eBPF arenas, stack improvement, coroutines, improved BTF, etc.
+    * eBPF program signing and supply chain security
+    * Profiling eBPF with eBPF
+    * eBPF-based process schedulers
+    * eBPF in storage devices
+    * eBPF verifier improvements or alternative implementations
+    * eBPF for profiling AI workloads
+* Deep-dives on existing eBPF features
+* Working with eBPF: best practices, common mistakes, debugging, etc.
+* eBPF toolchain, for compiling, managing, debugging, packaging, and
+  deploying eBPF programs and related objects
+* eBPF libraries, in C/C++, Go, Rust, or other languages
+* eBPF in the real world, production use cases and their impact
+* eBPF community efforts (documentation, standardization, cross-platform
+  initiatives)
+
+The list is not exhaustive, don’t hesitate to submit your proposal!
+
+Format
+------
+
+FOSDEM 2027 will be an in-person event in Brussels, Belgium.
+We do not accept remote presentations.
+(Participants must be able to fund their trip, visa, and accommodation,
+as we do not provide any scholarship or other funding assistance.)
+
+We’re looking for 20- to 30-minute presentations. The duration should
+include time for questions: allow at least 5 to 10 minutes to answer
+questions from the public.
+
+Note that due to time constraints, we may end up offering a slot
+duration different than the one requested when submitting. If you have
+specific duration requirements, we encourage you to mention them in your
+proposal.
+
+You can look at the schedule from previous editions for inspiration, at:
+* https://archive.fosdem.org/2026/schedule/track/ebpf/
+* https://archive.fosdem.org/2025/schedule/track/ebpf/
+
+How to Submit
+-------------
+
+Please submit your proposals on Pretalx, FOSDEM’s submissions tool, at
+https://pretalx.fosdem.org/fosdem-2027/cfp
+
+Make sure to select “eBPF” as the track.
+
+Code of Conduct
+---------------
+
+All participants at FOSDEM are expected to abide by the FOSDEM’s Code of
+Conduct. If your proposal is accepted, you will be required to confirm
+that you accept this Code of Conduct. You can find this code at
+https://fosdem.org/2027/practical/conduct/
+
+Devroom Organisers
+------------------
+
+* Bill Mulligan
+* Daniel Borkmann
+* Dimitar Kanaliev
+* Quentin Monnet
+* Yusheng Zheng
+
+If you have questions about any aspects of this Call for Participation,
+please email us at ebpf-devroom-manager@fosdem.org, and we will do our
+best to assist you.
+
+We keep an up-to-date version of this Call for Participation at
+https://ebpf.io/fosdem-2027.html
